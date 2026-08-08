@@ -1,0 +1,8 @@
+yt-dlp>=2025.0
+funasr>=1.4.0
+faster-whisper>=1.1.0
+onnxruntime>=1.18.0
+openai-whisper>=20231117
+ctranslate2>=4.5.0
+torch>=2.1.0
+openai>=1.0.0
