@@ -1,9 +1,48 @@
 /* ===== 视频提取 Tab ===== */
 
-var EXTRACT_API = 'http://127.0.0.1:8765/extract';
+var EXTRACT_API = localStorage.getItem('extract_api') || 'http://127.0.0.1:8765/extract';
 
 (function () {
   'use strict';
+
+  /* ---- 设置面板（API 地址） ---- */
+  var settingsHtml =
+    '<div class="extract-settings">' +
+      '<details>' +
+        '<summary class="settings-summary">提取服务配置</summary>' +
+        '<div class="settings-body">' +
+          '<div class="field"><label>API 地址</label>' +
+            '<input id="extractApiUrl" placeholder="http://127.0.0.1:8765/extract">' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;margin-top:8px">' +
+            '<button class="btn-sm" id="saveApiUrl">保存</button>' +
+            '<span class="hint">修改后需刷新页面</span>' +
+          '</div>' +
+          '<p class="hint" style="margin-top:8px">本地开发用 <code>http://127.0.0.1:8765/extract</code>；云端部署后改为你的服务器地址</p>' +
+        '</div>' +
+      '</details>' +
+    '</div>';
+
+  var extractGrid = document.querySelector('.extract-grid');
+  if (extractGrid) {
+    var settingsContainer = document.createElement('div');
+    settingsContainer.className = 'extract-settings-wrap';
+    settingsContainer.style.cssText = 'margin-bottom:14px;grid-column:1/-1';
+    settingsContainer.innerHTML = settingsHtml;
+    extractGrid.insertBefore(settingsContainer, extractGrid.firstChild);
+  }
+
+  /* 保存 API 地址 */
+  document.addEventListener('click', function (e) {
+    if (e.target.id === 'saveApiUrl') {
+      var val = document.getElementById('extractApiUrl').value.trim();
+      if (val) {
+        localStorage.setItem('extract_api', val);
+        EXTRACT_API = val;
+        showToast('API 地址已保存，请刷新页面生效');
+      }
+    }
+  });
 
   /* ---- DOM ---- */
   var extractBtn      = document.getElementById('extractBtn');
