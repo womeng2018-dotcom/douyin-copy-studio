@@ -239,7 +239,18 @@ mark.hl.P2{background:#d8e0ec;color:#4a5c78}
 .block-refund .kv{background:none;padding:0;color:#4a3a5a;font-size:13.5px;line-height:1.6}
 
 /* ---------- 响应式 ---------- */
-@media (max-width:1040px){
+/* ===== 视频提取 ===== */
+.extract-grid{display:grid;grid-template-columns:380px 1fr;gap:20px;margin-top:16px}
+.extract-input .field{margin-bottom:12px}
+.extract-status{margin-top:14px;padding:10px 12px;background:var(--beige);border-radius:7px;border:1px solid var(--line);font-size:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.extract-output .results-head{padding:14px 18px}
+.extract-output .empty-state{margin-top:16px}
+.extract-output .empty-state p{font-size:13.5px}
+.extract-output .empty-state span{font-size:12px}
+
+@media (max-width:900px){
+  .extract-grid{grid-template-columns:1fr}
+}
   .layout{grid-template-columns:1fr}
   .config{position:static;max-height:none}
 }
