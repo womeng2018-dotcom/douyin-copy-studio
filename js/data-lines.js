@@ -10,7 +10,7 @@ DS.hooks = {
     label: '利益点型',
     desc: '开门见山抛价格差，适合团购转化主投',
     lines: [
-      '{area}的姐妹先别划走，{entryPrice}块能做{entryItem}，我先说地址。',
+      '{area}的{aud}先别划走，{entryPrice}块能{verb}{entryItem}，我先说地址。',
       '门市价{origPrice}的{entryItem}，现在团购只要{entryPrice}，就在{area}。',
       '在{area}花{entryPrice}块做个{entryItem}，这个价我得说一下。',
       '{storeCount}家连锁的{catName}，今天团购价掉到{entryPrice}。'
@@ -40,10 +40,10 @@ DS.hooks = {
     label: '身份代入型',
     desc: '锁定周边人群，本地推地理围栏适配',
     lines: [
-      '{area}附近的姐妹注意了，这条跟你有关。',
+      '{area}附近的{aud}注意了，这条跟你有关。',
       '住在{area}这一片的，这家店你迟早会去。',
-      '上班在{area}的宝子，中午休息就够做一次。',
-      '{area}的宝妈们，带娃路上顺道就能做完。'
+      '上班在{area}的{aud}，中午休息那点时间就够，不耽误下午。',
+      '{area}这一片的{aud}，顺路就能安排上，不用特意跑一趟。'
     ]
   },
   pain: {
@@ -194,6 +194,6 @@ DS.topics = {
 DS.comments = [
   '门店地址在左下角团购里，{area}这家，导航搜「{brand}」就行～',
   '有问价格的统一回复：{entryItem}{entryPrice}，{mainItem}{mainPrice}，{deadline}',
-  '姐妹们下单前看清套餐内容哈，没去成随时退，不踩坑～',
+  '{aud}们下单前看清套餐内容哈，没去成随时退，不踩坑～',
   '问哪家店的都在这条评论里，{area}这家，团购券点下面'
 ];
