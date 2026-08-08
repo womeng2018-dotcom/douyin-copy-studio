@@ -159,6 +159,10 @@ def try_download_subtitles(url, save_dir=None):
             "subtitlesformat": "srt/best",
             "outtmpl": os.path.join(save_dir, "%(id)s.%(ext)s"),
             "noplaylist": True,
+            "socket_timeout": 10,          # 网络超时 10s
+            "retries": 2,                   # 重试 2 次
+            "extractor_retries": 1,         # 提取器重试 1 次
+            "noprogress": True,
             "extractorargs": {"youtube": {"skip": "auto"}},
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -238,6 +242,10 @@ def download_video(url, output_path=None):
             "format": "bestaudio/best[height<=480]",
             "outtmpl": output_path,
             "noplaylist": True,
+            "socket_timeout": 10,
+            "retries": 2,
+            "extractor_retries": 1,
+            "noprogress": True,
             "extractorargs": {"youtube": {"skip": "auto"}},
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -272,17 +280,16 @@ def extract_audio(input_file, output_wav=None):
 # 第三层：ASR 引擎（FunASR → faster-whisper → openai-whisper）
 # ============================================================
 def asr_funasr(wav_path, timeout=300):
-    """FunASR-Paraformer-large 中文 ASR"""
+    """FunASR-Paraformer 中文 ASR（短模型名，FunASR 1.4.x 兼容）"""
     try:
         from funasr import AutoModel
-        import torch
 
         model = AutoModel(
-            model="iic/speech_paraformer-large_asr-online-streaming-zh-16k-v1",
-            vad_model="iic/speech_fsmn_vad_zh-cn-16k-common-v2",
-            punc_model="iic/punc_ct-transformer_zh-cn-common-v3",
+            model="paraformer-zh",
+            vad_model="fsmn-vad",
+            punc_model="ct-punc",
             device="cpu",
-            hub="ms",
+            disable_update=True,
         )
         result = model.generate(
             input=wav_path,
