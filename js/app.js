@@ -182,7 +182,12 @@
       '<div class="block"><div class="block-label">发布信息</div>' +
       '<div class="kv"><b>标题：</b><span>' + DS.esc(r.title) + '</span></div>' +
       '<div class="kv"><b>话题：</b><span class="topics-line">' + DS.esc(r.topics) + '</span></div>' +
-      '<div class="kv"><b>评论区置顶：</b><span>' + DS.esc(r.comment) + '</span></div></div>' +
+      '<div class="kv"><b>评论区置顶：</b><span>' + DS.esc(r.comment) + '</span></div>' +
+      (r.reviewLine ? '<div class="kv kv-review"><b>顾客评价引用（选插入）：</b><span>' + DS.esc(r.reviewLine) + '</span></div>' : '') +
+      '</div>' +
+      (r.certLabels ? '<div class="block block-cert"><div class="block-label">📌 视频自证标签（建议角标/字幕贴出，平台优先分发）</div>' +
+      '<div class="cert-tags">' + r.certLabels.map(function (c) { return '<span class="cert-tag">' + DS.esc(c) + '</span>'; }).join('') + '</div></div>' : '') +
+      (r.refundLine ? '<div class="block block-refund"><div class="block-label">🔒 核销与退改保障话术</div><div class="kv"><span>' + DS.esc(r.refundLine) + '</span></div></div>' : '') +
       riskBox + '</div>' +
       '<div class="v-actions">' +
       '<button class="btn-sm act-copy-script">复制口播</button>' +
