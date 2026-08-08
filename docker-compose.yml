@@ -10,6 +10,7 @@ services:
       - "8765:8765"
     environment:
       - PYTHONUNBUFFERED=1
+      - PORT=8765
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8765/"]
       interval: 30s
