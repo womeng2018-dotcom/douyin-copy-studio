@@ -232,3 +232,15 @@ mark.hl.P2{background:#d8ecfb;color:#08507f}
   table.shots th,table.shots td{padding:6px 7px}
   .script-line{font-size:13px}
 }
+
+/* ===== 顾客评价引用 ===== */
+.kv-review{color:#5a4a00;background:#fff7e0;padding:8px 12px;border-radius:6px;border-left:3px solid #e0a800;margin-top:8px;font-size:14px;line-height:1.5}
+.kv-review b{color:#8a6a00}
+/* ===== 自证标签 ===== */
+.block-cert{background:#f0f7f0;border:1px dashed #2a8a3a;border-radius:8px;padding:12px 14px;margin-top:12px}
+.cert-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.cert-tag{display:inline-flex;align-items:center;gap:4px;background:#e8f5e9;color:#1a6a2a;border:1px solid #a8d8a8;border-radius:20px;padding:4px 12px;font-size:13px;font-weight:600}
+.cert-tag::before{content:'✓';font-size:12px}
+/* ===== 核销保障 ===== */
+.block-refund{background:#f5f0ff;border:1px dashed #7a4abf;border-radius:8px;padding:12px 14px;margin-top:12px}
+.block-refund .kv{background:none;padding:0;color:#4a2a7a;font-size:14px;line-height:1.5}
