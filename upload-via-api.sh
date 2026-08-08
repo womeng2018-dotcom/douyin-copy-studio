@@ -3,9 +3,9 @@
 set -u
 REPO="womeng2018-dotcom/douyin-copy-studio"
 BRANCH="main"
-MSG="新增视频提取 Tab：字幕优先 + FunASR/Whisper ASR + 七层后处理管线"
+MSG="后端部署配置：Docker/docker-compose/requirements/Railway 部署指引 + API 地址可配置"
 
-FILES="css/app.css index.html js/app.js js/extract-tab.js js/data-category.js js/data-compliance.js js/data-lines.js js/engine.js build-single.js standalone.html stress-test.js upload-via-api.sh server/video-extract.py"
+FILES="css/app.css index.html js/app.js js/extract-tab.js js/data-category.js js/data-compliance.js js/data-lines.js js/engine.js build-single.js standalone.html stress-test.js upload-via-api.sh server/video-extract.py server/requirements.txt server/Dockerfile server/README.md server/.dockerignore docker-compose.yml .gitignore"
 
 for f in $FILES; do
   if [ ! -f "$f" ]; then echo "跳过（不存在）：$f"; continue; fi
