@@ -3,7 +3,7 @@
 set -u
 REPO="womeng2018-dotcom/douyin-copy-studio"
 BRANCH="main"
-MSG="云端部署优化：Render.yaml + Dockerfile精简 + PORT环境变量支持"
+MSG="修复提取服务Bug：ThreadingHTTPServer + CORS + HTTP响应同步返回"
 
 FILES="css/app.css index.html js/app.js js/extract-tab.js js/data-category.js js/data-compliance.js js/data-lines.js js/engine.js build-single.js standalone.html stress-test.js upload-via-api.sh server/video-extract.py server/requirements.txt server/Dockerfile server/README.md server/.dockerignore docker-compose.yml .gitignore"
 
