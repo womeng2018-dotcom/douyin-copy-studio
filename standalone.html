@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>抖音来客投流文案工作台 · Copy Studio（单文件版）</title>
+<meta name="description" content="基于《抖音来客投流素材需求说明书》构建的本地生活投流文案生成与合规自检工具">
+<style>
+:root{
+  --bg:#f5f6f8;
+  --card:#ffffff;
+  --line:#e6e8ec;
+  --text:#1a1c22;
+  --text-2:#5b6070;
+  --muted:#8b90a0;
+  --pri:#fe2c55;
+  --pri-dark:#d81e44;
+  --cyan:#0fb8c9;
+  --ok:#12a150;
+  --warn:#e07b00;
+  --danger:#e0224a;
+  --info:#0b7ac9;
+  --radius:12px;
+  --shadow:0 1px 3px rgba(20,24,40,.06),0 8px 24px rgba(20,24,40,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:var(--bg);color:var(--text);line-height:1.65;font-size:14px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1340px;margin:0 auto;padding:0 20px}
+
+/* ---------- 顶栏 ---------- */
+.topbar{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50}
+.topbar-inner{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{
+  width:40px;height:40px;border-radius:11px;flex:none;
+  background:linear-gradient(135deg,var(--pri),#ff6b3d);
+  color:#fff;font-weight:700;font-size:17px;
+  display:flex;align-items:center;justify-content:center;
+}
+.brand h1{font-size:17px;font-weight:650;letter-spacing:-.2px}
+.brand p{font-size:12px;color:var(--muted)}
+.tabs{display:flex;gap:4px;background:#f0f1f4;padding:4px;border-radius:10px}
+.tab{
+  border:0;background:transparent;padding:7px 15px;border-radius:7px;
+  font-size:13.5px;color:var(--text-2);cursor:pointer;font-weight:500;
+  font-family:inherit;transition:.15s;white-space:nowrap;
+}
+.tab:hover{color:var(--text)}
+.tab.active{background:#fff;color:var(--pri);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+
+/* ---------- 面板 ---------- */
+.panel{display:none;padding:24px 0 60px}
+.panel.active{display:block}
+.layout{display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:20px}
+.card-title{font-size:15px;font-weight:650;margin-bottom:4px}
+.sub-title{font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:12px}
+.hint{font-size:12.5px;color:var(--muted);line-height:1.6}
+.sep{border:0;border-top:1px solid var(--line);margin:18px 0}
+
+/* ---------- 表单 ---------- */
+.config{position:sticky;top:82px;max-height:calc(100vh - 104px);overflow-y:auto}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12.5px;font-weight:600;color:var(--text-2);margin-bottom:6px}
+input,select,textarea{
+  width:100%;padding:8px 11px;border:1px solid var(--line);border-radius:8px;
+  font-size:13.5px;font-family:inherit;color:var(--text);background:#fff;transition:.15s;
+}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--pri);box-shadow:0 0 0 3px rgba(254,44,85,.09)}
+input::placeholder,textarea::placeholder{color:#b8bcc8}
+textarea{resize:vertical;line-height:1.7}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid2 .field{margin-bottom:4px}
+
+.seg{display:flex;gap:6px;background:#f3f4f7;padding:4px;border-radius:9px}
+.seg.wrap-seg{flex-wrap:wrap}
+.seg button{
+  flex:1;border:0;background:transparent;padding:7px 8px;border-radius:6px;
+  font-size:12.5px;color:var(--text-2);cursor:pointer;font-family:inherit;font-weight:500;
+  transition:.15s;white-space:nowrap;
+}
+.seg.wrap-seg button{flex:1 1 44%}
+.seg button:hover{color:var(--text)}
+.seg button.on{background:#fff;color:var(--pri);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.07)}
+
+.tag-warn{
+  display:inline-block;font-size:10.5px;background:#fff3e6;color:var(--warn);
+  padding:1px 7px;border-radius:5px;font-weight:600;margin-left:4px;vertical-align:middle;
+}
+
+/* ---------- 按钮 ---------- */
+.btn-main{
+  width:100%;padding:11px;border:0;border-radius:9px;margin-top:6px;
+  background:linear-gradient(135deg,var(--pri),#ff5a3d);color:#fff;
+  font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;
+}
+.btn-main:hover{opacity:.92;transform:translateY(-1px)}
+.btn-ghost{
+  width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;margin-top:8px;
+  background:#fff;color:var(--text-2);font-size:13px;cursor:pointer;font-family:inherit;transition:.15s;
+}
+.btn-ghost:hover{border-color:var(--pri);color:var(--pri)}
+.btn-sm{
+  padding:6px 13px;border:1px solid var(--line);border-radius:7px;background:#fff;
+  color:var(--text-2);font-size:12.5px;cursor:pointer;font-family:inherit;transition:.15s;white-space:nowrap;
+}
+.btn-sm:hover:not(:disabled){border-color:var(--pri);color:var(--pri)}
+.btn-sm:disabled{opacity:.45;cursor:not-allowed}
+
+/* ---------- 结果区 ---------- */
+.results-head{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:16px;
+  background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px 20px;margin-bottom:16px;box-shadow:var(--shadow);flex-wrap:wrap;
+}
+.head-actions{display:flex;gap:8px}
+
+.empty-state{
+  background:#fff;border:1px dashed var(--line);border-radius:var(--radius);
+  padding:70px 20px;text-align:center;color:var(--muted);
+}
+.empty-icon{font-size:34px;margin-bottom:10px}
+.empty-state p{font-size:14px;color:var(--text-2);font-weight:500}
+.empty-state span{font-size:12.5px}
+
+.variant{background:#fff;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:16px;overflow:hidden;box-shadow:var(--shadow)}
+.v-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);background:#fafbfc;flex-wrap:wrap}
+.v-badge{
+  width:26px;height:26px;border-radius:7px;background:var(--pri);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none;
+}
+.v-title{font-size:14px;font-weight:600;flex:1;min-width:120px}
+.v-meta{font-size:11.5px;color:var(--muted)}
+.chip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;background:#f0f1f4;color:var(--text-2);margin-right:5px}
+.chip.ok{background:#e6f7ee;color:var(--ok)}
+.chip.bad{background:#fdeaee;color:var(--danger)}
+.chip.mid{background:#fff3e6;color:var(--warn)}
+.chip.cyan{background:#e4f7f9;color:#0a8b98}
+
+.v-body{padding:16px 18px}
+.block{margin-bottom:16px}
+.block-label{font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.4px;margin-bottom:7px;text-transform:uppercase}
+.script-line{display:flex;gap:10px;padding:7px 0;border-bottom:1px dashed #eef0f3;font-size:13.5px;line-height:1.75}
+.script-line:last-child{border-bottom:0}
+.tcode{
+  flex:none;width:52px;font-size:11px;color:var(--pri);font-weight:700;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;padding-top:3px;
+}
+
+table.shots{width:100%;border-collapse:collapse;font-size:12.5px}
+table.shots th{
+  text-align:left;padding:8px 10px;background:#f7f8fa;color:var(--text-2);
+  font-weight:600;font-size:11.5px;border-bottom:1px solid var(--line);
+}
+table.shots td{padding:8px 10px;border-bottom:1px solid #f0f1f4;vertical-align:top;line-height:1.6}
+table.shots tr:last-child td{border-bottom:0}
+table.shots .c-time{color:var(--pri);font-weight:600;white-space:nowrap;font-family:ui-monospace,Menlo,monospace;font-size:11px}
+table.shots .c-sub{color:var(--text-2)}
+
+.kv{display:flex;gap:8px;font-size:13px;padding:5px 0;flex-wrap:wrap}
+.kv b{color:var(--text-2);font-weight:600;flex:none}
+.topics-line{color:var(--cyan);font-size:12.5px;font-weight:500}
+.v-actions{display:flex;gap:8px;padding:12px 18px;border-top:1px solid var(--line);background:#fafbfc;flex-wrap:wrap}
+
+/* ---------- 合规 ---------- */
+.risk-box{border-radius:9px;padding:12px 14px;font-size:12.5px;margin-top:12px}
+.risk-box.pass{background:#f0faf4;border:1px solid #c9ecd8;color:#0d7a3d}
+.risk-box.fail{background:#fef4f6;border:1px solid #f7d4dc;color:#a8153a}
+.risk-item{display:flex;gap:8px;padding:5px 0;align-items:flex-start;line-height:1.6}
+.lv{
+  flex:none;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;
+  color:#fff;margin-top:2px;letter-spacing:.3px;
+}
+.lv.P0{background:var(--danger)}.lv.P1{background:var(--warn)}.lv.P2{background:var(--info)}
+
+mark.hl{padding:1px 2px;border-radius:3px;font-weight:600}
+mark.hl.P0{background:#ffd7e0;color:#a8153a}
+mark.hl.P1{background:#ffe8c7;color:#8a4b00}
+mark.hl.P2{background:#d8ecfb;color:#08507f}
+
+.check-actions{display:flex;align-items:center;gap:10px;margin:14px 0;flex-wrap:wrap}
+.score{font-size:12.5px;color:var(--text-2);font-weight:600}
+#checkResult .preview{
+  background:#fafbfc;border:1px solid var(--line);border-radius:9px;
+  padding:14px;font-size:13.5px;line-height:1.9;white-space:pre-wrap;margin-bottom:14px;
+}
+
+/* ---------- Brief ---------- */
+.brief-sec{margin-bottom:26px}
+.brief-sec h3{font-size:14px;font-weight:650;margin-bottom:10px;padding-left:9px;border-left:3px solid var(--pri)}
+.brief-note{font-size:12.5px;color:var(--text-2);background:#f7f8fa;border-radius:8px;padding:9px 12px;margin-top:10px;line-height:1.65}
+.brief-sec ul{list-style:none}
+.brief-sec ul li{padding:5px 0 5px 18px;position:relative;font-size:13px;line-height:1.7}
+.brief-sec ul li::before{content:'';position:absolute;left:4px;top:13px;width:5px;height:5px;border-radius:50%;background:var(--pri)}
+
+.cl-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid #f2f3f6;cursor:pointer;font-size:13.5px}
+.cl-item:last-child{border-bottom:0}
+.cl-item input{width:16px;height:16px;flex:none;margin-top:3px;accent-color:var(--pri);cursor:pointer}
+.cl-item.done span{color:var(--muted);text-decoration:line-through}
+
+/* ---------- 历史 ---------- */
+.hist-item{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:12px 14px;border:1px solid var(--line);border-radius:9px;margin-bottom:9px;flex-wrap:wrap;
+}
+.hist-item h4{font-size:13.5px;font-weight:600}
+.hist-item p{font-size:12px;color:var(--muted)}
+
+/* ---------- 页脚 & Toast ---------- */
+.footer{border-top:1px solid var(--line);background:#fff;padding:22px 0;font-size:12.5px;color:var(--text-2)}
+.footer .muted{color:var(--muted);font-size:12px;margin-top:4px}
+
+.toast{
+  position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:#1a1c22;color:#fff;padding:10px 20px;border-radius:9px;font-size:13px;
+  opacity:0;transition:.25s;z-index:999;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.18);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ---------- 响应式 ---------- */
+@media (max-width:1040px){
+  .layout{grid-template-columns:1fr}
+  .config{position:static;max-height:none}
+}
+@media (max-width:720px){
+  .wrap{padding:0 14px}
+  .topbar-inner{padding:12px 14px}
+  .tabs{width:100%;overflow-x:auto}
+  .tab{flex:1;padding:7px 10px;font-size:12.5px}
+  .brand h1{font-size:15.5px}
+  .grid2{grid-template-columns:1fr}
+  .card{padding:16px}
+  .results-head{padding:14px}
+  table.shots{font-size:11.5px}
+  table.shots th,table.shots td{padding:6px 7px}
+  .script-line{font-size:13px}
+}
+
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <div class="brand">
+      <span class="logo">投</span>
+      <div>
+        <h1>抖音来客投流文案工作台</h1>
+        <p>Creative Copy Studio · 依据《投流素材需求说明书 V1.0》</p>
+      </div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="gen">文案生成</button>
+      <button class="tab" data-tab="check">红线自检</button>
+      <button class="tab" data-tab="brief">Brief 速查</button>
+      <button class="tab" data-tab="history">历史记录</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ============ 文案生成 ============ -->
+<section class="panel active" id="tab-gen">
+  <div class="layout">
+
+    <!-- 左侧配置 -->
+    <aside class="config card">
+      <h2 class="card-title">投放配置</h2>
+
+      <div class="field">
+        <label>业务品类</label>
+        <select id="category"></select>
+        <p class="hint" id="catRisk"></p>
+      </div>
+
+      <div class="field">
+        <label>投流主目标 <span class="tag-warn">单一目标</span></label>
+        <div class="seg" id="goal">
+          <button class="on" data-v="groupbuy">团购核销</button>
+          <button data-v="traffic">门店引流</button>
+          <button data-v="brand">品牌曝光</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>视频时长档位</label>
+        <div class="seg" id="duration">
+          <button data-v="d15">15s</button>
+          <button class="on" data-v="d30">30s</button>
+          <button data-v="d60">45-60s</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>口播风格</label>
+        <div class="seg wrap-seg" id="style">
+          <button class="on" data-v="oral">口语化</button>
+          <button data-v="promo">促销感</button>
+          <button data-v="review">测评探店</button>
+          <button data-v="story">剧情反转</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>前3秒钩子类型</label>
+        <select id="hookType">
+          <option value="auto">自动（每条变体换一种）</option>
+        </select>
+      </div>
+
+      <hr class="sep">
+      <h3 class="sub-title">门店与优惠变量</h3>
+
+      <div class="grid2">
+        <div class="field"><label>品牌名</label><input id="brand" placeholder="如：星悦造型"></div>
+        <div class="field"><label>商圈/区域</label><input id="area" placeholder="如：静安大悦城"></div>
+        <div class="field"><label>连锁门店数</label><input id="storeCount" placeholder="100"></div>
+        <div class="field"><label>限时说明</label><input id="deadline" placeholder="8月10-16日有效"></div>
+        <div class="field"><label>引流品名称</label><input id="entryItem" placeholder="洗剪吹体验"></div>
+        <div class="field"><label>引流价(元)</label><input id="entryPrice" placeholder="9.9"></div>
+        <div class="field"><label>主推套餐</label><input id="mainItem" placeholder="护理套餐"></div>
+        <div class="field"><label>套餐价(元)</label><input id="mainPrice" placeholder="39.9"></div>
+        <div class="field"><label>门市原价(元)</label><input id="origPrice" placeholder="198"></div>
+        <div class="field"><label>到店赠品</label><input id="gift" placeholder="肩颈按摩5分钟"></div>
+      </div>
+
+      <div class="field">
+        <label>生成变体数量</label>
+        <div class="seg" id="count">
+          <button data-v="2">2条</button>
+          <button class="on" data-v="3">3条</button>
+          <button data-v="5">5条</button>
+        </div>
+      </div>
+
+      <button class="btn-main" id="genBtn">生成投流文案</button>
+      <button class="btn-ghost" id="demoBtn">载入美发示例</button>
+    </aside>
+
+    <!-- 右侧结果 -->
+    <div class="results">
+      <div class="results-head">
+        <div>
+          <h2 class="card-title" id="resultTitle">生成结果</h2>
+          <p class="hint" id="resultMeta">填写左侧配置后点击「生成投流文案」，将输出可直接交付制作团队的口播脚本与分镜表。</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn-sm" id="exportBtn" disabled>导出 Markdown</button>
+          <button class="btn-sm" id="copyAllBtn" disabled>复制全部</button>
+        </div>
+      </div>
+      <div id="output" class="empty-state">
+        <div class="empty-icon">🎬</div>
+        <p>还没有生成内容</p>
+        <span>建议先点「载入美发示例」体验完整效果</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 红线自检 ============ -->
+<section class="panel" id="tab-check">
+  <div class="card">
+    <h2 class="card-title">内容红线自检</h2>
+    <p class="hint">粘贴任意口播文案、标题或字幕，实时扫描广告法绝对化用语、医疗功效宣称、站外引流、虚假宣传等风险点。</p>
+    <textarea id="checkInput" rows="8" placeholder="把要投放的文案粘贴到这里，自动开始检测……"></textarea>
+    <div class="check-actions">
+      <button class="btn-sm" id="purifyBtn">一键净化建议</button>
+      <button class="btn-sm" id="clearCheck">清空</button>
+      <div class="score" id="checkScore"></div>
+    </div>
+    <div id="checkResult"></div>
+  </div>
+</section>
+
+<!-- ============ Brief 速查 ============ -->
+<section class="panel" id="tab-brief">
+  <div class="card">
+    <h2 class="card-title">Brief 速查 · 关键规则</h2>
+    <div id="briefContent"></div>
+  </div>
+  <div class="card">
+    <h2 class="card-title">交付验收 Checklist</h2>
+    <p class="hint">制作团队自审 + 投流负责人复核，勾选状态自动保存在本机。</p>
+    <div id="checklist"></div>
+    <div class="check-actions">
+      <span class="score" id="clScore"></span>
+      <button class="btn-sm" id="resetCl">重置勾选</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 历史记录 ============ -->
+<section class="panel" id="tab-history">
+  <div class="card">
+    <h2 class="card-title">生成历史</h2>
+    <p class="hint">最近 20 次生成记录保存在本机浏览器，可随时回看或重新导出。</p>
+    <div id="historyList"></div>
+    <button class="btn-sm" id="clearHistory">清空历史</button>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <p>抖音来客投流文案工作台 · 依据《抖音来客投流素材需求说明书 V1.0》构建</p>
+    <p class="muted">工具输出为创作参考，正式投放前请与抖音来客后台套餐、价格、期限核对一致，并完成合规复核。</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ==================== js/data.js ==================== */
+/* 抖音来客投流文案工作台 · 数据层
+ * 依据《抖音来客投流素材需求说明书 V1.0》构建
+ */
+window.DS = window.DS || {};
+
+
+/* ==================== js/data-category.js ==================== */
+/* 品类预设：不同垂类的用词、场景、痛点、卖点与合规强度 */
+window.DS = window.DS || {};
+
+DS.categories = {
+  hair: {
+    name: '美发 · 理发造型',
+    staff: '技师',
+    aud: '姐妹',
+    verb: '做',
+    entryItem: '洗剪吹体验',
+    mainItem: '护理套餐',
+    entryPrice: '9.9',
+    mainPrice: '39.9',
+    origPrice: '198',
+    scenes: ['洗发按摩', '修剪造型', '吹风定型', '发型成品展示'],
+    pains: ['怕剪毁了不敢换发型', '进店就被推销办卡', '随便剪个头也要小一百'],
+    benefits: [
+      '总部统一培训的{staff}，手法有标准',
+      '进店不推销、不办卡，做完就走',
+      '{storeCount}家连锁同一套服务标准'
+    ],
+    proofs: ['门店门头与营业执照齐全', '连锁品牌统一装修', '大众化价位、明码标价'],
+    visualHint: '门头招牌 → 洗发/剪发过程 → 成品发型 → 价签特写 → 团购贴片',
+    riskLevel: 'mid',
+    riskNote: '禁止出现生发、防脱、育发等医疗/特妆功效表述；前后对比仅限造型变化。'
+  },
+  beauty: {
+    name: '生活美容 · 皮肤管理',
+    staff: '美容师',
+    aud: '姐妹',
+    verb: '做',
+    entryItem: '小气泡清洁体验',
+    mainItem: '面部护理套餐',
+    entryPrice: '19.9',
+    mainPrice: '69',
+    origPrice: '298',
+    scenes: ['接待与洁面', '清洁护理操作', '补水敷面', '护理后放松状态'],
+    pains: ['怕进了不正规的小店', '怕办了卡店就跑了', '怕全程被推销大项目'],
+    benefits: [
+      '连锁门店、平台担保，跑不了',
+      '{staff}持证上岗，操作有流程',
+      '体验价先试，满意再考虑其他'
+    ],
+    proofs: ['一客一用品、器具消毒', '连锁品牌统一管理', '团购未核销随时退'],
+    visualHint: '门头招牌 → 接待环境 → 清洁护理过程 → 护理后状态 → 团购贴片',
+    riskLevel: 'high',
+    riskNote: '仅限清洁、补水、保养类描述；禁止祛斑、祛痘、抗敏、修复、治疗等功效与医美项目。'
+  },
+  nail: {
+    name: '美甲美睫',
+    staff: '美甲师',
+    aud: '姐妹',
+    verb: '做',
+    entryItem: '单色甲体验',
+    mainItem: '款式套餐',
+    entryPrice: '19.9',
+    mainPrice: '59',
+    origPrice: '168',
+    scenes: ['款式墙展示', '修甲上色过程', '成品手部特写', '门店环境'],
+    pains: ['怕款式土', '怕做一次两三百', '怕工具不干净'],
+    benefits: ['上百款式随便挑', '一人一套工具、当面消毒', '做完不满意可以调'],
+    proofs: ['款式墙实拍', '工具消毒过程', '连锁门店统一标准'],
+    visualHint: '款式墙 → 操作过程 → 成品特写 → 价格贴片 → 团购入口',
+    riskLevel: 'low',
+    riskNote: '避免绝对化用语与虚构划线价。'
+  },
+  food: {
+    name: '餐饮 · 到店堂食',
+    staff: '主厨',
+    aud: '朋友',
+    verb: '吃到',
+    entryItem: '双人套餐',
+    mainItem: '四人聚餐套餐',
+    entryPrice: '39.9',
+    mainPrice: '99',
+    origPrice: '268',
+    scenes: ['门头与排队', '后厨出餐', '菜品特写', '顾客用餐氛围'],
+    pains: ['不知道吃啥', '踩雷难吃还贵', '人多不好点菜'],
+    benefits: ['一份套餐搞定{people}人', '现点现做、分量实在', '门店就在{area}，说走就走'],
+    proofs: ['明档后厨', '门店客流实拍', '团购过期自动退'],
+    visualHint: '菜品特写开场 → 后厨出餐 → 顾客反应 → 套餐内容清单 → 团购贴片',
+    riskLevel: 'low',
+    riskNote: '不得宣称养生、治疗类功效；套餐内容须与后台一致。'
+  },
+  edu: {
+    name: '教培 · 兴趣课程',
+    staff: '老师',
+    aud: '家长',
+    verb: '上',
+    entryItem: '体验课',
+    mainItem: '基础课包',
+    entryPrice: '9.9',
+    mainPrice: '199',
+    origPrice: '680',
+    scenes: ['校区环境', '课堂实拍', '学员练习', '成果展示'],
+    pains: ['不知道孩子适不适合', '怕报了不来上', '怕机构不靠谱'],
+    benefits: ['先上体验课再决定', '就在{area}，接送方便', '小班授课、有回访'],
+    proofs: ['校区实景', '师资介绍', '未核销随时退'],
+    visualHint: '校区外景 → 课堂实拍 → 学员状态 → 课程内容板 → 团购入口',
+    riskLevel: 'high',
+    riskNote: '禁止升学承诺、提分保证、名校暗示；不得涉及学科类违规宣传。'
+  },
+  fitness: {
+    name: '健身 · 运动馆',
+    staff: '教练',
+    aud: '朋友',
+    verb: '体验',
+    entryItem: '单次体验课',
+    mainItem: '月卡体验',
+    entryPrice: '19.9',
+    mainPrice: '99',
+    origPrice: '399',
+    scenes: ['场馆全景', '器械区', '训练过程', '课后状态'],
+    pains: ['办了卡去两次', '怕被销售缠着', '不知道怎么练'],
+    benefits: ['单次体验、不办卡', '{staff}带练不放养', '{area}走路就能到'],
+    proofs: ['场馆实拍', '器械与淋浴设施', '团购随时退'],
+    visualHint: '场馆全景 → 训练过程 → 教练指导 → 价格贴片 → 团购入口',
+    riskLevel: 'mid',
+    riskNote: '禁止减重承诺、疗效表述（如"一个月瘦XX斤"）。'
+  },
+  home: {
+    name: '家装 · 局部服务',
+    staff: '师傅',
+    aud: '邻居',
+    verb: '做',
+    entryItem: '上门测量',
+    mainItem: '局部翻新套餐',
+    entryPrice: '0',
+    mainPrice: '299',
+    origPrice: '899',
+    scenes: ['施工现场', '材料展示', '完工效果', '业主验收'],
+    pains: ['怕报价不透明', '怕做完就找不到人', '怕材料以次充好'],
+    benefits: ['先量后报、明码标价', '本地团队、售后找得到人', '合同与质保齐全'],
+    proofs: ['真实工地实拍', '材料品牌展示', '质保条款'],
+    visualHint: '完工效果开场 → 施工过程 → 材料细节 → 报价方式 → 团购入口',
+    riskLevel: 'mid',
+    riskNote: '不得虚构工程案例与业主评价；报价须与实际一致。'
+  }
+};
+
+
+/* ==================== js/data-lines.js ==================== */
+/* 句式库：钩子 / 卖点 / 优惠 / 信任 / CTA / 标题 / 评论区
+ * 变量：{brand} {area} {staff} {entryItem} {mainItem} {entryPrice} {mainPrice}
+ *       {origPrice} {storeCount} {deadline} {gift} {catName}
+ */
+window.DS = window.DS || {};
+
+/* ========== 一、前3秒钩子（按类型分组） ========== */
+DS.hooks = {
+  benefit: {
+    label: '利益点型',
+    desc: '开门见山抛价格差，适合团购转化主投',
+    lines: [
+      '{area}的{aud}先别划走，{entryPrice}块能{verb}{entryItem}，我先说地址。',
+      '门市价{origPrice}的{entryItem}，现在团购只要{entryPrice}，就在{area}。',
+      '在{area}花{entryPrice}块做个{entryItem}，这个价我得说一下。',
+      '{storeCount}家连锁的{catName}，今天团购价掉到{entryPrice}。'
+    ]
+  },
+  question: {
+    label: '疑问型',
+    desc: '制造好奇，适合拉新与通投',
+    lines: [
+      '{area}这家{catName}，{entryPrice}块的{entryItem}到底能做成啥样？',
+      '你猜这个{entryItem}多少钱？说出来{area}的邻居都得来一趟。',
+      '{entryPrice}块钱在{area}还能干啥？我拿它做了个{entryItem}。',
+      '为什么{area}的人最近都往这家{catName}跑？'
+    ]
+  },
+  conflict: {
+    label: '冲突反常识型',
+    desc: '打破预期，完播率通常最高',
+    lines: [
+      '我一直以为{catName}都很贵，直到我在{area}发现这家。',
+      '别再随便找店了，{area}这家连锁我先替你去试了。',
+      '花{entryPrice}块之前我也不信，做完我改口了。',
+      '同样是{entryItem}，为什么这家能便宜这么多？我去问了。'
+    ]
+  },
+  identity: {
+    label: '身份代入型',
+    desc: '锁定周边人群，本地推地理围栏适配',
+    lines: [
+      '{area}附近的{aud}注意了，这条跟你有关。',
+      '住在{area}这一片的，这家店你迟早会去。',
+      '上班在{area}的{aud}，中午休息那点时间就够，不耽误下午。',
+      '{area}这一片的{aud}，顺路就能安排上，不用特意跑一趟。'
+    ]
+  },
+  pain: {
+    label: '痛点型',
+    desc: '直击顾虑，转化人群更精准',
+    lines: [
+      '{pain}？我在{area}找了家不用担心这个的。',
+      '之前吃过亏——{pain}。这次我换了家连锁的。',
+      '{pain}的，我建议你看完这条再做决定。',
+      '别问我怎么知道{pain}，直接说我现在去哪家。'
+    ]
+  }
+};
+
+/* ========== 二、卖点/体验段 ========== */
+DS.bodyLines = {
+  intro: [
+    '这家是{brand}，全国{storeCount}多家连锁，{area}这家离地铁口没几步。',
+    '{brand}，{storeCount}多家连锁店，{area}这家环境是真干净。',
+    '就是{area}的{brand}，连锁牌子，找店不用怕踩坑。'
+  ],
+  process: [
+    '进门先{scene1}，{staff}都是总部统一培训的，手法有标准。',
+    '{scene1}、{scene2}一套下来，全程不催不推销。',
+    '从{scene1}到{scene3}，{staff}会先问你想要什么样的再动手。'
+  ],
+  feel: [
+    '做完整个人都松快了，关键是全程没人跟我推卡。',
+    '效果我自己是满意的，你们看这个状态。',
+    '坐下来是真舒服，出来照镜子那一下值了。'
+  ],
+  differentiate: [
+    '{benefit1}，这点我觉得比一般小店强。',
+    '最实在的是{benefit1}，不用担心做一半被加价。',
+    '{benefit1}，价格也是明码标出来的。'
+  ]
+};
+
+/* ========== 三、优惠 / 信任 / CTA ========== */
+DS.offerLines = [
+  '{entryItem}团购价{entryPrice}，{mainItem}{mainPrice}，门市价是{origPrice}，差价自己算。',
+  '现在下单{entryItem}只要{entryPrice}，加{mainPrice}能升级{mainItem}，{deadline}。',
+  '{entryPrice}的{entryItem}是引流款，想做全套的选{mainPrice}的{mainItem}，{deadline}。'
+];
+
+DS.trustLines = [
+  '抖音团购下单，没去成随时退、过期自动退，不用怕。',
+  '平台担保交易，未核销可以退，到店按套餐来，不加价。',
+  '团购券没核销随时退，套餐里写的就是做的，明码标价。'
+];
+
+DS.giftLines = [
+  '到店还送{gift}。',
+  '而且到店额外送{gift}。',
+  '现在去的话{gift}也一起给你。'
+];
+
+DS.ctaLines = {
+  groupbuy: [
+    '点下面的团购券，选离你最近的{brand}直接到店就行。',
+    '想去的点左下角团购，选好门店当天就能用。',
+    '券在下面挂着，选{area}这家，到店报手机号核销。'
+  ],
+  traffic: [
+    '点左下角看门店地址，导航过去十分钟不到。',
+    '地址在下方门店里，{area}的直接导航过来。',
+    '点进主页看门店定位，就在{area}这一片。'
+  ],
+  brand: [
+    '{brand}，全国{storeCount}多家门店，你家附近大概率就有一家。',
+    '想知道你家附近有没有，点主页看门店列表。',
+    '{brand}，{area}这家只是其中一家，主页能看全部门店。'
+  ]
+};
+
+/* ========== 三点五、分品类专属过程/感受句（避免跨行业串味） ========== */
+DS.catLines = {
+  hair: {
+    process: ['进门先洗头按摩，{staff}都是总部统一培训的，会先问你想剪成什么样。',
+      '洗、剪、吹一套下来四十分钟，全程不催也不推销办卡。',
+      '{staff}上手前先沟通发质和脸型，剪完还教你怎么打理。'],
+    feel: ['出来照镜子那一下是真值，整个人清爽了。', '发型我自己很满意，关键是没人跟我推卡。', '这个状态你们看，比我上次花两百做的还顺眼。']
+  },
+  beauty: {
+    process: ['先卸妆洁面，然后做清洁和补水，{staff}手法很稳。',
+      '全程躺着做完，中间还有肩颈放松，不会一直跟你推项目。',
+      '{staff}会先看你皮肤状态再定方案，用的东西都当面拆。']
+  },
+  nail: {
+    process: ['先挑款，几百个样式随便看，{staff}会帮你配肤色。',
+      '修甲、上色、封层一步步来，工具是当面拆的。',
+      '做的时候还能躺着刷手机，一个多小时就好了。'],
+    feel: ['成品比我想象中精致，颜色特别显白。', '这个款式我很满意，能撑一个多月。', '手抬起来自己都多看两眼。']
+  },
+  food: {
+    process: ['菜是现点现做的，上菜速度不慢，分量看着就实在。',
+      '后厨是明档，做菜过程能看见，吃着放心。',
+      '点了招牌几样，锅气足，味道比我预期的好。'],
+    feel: ['两个人吃到扶墙出，性价比是真高。', '味道我给过关，下次带朋友还来。', '吃完这一顿，人均下来不到一杯奶茶钱。']
+  },
+  edu: {
+    process: ['先带着参观校区，然后跟着上一节完整的体验课。',
+      '{staff}会先了解孩子基础，小班上课能顾得过来。',
+      '一节课下来孩子自己不想走，课后还有回访。'],
+    feel: ['孩子上完自己说还想来，这就够了。', '体验课能看出老师的状态，我是放心的。', '先试一节再决定，不用一上来就交一年。']
+  },
+  fitness: {
+    process: ['{staff}先做体测再排训练，不是甩给你自己练。',
+      '场馆器械挺全，人不算多，不用排队等。',
+      '一节课带下来，动作哪里不对当场就给纠。'],
+    feel: ['练完出一身汗，人是真的松快。', '不办卡也能来，这点对我这种懒人友好。', '一次课下来动作会了，比自己瞎练强。']
+  },
+  home: {
+    process: ['{staff}先上门量尺，然后当面报价，用什么材料都写清楚。',
+      '施工是本地团队，进场时间和工期都提前定好。',
+      '做完带着验收，有问题当场返工，不是做完就跑。'],
+    feel: ['完工效果比我预期的整齐，收边处理得细。', '报价前后没变过，这点最省心。', '住进来才发现细节做得到位。']
+  }
+};
+
+/* 15秒档专用短优惠句（控制在30字内，避免语速过密） */
+DS.shortOffers = [
+  '{entryItem}团购{entryPrice}，门市价{origPrice}，{deadline}。',
+  '门市{origPrice}的{entryItem}，现在{entryPrice}拿下，{deadline}。',
+  '{entryPrice}体验{entryItem}，{mainPrice}升级{mainItem}。'
+];
+
+/* ========== 四、标题 & 话题 & 评论区 ========== */
+DS.titles = [
+  '{area}居然还有{entryPrice}的{entryItem}｜{brand}',
+  '{entryPrice}做了个{entryItem}，{area}的别再多花钱了',
+  '{area}{catName}实测：门市{origPrice}，团购{entryPrice}',
+  '{storeCount}家连锁的{catName}，{entryPrice}就能体验一次',
+  '在{area}花{entryPrice}块，我做了这件事'
+];
+
+DS.topics = {
+  common: ['#本地生活', '#团购', '#抖音团购', '#到店消费'],
+  hair: ['#美发', '#换发型', '#理发店推荐'],
+  beauty: ['#皮肤管理', '#面部护理', '#美容院'],
+  nail: ['#美甲', '#美甲款式', '#美睫'],
+  food: ['#美食探店', '#双人餐', '#聚餐'],
+  edu: ['#兴趣班', '#体验课', '#亲子'],
+  fitness: ['#健身', '#运动打卡', '#健身房'],
+  home: ['#家装', '#旧房翻新', '#装修']
+};
+
+DS.comments = [
+  '门店地址在左下角团购里，{area}这家，导航搜「{brand}」就行～',
+  '有问价格的统一回复：{entryItem}{entryPrice}，{mainItem}{mainPrice}，{deadline}',
+  '{aud}们下单前看清套餐内容哈，没去成随时退，不踩坑～',
+  '问哪家店的都在这条评论里，{area}这家，团购券点下面'
+];
+
+
+/* ==================== js/data-compliance.js ==================== */
+/* 红线词库：P0 必须删改 / P1 高风险建议改 / P2 需自证或提示
+ * 依据说明书第七章「内容红线与合规要求」
+ */
+window.DS = window.DS || {};
+
+DS.riskLevels = {
+  P0: { label: 'P0 高压线', tip: '命中即返工，必须删改', color: '#e0224a' },
+  P1: { label: 'P1 高风险', tip: '大概率限流或不过审，强烈建议改', color: '#e07b00' },
+  P2: { label: 'P2 需自证', tip: '可用但须有真实依据/资质，请自查', color: '#0b7ac9' }
+};
+
+DS.riskRules = [
+  /* ---------- P0：站外引流（本地生活高压线） ---------- */
+  { level: 'P0', cat: '站外引流', words: ['加微信', '微信号', '加个微信', '加V', '加v', '威信', '薇信', '私聊', '私信我', '加好友', '公众号', '扫码加', '扫我', '留个电话', '留电话', '手机号私', '淘宝', '拼多多', '小红书搜', '闲鱼', '外部链接', '站外'], fix: '删除全部站外引导。私域沉淀只能在用户到店后由门店合规进行，素材内一律不出现。' },
+
+  /* ---------- P0：绝对化用语（广告法） ---------- */
+  { level: 'P0', cat: '绝对化用语', words: ['最好', '最佳', '最优', '最低价', '最便宜', '最专业', '最火', '最强', '第一品牌', '全网第一', '全国第一', '顶级', '国家级', '极致', '全网最低', '绝对', '唯一', '首选', '王牌', '冠军', '史上最', '100%', '百分百', '永久', '万能', '独一无二', '无人能及'], fix: '改为可验证的客观表述，如「门店多」「价位实在」「回头客多」。' },
+
+  /* ---------- P0：医疗/特殊化妆品功效（美业最高风险） ---------- */
+  { level: 'P0', cat: '医疗功效宣称', words: ['生发', '育发', '防脱', '脱发', '治脱', '乌发', '白发变黑', '治疗', '根治', '治愈', '痊愈', '疗效', '药用', '医用级', '消炎', '杀菌', '抗炎', '祛斑', '去斑', '淡斑', '祛痘', '去痘', '除痘', '抗敏', '脱敏', '修复屏障', '激素脸', '换肤', '除皱', '去皱', '抗衰老', '逆龄', '瘦脸针', '水光针', '注射', '微整', '溶脂', '减肥', '瘦身', '排毒', '养生调理'], fix: '仅保留清洁、护理、保养、造型类描述。涉及医疗美容项目需具备对应医疗资质账号，否则整体删除。' },
+
+  /* ---------- P0：虚假与恐吓 ---------- */
+  { level: 'P0', cat: '虚假宣传', words: ['假一赔十', '无效退款', '包好', '包治', '保证有效', '立竿见影', '一次见效', '当场变白', '断崖式'], fix: '删除效果承诺，改为「体验后自己判断」「不满意可退团购券」。' },
+  { level: 'P0', cat: '焦虑恐吓', words: ['再不', '就晚了', '后悔一辈子', '毁了', '烂脸', '毁容', '错过等一年', '不看后悔'], fix: '去掉恐吓式表达，改为正向利益点陈述。' },
+  { level: 'P0', cat: '贬低同行', words: ['比别家', '别家都', '同行都', '路边摊', '黑心店', '智商税', '割韭菜'], fix: '不得贬低同行。改为陈述自家标准，如「我们是明码标价」。' },
+
+  /* ---------- P1：数据与资质需依据 ---------- */
+  { level: 'P1', cat: '数据需依据', words: ['好评率', '销量第一', '万人好评', '十万人', '百万', '爆单', '销量领先', '排名第一'], fix: '需有平台可查数据支撑，否则删除或改为「回头客不少」。' },
+  { level: 'P1', cat: '限时真实性', words: ['限时', '秒杀', '仅此一天', '最后一天', '倒计时', '名额有限', '仅剩'], fix: '必须有真实起止时间且与后台一致，不得长期挂「限时」。建议写明具体日期。' },
+  { level: 'P1', cat: '价格合规', words: ['原价', '划线价', '亏本', '成本价', '骨折价', '白菜价', '不要钱', '免费送'], fix: '划线价须有真实成交依据；避免「亏本/免费」等易引发争议的表述。' },
+  { level: 'P1', cat: '效果对比', words: ['前后对比', '对比图', '亲测有效', '实测有效'], fix: '仅允许造型/清洁类可视变化，禁止功效型前后对比。' },
+  { level: 'P1', cat: '诱导互动', words: ['点赞抽奖', '转发抽奖', '评论区扣', '扣1', '扣个1'], fix: '避免诱导互动类话术，可能触发平台限流。' },
+
+  /* ---------- P2：需自查 ---------- */
+  { level: 'P2', cat: '承诺类', words: ['随时退', '过期退', '免预约', '不推销', '不办卡'], fix: '可用，但须与后台套餐规则及门店实际一致，避免到店纠纷。' },
+  { level: 'P2', cat: '资质相关', words: ['纹绣', '半永久', '小气泡', '光子', '仪器', '持证'], fix: '涉及仪器/项目须核对经营范围与资质；生活美容不得跨医美范围。' },
+  { level: 'P2', cat: '肖像与版权', words: ['明星', '同款明星', '影视', '电视剧', '网红同款'], fix: '不得使用未授权明星/影视素材；出镜人员须签肖像授权覆盖投流用途。' }
+];
+
+/* 快捷替换建议词典（命中后给出可直接替换的表达） */
+DS.replaceMap = {
+  /* 组合长词优先，避免删词后留下残字（如「全网最低价」→「价」） */
+  '全网最低价': '价格实在', '全网最低': '价格实在', '全网最便宜': '价格实在',
+  '比别家好': '性价比不错', '比别家': '', '保证有效': '', '效果100%': '效果',
+  '假一赔十': '', '包治百病': '', '一次见效': '', '立竿见影': '',
+  '销量第一': '卖得不错', '好评率': '回头客不少', '智商税': '',
+  '最好': '很不错', '最佳': '合适', '最低价': '价格实在', '最便宜': '价格实在',
+  '最专业': '有标准流程', '顶级': '品质在线', '极致': '细致', '绝对': '确实',
+  '唯一': '少见的', '首选': '值得试', '100%': '基本上', '百分百': '基本上',
+  '永久': '长期', '生发': '', '防脱': '', '祛斑': '清洁护理', '祛痘': '清洁护理',
+  '抗敏': '温和护理', '除皱': '面部放松', '治疗': '护理', '瘦身': '',
+  '加微信': '', '私聊': '', '公众号': '', '骨折价': '价格实在',
+  '亏本': '价格实在', '智商税': '', '路边摊': '普通小店'
+};
+
+
+/* ==================== js/data-brief.js ==================== */
+/* Brief 速查内容 + 验收 Checklist（摘自说明书） */
+window.DS = window.DS || {};
+
+DS.briefSections = [
+  {
+    title: '投流目标优先级',
+    type: 'table',
+    head: ['层级', '目标类型', '投放产品', '核心指标'],
+    rows: [
+      ['主目标', '团购核销 / 到店转化', '团购推广 / 本地推', '团购GMV、核销率、CPA、ROI'],
+      ['次目标A', '门店新客到店', '本地推（门店引流）', '到店人次、新客占比、到店成本'],
+      ['次目标B', '品牌 / 云连锁曝光', '品牌推广 / 信息流', '曝光量、涨粉、招商线索'],
+      ['长尾', '私域沉淀（到店后）', '门店执行', '复购率、会员转化']
+    ],
+    note: '一条视频只服务一个主目标，多目标混杂会显著拉低转化。'
+  },
+  {
+    title: '目标受众画像',
+    type: 'table',
+    head: ['维度', '核心人群', '扩量人群'],
+    rows: [
+      ['性别', '女 75% / 男 25%', '男女均衡（家庭客）'],
+      ['年龄', '22-40 岁', '18-50 岁'],
+      ['地域', '门店周边 3-5km 围栏', '同城兴趣人群'],
+      ['消费力', '大众至中端，价格敏感重体验', '品质型，愿为服务买单'],
+      ['核心痛点', '怕踩坑、怕贵、怕服务差', '想尝试但不确定']
+    ],
+    note: '人群包建议：本地生活活跃 + 品类兴趣 + 3-5km 围栏；团购高潜人群；老客 Lookalike 扩量。'
+  },
+  {
+    title: '时长与节奏',
+    type: 'table',
+    head: ['档位', '适用目标', '结构时间轴'],
+    rows: [
+      ['15s', '拉新 / 强钩子', '0-3s 钩子 → 3-10s 卖点+优惠 → 10-15s CTA'],
+      ['30s', '团购转化（主投）', '0-3s 痛点 → 3-15s 体验 → 15-25s 优惠+信任 → 25-30s CTA'],
+      ['45-60s', '品牌 / 达人探店', '人设 → 过程 → 效果 → 优惠+门店 → CTA']
+    ],
+    note: '黄金3秒法则：前3秒必须出现「利益点 / 冲突 / 疑问」之一。关键优惠处画面停顿+字幕放大+音效。'
+  },
+  {
+    title: '画面必含元素',
+    type: 'list',
+    items: [
+      '门店门头 / 招牌（体现连锁品牌名）—— 每片必含',
+      '门店环境（明亮、整洁、有质感接待区）',
+      '服务过程（合规范围内操作，不涉医疗）',
+      '成品 / 效果（仅限造型或清洁护理后状态）',
+      '达人 / 真人出镜（自然真实，非僵硬摆拍）',
+      '顾客笑脸（须肖像授权）',
+      '结尾团购入口引导贴片'
+    ],
+    note: '技术规范：9:16 竖屏、≥1080×1920、码率≥8Mbps、硬字幕白字黑描边、无竞品水印。'
+  },
+  {
+    title: '内容红线（高压线）',
+    type: 'risk',
+    items: [
+      ['P0', '站外引流', '不得引导加微信、公众号、外部链接、留手机号；私域只能到店后由门店合规进行'],
+      ['P0', '医疗功效宣称', '美发禁生发/防脱/乌发；生活美容禁祛斑/祛痘/抗敏/修复/治疗；不得发医美项目'],
+      ['P0', '绝对化用语', '最 / 第一 / 顶级 / 国家级 / 极致 / 全网最低 / 绝对 / 唯一 / 首选'],
+      ['P0', '虚假宣传', '不得使用非本店案例、编造数据、盗用他人素材'],
+      ['P1', '价格与限时', '划线价须真实有依据；限时须有真实起止时间，不得永久限时'],
+      ['P1', '功效型对比', '不得使用功效型前后对比（如改善脱发前后）'],
+      ['P0', '恐吓与贬低', '不得制造过度焦虑，不得贬低同行'],
+      ['P2', '授权', '出镜须签肖像授权覆盖投流；BGM/字体须商用授权']
+    ],
+    note: '任一 P0 命中 → 必须返工，不计交付。'
+  },
+  {
+    title: '交付规格',
+    type: 'list',
+    items: [
+      '格式：MP4（H.264），每档位成片',
+      '数量：每档位 ≥3 条变体（A/B 测试不同钩子），单波次建议 9-15 条',
+      '附带：口播文案表、SRT 字幕、音乐/字体授权说明、达人授权书',
+      '工程文件：剪映 / PR 工程（便于改字幕、换价格）'
+    ],
+    note: '指标定义：CPA=消耗/核销数；ROI=团购GMV/消耗；核销率=核销数/售出数。'
+  }
+];
+
+DS.checklist = [
+  '前 3 秒含钩子（利益 / 冲突 / 疑问）',
+  '主目标清晰（团购 / 到店），无多目标混杂',
+  '优惠信息与抖音来客后台套餐一致、价格真实',
+  '无绝对化用语、无医疗功效宣称、无虚假数据',
+  '无站外引流引导（无加微信 / 外部跳转）',
+  '门店门头 / 品牌清晰，无竞品水印',
+  '字幕准确无错别字，关键价格大字呈现',
+  '画质 ≥1080×1920、比例 9:16、防抖、光线达标',
+  '达人 / 顾客肖像授权齐备',
+  '含明确 CTA（点击团购 / 门店定位）',
+  'BGM / 字体有商用授权'
+];
+
+
+/* ==================== js/engine.js ==================== */
+/* 生成引擎 + 合规扫描器 */
+window.DS = window.DS || {};
+
+/* ---------- 工具 ---------- */
+DS.fill = function (tpl, v) {
+  return String(tpl).replace(/\{(\w+)\}/g, function (m, k) {
+    return v[k] !== undefined && v[k] !== '' ? v[k] : (m === '{gift}' ? '小礼品' : '');
+  });
+};
+
+DS.pick = function (arr, idx) {
+  if (!arr || !arr.length) return '';
+  return arr[idx % arr.length];
+};
+
+/* ---------- 时长结构模板 ---------- */
+DS.durations = {
+  d15: {
+    label: '15秒 · 强钩子拉新',
+    total: 15,
+    segments: [
+      { t: '0-3s', role: 'hook', shot: '门店门头/主体特写，达人入画', note: '前3秒必须出现利益点或疑问' },
+      { t: '3-10s', role: 'core', shot: '服务过程快剪（2-3个镜头）', note: '卖点+价格同时上大字幕' },
+      { t: '10-15s', role: 'cta', shot: '门店定位 + 团购按钮贴片', note: '明确行动指令' }
+    ]
+  },
+  d30: {
+    label: '30秒 · 团购转化主投',
+    total: 30,
+    segments: [
+      { t: '0-3s', role: 'hook', shot: '门店外景 + 达人走近', note: '痛点或利益点开场' },
+      { t: '3-12s', role: 'intro', shot: '门店环境 + 服务过程', note: '建立信任，露出品牌' },
+      { t: '12-20s', role: 'offer', shot: '成品展示 + 价签特写', note: '价格对比用色块大字' },
+      { t: '20-27s', role: 'trust', shot: '门店环境 + 顾客满意瞬间', note: '保障信息，降低决策成本' },
+      { t: '27-30s', role: 'cta', shot: '门店定位 + 团购按钮贴片', note: '点击团购、就近到店' }
+    ]
+  },
+  d60: {
+    label: '45-60秒 · 达人探店/品牌',
+    total: 60,
+    segments: [
+      { t: '0-5s', role: 'hook', shot: '达人出镜自述 + 街景', note: '第一人称人设建立' },
+      { t: '5-15s', role: 'intro', shot: '进店、接待、环境巡览', note: '真实感优先，避免摆拍' },
+      { t: '15-32s', role: 'process', shot: '完整服务过程记录', note: '细节镜头，体现专业度' },
+      { t: '32-42s', role: 'feel', shot: '成品/状态展示 + 真实反应', note: '自然表情，不夸张' },
+      { t: '42-52s', role: 'offer', shot: '套餐内容板 + 价签特写', note: '优惠+保障一起说清' },
+      { t: '52-60s', role: 'cta', shot: '门店门头定位 + 团购贴片', note: '收尾强化品牌与行动' }
+    ]
+  }
+};
+
+/* ---------- 主生成函数 ---------- */
+DS.generate = function (cfg, variantIndex) {
+  var cat = DS.categories[cfg.category] || DS.categories.hair;
+  var i = variantIndex;
+
+  var v = {
+    brand: cfg.brand || '本店',
+    area: cfg.area || '你家附近',
+    storeCount: cfg.storeCount || '100',
+    entryItem: cfg.entryItem || cat.entryItem,
+    mainItem: cfg.mainItem || cat.mainItem,
+    entryPrice: cfg.entryPrice || cat.entryPrice,
+    mainPrice: cfg.mainPrice || cat.mainPrice,
+    origPrice: cfg.origPrice || cat.origPrice,
+    deadline: cfg.deadline || '本周有效',
+    gift: cfg.gift || '',
+    staff: cat.staff,
+    aud: cat.aud || '朋友',
+    verb: cat.verb || '做',
+    catName: cat.name.split(' · ')[1] || cat.name,
+    people: '2',
+    scene1: cat.scenes[0], scene2: cat.scenes[1], scene3: cat.scenes[2],
+    pain: DS.pick(cat.pains, i),
+    benefit1: DS.fill(DS.pick(cat.benefits, i), { staff: cat.staff, storeCount: cfg.storeCount || '100' })
+  };
+
+  /* 钩子：按选定类型轮换句式；若选"自动"则每个变体换一种类型 */
+  var hookTypes = Object.keys(DS.hooks);
+  var hType = cfg.hookType === 'auto' ? hookTypes[i % hookTypes.length] : cfg.hookType;
+  var hookPool = (DS.hooks[hType] || DS.hooks.benefit).lines;
+  var hook = DS.fill(DS.pick(hookPool, i), v);
+
+  /* 品类专属过程/感受句优先，回退到通用句式 */
+  var cl = DS.catLines[cfg.category] || {};
+  var processPool = cl.process && cl.process.length ? cl.process : DS.bodyLines.process;
+  var feelPool = cl.feel && cl.feel.length ? cl.feel : DS.bodyLines.feel;
+
+  /* 15秒档使用短句，避免语速过密 */
+  var isShort = cfg.duration === 'd15';
+  var corePool = isShort ? DS.shortOffers : DS.offerLines;
+
+  /* 各段文案 */
+  var parts = {
+    hook: hook,
+    intro: DS.fill(DS.pick(DS.bodyLines.intro, i), v),
+    process: DS.fill(DS.pick(processPool, i), v),
+    feel: DS.fill(DS.pick(feelPool, i), v),
+    core: isShort
+      ? DS.fill(DS.pick(corePool, i), v)
+      : DS.fill(DS.pick(DS.bodyLines.differentiate, i), v) + DS.fill(DS.pick(DS.offerLines, i), v),
+    offer: DS.fill(DS.pick(DS.offerLines, i), v) + (v.gift ? DS.fill(DS.pick(DS.giftLines, i), v) : ''),
+    trust: DS.fill(DS.pick(DS.trustLines, i), v),
+    cta: DS.fill(DS.pick(DS.ctaLines[cfg.goal] || DS.ctaLines.groupbuy, i), v)
+  };
+
+  /* 风格微调 */
+  if (cfg.style === 'promo') {
+    parts.offer = '划重点——' + parts.offer;
+    parts.cta = '别刷走，' + parts.cta;
+  } else if (cfg.style === 'review') {
+    parts.hook = '我自己去试了下，' + parts.hook;
+    parts.feel = '说实话，' + parts.feel;
+  } else if (cfg.style === 'story') {
+    parts.hook = parts.hook + '事情是这样的——';
+  }
+
+  /* 组装分镜与脚本 */
+  var dur = DS.durations[cfg.duration] || DS.durations.d30;
+  var rows = dur.segments.map(function (seg) {
+    var line = parts[seg.role] || parts.core || '';
+    return {
+      time: seg.t,
+      shot: seg.shot,
+      line: line,
+      subtitle: DS.subtitleOf(seg.role, v),
+      note: seg.note
+    };
+  });
+
+  var script = rows.map(function (r) { return '（' + r.time + '）' + r.line; }).join('\n');
+  var title = DS.fill(DS.pick(DS.titles, i), v);
+  var topics = (DS.topics.common.slice(0, 2)).concat(DS.topics[cfg.category] || []).join(' ');
+  var comment = DS.fill(DS.pick(DS.comments, i), v);
+
+  return {
+    variant: String.fromCharCode(65 + i),
+    hookType: (DS.hooks[hType] || {}).label || '',
+    durationLabel: dur.label,
+    rows: rows,
+    script: script,
+    title: title,
+    topics: topics,
+    comment: comment,
+    wordCount: script.replace(/[（）\s\-0-9a-zA-Z]/g, '').length,
+    risk: DS.scan(script + ' ' + title + ' ' + comment)
+  };
+};
+
+DS.subtitleOf = function (role, v) {
+  var map = {
+    hook: v.entryItem + ' 仅 ' + v.entryPrice + ' 元',
+    intro: v.brand + '｜' + v.storeCount + '+ 连锁',
+    process: '总部统一培训 · 流程标准',
+    feel: '真实体验',
+    core: '门市 ' + v.origPrice + ' → 团购 ' + v.entryPrice,
+    offer: '门市 ' + v.origPrice + ' → 团购 ' + v.entryPrice,
+    trust: '未核销随时退 · 过期自动退',
+    cta: '点击下方团购 · 就近到店'
+  };
+  return map[role] || '';
+};
+
+/* ---------- 合规扫描 ---------- */
+DS.scan = function (text) {
+  var hits = [];
+  if (!text) return { hits: hits, p0: 0, p1: 0, p2: 0, pass: true };
+  DS.riskRules.forEach(function (rule) {
+    rule.words.forEach(function (w) {
+      var idx = text.indexOf(w);
+      while (idx !== -1) {
+        hits.push({ word: w, level: rule.level, cat: rule.cat, fix: rule.fix, index: idx });
+        idx = text.indexOf(w, idx + w.length);
+      }
+    });
+  });
+  var count = function (lv) { return hits.filter(function (h) { return h.level === lv; }).length; };
+  return {
+    hits: hits,
+    p0: count('P0'), p1: count('P1'), p2: count('P2'),
+    pass: count('P0') === 0 && count('P1') === 0
+  };
+};
+
+/* 去重后的命中词（用于展示） */
+DS.uniqueHits = function (hits) {
+  var seen = {}, out = [];
+  hits.forEach(function (h) {
+    if (!seen[h.word]) { seen[h.word] = true; out.push(h); }
+  });
+  var order = { P0: 0, P1: 1, P2: 2 };
+  return out.sort(function (a, b) { return order[a.level] - order[b.level]; });
+};
+
+/* 高亮渲染 */
+DS.highlight = function (text, hits) {
+  if (!hits.length) return DS.esc(text);
+  var marks = new Array(text.length).fill(null);
+  hits.forEach(function (h) {
+    for (var k = h.index; k < h.index + h.word.length; k++) {
+      if (!marks[k] || (marks[k] === 'P2' && h.level !== 'P2') || (marks[k] === 'P1' && h.level === 'P0')) marks[k] = h.level;
+    }
+  });
+  var out = '', cur = null;
+  for (var i = 0; i < text.length; i++) {
+    if (marks[i] !== cur) {
+      if (cur) out += '</mark>';
+      if (marks[i]) out += '<mark class="hl ' + marks[i] + '">';
+      cur = marks[i];
+    }
+    out += DS.esc(text[i]);
+  }
+  if (cur) out += '</mark>';
+  return out;
+};
+
+DS.esc = function (s) {
+  return String(s).replace(/[&<>]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c];
+  });
+};
+
+/* 一键净化：P0 词有替换用替换、无替换则删除；P1/P2 仅提示不自动改 */
+DS.purify = function (text) {
+  var out = text, changed = [], todo = {};
+
+  /* 收集所有 P0 词与替换词典键 */
+  DS.riskRules.forEach(function (rule) {
+    if (rule.level === 'P0') {
+      rule.words.forEach(function (w) { todo[w] = DS.replaceMap[w] !== undefined ? DS.replaceMap[w] : ''; });
+    }
+  });
+  Object.keys(DS.replaceMap).forEach(function (w) { todo[w] = DS.replaceMap[w]; });
+
+  /* 按词长降序，避免「全网最低」被「最低价」拆坏 */
+  Object.keys(todo).sort(function (a, b) { return b.length - a.length; }).forEach(function (bad) {
+    if (out.indexOf(bad) !== -1) {
+      changed.push(bad + ' → ' + (todo[bad] || '（删除）'));
+      out = out.split(bad).join(todo[bad]);
+    }
+  });
+
+  /* 清理替换后残留的标点空洞 */
+  out = out.replace(/[，,、]{2,}/g, '，').replace(/[！!]{2,}/g, '！')
+    .replace(/^[，,、。！!]+/, '').replace(/\s{2,}/g, ' ').trim();
+
+  return { text: out, changed: changed };
+};
+
+/* P1/P2 仅提示的修改建议（不自动改写） */
+DS.advise = function (text) {
+  var res = DS.scan(text);
+  return DS.uniqueHits(res.hits).filter(function (h) { return h.level !== 'P0'; });
+};
+
+
+/* ==================== js/app.js ==================== */
+/* 交互层 */
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var lastResults = [];
+
+  /* ---------- Toast ---------- */
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(function () { t.classList.remove('show'); }, 1800);
+  }
+
+  function copyText(text, okMsg) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function () { toast(okMsg || '已复制'); });
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); toast(okMsg || '已复制'); } catch (e) { toast('复制失败，请手动选择'); }
+      document.body.removeChild(ta);
+    }
+  }
+
+  /* ---------- 页签 ---------- */
+  $('tabs').addEventListener('click', function (e) {
+    var btn = e.target.closest('.tab');
+    if (!btn) return;
+    document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
+    document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    $('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'history') renderHistory();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  /* ---------- 分段选择器 ---------- */
+  ['goal', 'duration', 'style', 'count'].forEach(function (id) {
+    $(id).addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      this.querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); });
+      b.classList.add('on');
+    });
+  });
+  function segVal(id) {
+    var on = $(id).querySelector('button.on');
+    return on ? on.dataset.v : '';
+  }
+
+  /* ---------- 初始化下拉 ---------- */
+  (function initSelects() {
+    var cat = $('category');
+    Object.keys(DS.categories).forEach(function (k) {
+      var o = document.createElement('option');
+      o.value = k; o.textContent = DS.categories[k].name;
+      cat.appendChild(o);
+    });
+    var hk = $('hookType');
+    Object.keys(DS.hooks).forEach(function (k) {
+      var o = document.createElement('option');
+      o.value = k; o.textContent = DS.hooks[k].label + ' · ' + DS.hooks[k].desc;
+      hk.appendChild(o);
+    });
+    cat.addEventListener('change', syncCat);
+    syncCat();
+  })();
+
+  function syncCat() {
+    var c = DS.categories[$('category').value];
+    var lvMap = { low: '合规风险较低', mid: '合规风险中等', high: '合规风险高，重点自查' };
+    $('catRisk').innerHTML = '<b style="color:var(--warn)">' + lvMap[c.riskLevel] + '：</b>' + c.riskNote;
+    ['entryItem', 'mainItem', 'entryPrice', 'mainPrice', 'origPrice'].forEach(function (f) {
+      $(f).placeholder = c[f === 'origPrice' ? 'origPrice' : f];
+    });
+  }
+
+  /* ---------- 读取配置 ---------- */
+  function readCfg() {
+    return {
+      category: $('category').value,
+      goal: segVal('goal'),
+      duration: segVal('duration'),
+      style: segVal('style'),
+      hookType: $('hookType').value,
+      brand: $('brand').value.trim(),
+      area: $('area').value.trim(),
+      storeCount: $('storeCount').value.trim(),
+      deadline: $('deadline').value.trim(),
+      entryItem: $('entryItem').value.trim(),
+      entryPrice: $('entryPrice').value.trim(),
+      mainItem: $('mainItem').value.trim(),
+      mainPrice: $('mainPrice').value.trim(),
+      origPrice: $('origPrice').value.trim(),
+      gift: $('gift').value.trim()
+    };
+  }
+
+  /* ---------- 生成 ---------- */
+  $('genBtn').addEventListener('click', function () {
+    var cfg = readCfg();
+    var n = parseInt(segVal('count'), 10) || 3;
+    lastResults = [];
+    for (var i = 0; i < n; i++) lastResults.push(DS.generate(cfg, i));
+    renderResults(cfg, lastResults);
+    saveHistory(cfg, lastResults);
+    toast('已生成 ' + n + ' 条变体');
+  });
+
+  $('demoBtn').addEventListener('click', function () {
+    $('category').value = 'hair'; syncCat();
+    $('brand').value = '星悦造型';
+    $('area').value = '静安大悦城';
+    $('storeCount').value = '100';
+    $('deadline').value = '8月10日-16日有效';
+    $('entryItem').value = '洗剪吹体验';
+    $('entryPrice').value = '9.9';
+    $('mainItem').value = '深层护理套餐';
+    $('mainPrice').value = '39.9';
+    $('origPrice').value = '198';
+    $('gift').value = '肩颈按摩5分钟';
+    toast('示例已载入，点击生成');
+  });
+
+  function renderResults(cfg, list) {
+    var goalMap = { groupbuy: '团购核销', traffic: '门店引流', brand: '品牌曝光' };
+    var styleMap = { oral: '口语化', promo: '促销感', review: '测评探店', story: '剧情反转' };
+    $('resultMeta').innerHTML =
+      '<span class="chip cyan">' + DS.categories[cfg.category].name + '</span>' +
+      '<span class="chip">' + goalMap[cfg.goal] + '</span>' +
+      '<span class="chip">' + DS.durations[cfg.duration].label + '</span>' +
+      '<span class="chip">' + styleMap[cfg.style] + '</span>' +
+      '<span class="chip">共 ' + list.length + ' 条变体</span>';
+    $('exportBtn').disabled = false;
+    $('copyAllBtn').disabled = false;
+
+    var html = list.map(function (r) { return variantHTML(r); }).join('');
+    $('output').className = '';
+    $('output').innerHTML = html;
+    bindVariantActions();
+  }
+
+  function variantHTML(r) {
+    var risk = r.risk;
+    var riskChip = risk.p0 > 0
+      ? '<span class="chip bad">红线 P0×' + risk.p0 + '</span>'
+      : (risk.p1 > 0 ? '<span class="chip mid">风险 P1×' + risk.p1 + '</span>' : '<span class="chip ok">合规自检通过</span>');
+
+    var lines = r.rows.map(function (row) {
+      return '<div class="script-line"><span class="tcode">' + row.time + '</span><span>' + DS.esc(row.line) + '</span></div>';
+    }).join('');
+
+    var shots = r.rows.map(function (row) {
+      return '<tr><td class="c-time">' + row.time + '</td><td>' + DS.esc(row.shot) +
+        '</td><td class="c-sub">' + DS.esc(row.subtitle) + '</td><td class="c-sub">' + DS.esc(row.note) + '</td></tr>';
+    }).join('');
+
+    var riskBox = '';
+    if (risk.hits.length) {
+      var uniq = DS.uniqueHits(risk.hits);
+      riskBox = '<div class="risk-box fail"><b>合规提示（' + uniq.length + ' 项）</b>' +
+        uniq.map(function (h) {
+          return '<div class="risk-item"><span class="lv ' + h.level + '">' + h.level + '</span><span><b>' +
+            DS.esc(h.word) + '</b>（' + h.cat + '）— ' + DS.esc(h.fix) + '</span></div>';
+        }).join('') + '</div>';
+    } else {
+      riskBox = '<div class="risk-box pass">✓ 未检出绝对化用语、医疗功效宣称、站外引流等风险点。投放前仍需核对价格与期限与后台一致。</div>';
+    }
+
+    return '<article class="variant" data-v="' + r.variant + '">' +
+      '<div class="v-head"><div class="v-badge">' + r.variant + '</div>' +
+      '<div class="v-title">变体 ' + r.variant + ' · ' + r.hookType +
+      '<div class="v-meta">' + r.durationLabel + ' · 约 ' + r.wordCount + ' 字</div></div>' +
+      riskChip + '</div>' +
+      '<div class="v-body">' +
+      '<div class="block"><div class="block-label">口播脚本（含时间码）</div>' + lines + '</div>' +
+      '<div class="block"><div class="block-label">分镜与字幕</div>' +
+      '<table class="shots"><thead><tr><th>时间</th><th>画面内容</th><th>关键字幕</th><th>拍摄要点</th></tr></thead><tbody>' +
+      shots + '</tbody></table></div>' +
+      '<div class="block"><div class="block-label">发布信息</div>' +
+      '<div class="kv"><b>标题：</b><span>' + DS.esc(r.title) + '</span></div>' +
+      '<div class="kv"><b>话题：</b><span class="topics-line">' + DS.esc(r.topics) + '</span></div>' +
+      '<div class="kv"><b>评论区置顶：</b><span>' + DS.esc(r.comment) + '</span></div></div>' +
+      riskBox + '</div>' +
+      '<div class="v-actions">' +
+      '<button class="btn-sm act-copy-script">复制口播</button>' +
+      '<button class="btn-sm act-copy-all">复制整条</button>' +
+      '<button class="btn-sm act-to-check">送去红线自检</button>' +
+      '</div></article>';
+  }
+
+  function bindVariantActions() {
+    document.querySelectorAll('.variant').forEach(function (el, i) {
+      var r = lastResults[i];
+      el.querySelector('.act-copy-script').onclick = function () { copyText(r.script, '口播文案已复制'); };
+      el.querySelector('.act-copy-all').onclick = function () { copyText(toMarkdown([r]), '整条内容已复制'); };
+      el.querySelector('.act-to-check').onclick = function () {
+        $('checkInput').value = r.script + '\n' + r.title + '\n' + r.comment;
+        document.querySelector('.tab[data-tab="check"]').click();
+        runCheck();
+      };
+    });
+  }
+
+  /* ---------- 导出 ---------- */
+  function toMarkdown(list) {
+    return list.map(function (r) {
+      var s = '## 变体 ' + r.variant + '（' + r.hookType + ' · ' + r.durationLabel + '）\n\n';
+      s += '**标题**：' + r.title + '\n\n**话题**：' + r.topics + '\n\n**评论区置顶**：' + r.comment + '\n\n';
+      s += '### 口播脚本\n\n';
+      r.rows.forEach(function (row) { s += '- （' + row.time + '）' + row.line + '\n'; });
+      s += '\n### 分镜表\n\n| 时间 | 画面内容 | 关键字幕 | 拍摄要点 |\n|---|---|---|---|\n';
+      r.rows.forEach(function (row) {
+        s += '| ' + row.time + ' | ' + row.shot + ' | ' + row.subtitle + ' | ' + row.note + ' |\n';
+      });
+      s += '\n### 合规自检\n\n';
+      if (r.risk.hits.length) {
+        DS.uniqueHits(r.risk.hits).forEach(function (h) {
+          s += '- [' + h.level + '] ' + h.word + '（' + h.cat + '）：' + h.fix + '\n';
+        });
+      } else { s += '- 未检出风险词，投放前核对价格与期限与后台一致。\n'; }
+      return s + '\n---\n';
+    }).join('\n');
+  }
+
+  $('copyAllBtn').addEventListener('click', function () {
+    copyText(toMarkdown(lastResults), '全部变体已复制');
+  });
+
+  $('exportBtn').addEventListener('click', function () {
+    var head = '# 抖音来客投流文案交付单\n\n生成时间：' + new Date().toLocaleString('zh-CN') + '\n\n';
+    var blob = new Blob([head + toMarkdown(lastResults)], { type: 'text/markdown;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '投流文案交付单_' + new Date().toISOString().slice(0, 10) + '.md';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('已导出 Markdown');
+  });
+
+  /* ---------- 红线自检 ---------- */
+  function runCheck() {
+    var text = $('checkInput').value;
+    if (!text.trim()) {
+      $('checkResult').innerHTML = '';
+      $('checkScore').textContent = '';
+      return;
+    }
+    var res = DS.scan(text);
+    var uniq = DS.uniqueHits(res.hits);
+    $('checkScore').innerHTML = res.p0 > 0
+      ? '<span style="color:var(--danger)">P0 高压线 ' + res.p0 + ' 处 · 必须返工</span>'
+      : (res.p1 > 0 ? '<span style="color:var(--warn)">P1 风险 ' + res.p1 + ' 处 · 建议修改</span>'
+        : '<span style="color:var(--ok)">✓ 未检出 P0/P1 风险</span>');
+
+    var html = '<div class="preview">' + DS.highlight(text, res.hits) + '</div>';
+    if (uniq.length) {
+      html += '<div class="risk-box fail"><b>共命中 ' + uniq.length + ' 类风险词</b>' +
+        uniq.map(function (h) {
+          return '<div class="risk-item"><span class="lv ' + h.level + '">' + h.level + '</span><span><b>' +
+            DS.esc(h.word) + '</b>（' + h.cat + '）— ' + DS.esc(h.fix) + '</span></div>';
+        }).join('') + '</div>';
+    } else {
+      html += '<div class="risk-box pass">✓ 未检出风险词。仍需人工确认：价格与后台一致、限时有真实期限、出镜授权齐备、BGM 商用授权。</div>';
+    }
+    $('checkResult').innerHTML = html;
+  }
+  $('checkInput').addEventListener('input', runCheck);
+  $('clearCheck').addEventListener('click', function () {
+    $('checkInput').value = ''; runCheck();
+  });
+  $('purifyBtn').addEventListener('click', function () {
+    var r = DS.purify($('checkInput').value);
+    if (!r.changed.length) { toast('没有可自动替换的词'); return; }
+    $('checkInput').value = r.text;
+    runCheck();
+    toast('已替换 ' + r.changed.length + ' 处：' + r.changed.slice(0, 2).join('；'));
+  });
+
+  /* ---------- Brief 速查 ---------- */
+  (function renderBrief() {
+    var html = DS.briefSections.map(function (s) {
+      var body = '';
+      if (s.type === 'table') {
+        body = '<table class="shots"><thead><tr>' + s.head.map(function (h) { return '<th>' + h + '</th>'; }).join('') +
+          '</tr></thead><tbody>' + s.rows.map(function (r) {
+            return '<tr>' + r.map(function (c) { return '<td>' + c + '</td>'; }).join('') + '</tr>';
+          }).join('') + '</tbody></table>';
+      } else if (s.type === 'list') {
+        body = '<ul>' + s.items.map(function (i) { return '<li>' + i + '</li>'; }).join('') + '</ul>';
+      } else if (s.type === 'risk') {
+        body = s.items.map(function (i) {
+          return '<div class="risk-item"><span class="lv ' + i[0] + '">' + i[0] + '</span><span><b>' + i[1] + '</b> — ' + i[2] + '</span></div>';
+        }).join('');
+      }
+      return '<div class="brief-sec"><h3>' + s.title + '</h3>' + body +
+        '<div class="brief-note">' + s.note + '</div></div>';
+    }).join('');
+    $('briefContent').innerHTML = html;
+  })();
+
+  /* ---------- Checklist ---------- */
+  var CL_KEY = 'dycs_checklist';
+  function renderChecklist() {
+    var saved = JSON.parse(localStorage.getItem(CL_KEY) || '{}');
+    $('checklist').innerHTML = DS.checklist.map(function (item, i) {
+      var on = !!saved[i];
+      return '<label class="cl-item' + (on ? ' done' : '') + '"><input type="checkbox" data-i="' + i + '"' +
+        (on ? ' checked' : '') + '><span>' + item + '</span></label>';
+    }).join('');
+    updateClScore();
+    $('checklist').querySelectorAll('input').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        var s = JSON.parse(localStorage.getItem(CL_KEY) || '{}');
+        s[this.dataset.i] = this.checked;
+        localStorage.setItem(CL_KEY, JSON.stringify(s));
+        this.closest('.cl-item').classList.toggle('done', this.checked);
+        updateClScore();
+      });
+    });
+  }
+  function updateClScore() {
+    var s = JSON.parse(localStorage.getItem(CL_KEY) || '{}');
+    var done = Object.keys(s).filter(function (k) { return s[k]; }).length;
+    $('clScore').innerHTML = '已完成 ' + done + ' / ' + DS.checklist.length +
+      (done === DS.checklist.length ? ' <span style="color:var(--ok)">✓ 可交付</span>' : '');
+  }
+  $('resetCl').addEventListener('click', function () {
+    localStorage.removeItem(CL_KEY); renderChecklist(); toast('已重置');
+  });
+  renderChecklist();
+
+  /* ---------- 历史 ---------- */
+  var H_KEY = 'dycs_history';
+  function saveHistory(cfg, list) {
+    var h = JSON.parse(localStorage.getItem(H_KEY) || '[]');
+    h.unshift({
+      time: new Date().toLocaleString('zh-CN'),
+      cat: DS.categories[cfg.category].name,
+      brand: cfg.brand || '未填品牌',
+      count: list.length,
+      md: toMarkdown(list)
+    });
+    localStorage.setItem(H_KEY, JSON.stringify(h.slice(0, 20)));
+  }
+  function renderHistory() {
+    var h = JSON.parse(localStorage.getItem(H_KEY) || '[]');
+    if (!h.length) {
+      $('historyList').innerHTML = '<p class="hint">暂无记录。</p>';
+      return;
+    }
+    $('historyList').innerHTML = h.map(function (x, i) {
+      return '<div class="hist-item"><div><h4>' + x.brand + ' · ' + x.cat + '</h4>' +
+        '<p>' + x.time + ' · ' + x.count + ' 条变体</p></div>' +
+        '<button class="btn-sm" data-h="' + i + '">复制内容</button></div>';
+    }).join('');
+    $('historyList').querySelectorAll('button[data-h]').forEach(function (b) {
+      b.onclick = function () { copyText(h[this.dataset.h].md, '已复制该次生成结果'); };
+    });
+  }
+  $('clearHistory').addEventListener('click', function () {
+    localStorage.removeItem(H_KEY); renderHistory(); toast('历史已清空');
+  });
+})();
+
+</script>
+</body>
+</html>
