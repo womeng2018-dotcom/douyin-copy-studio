@@ -707,10 +707,9 @@ def extract(url=None, file_path=None, engine="auto", language="zh",
 # HTTP 服务
 # ============================================================
 def start_server(host="0.0.0.0", port=None):
-    """启动本地 HTTP 服务"""
-    from http.server import HTTPServer, BaseHTTPRequestHandler
+    """启动本地 HTTP 服务（ThreadingHTTPServer，每个请求独立线程）"""
+    from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
     import urllib.parse
-    import threading
 
     if port is None:
         port = int(os.environ.get("PORT", 8765))
@@ -721,20 +720,21 @@ def start_server(host="0.0.0.0", port=None):
             self.send_response(code)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
             self.end_headers()
             self.wfile.write(body)
 
         def do_OPTIONS(self):
-            self.send_response(200)
+            self.send_response(204)
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Access-Control-Max-Age", "3600")
             self.end_headers()
 
         def do_POST(self):
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type")
-
             try:
                 length = int(self.headers.get("Content-Length", 0))
                 raw = self.rfile.read(length)
@@ -743,7 +743,6 @@ def start_server(host="0.0.0.0", port=None):
                 self._send(400, {"ok": False, "error": f"JSON 解析失败: {e}"})
                 return
 
-            # 上传文件模式
             file_path = data.get("file_path")
             url = data.get("url")
 
@@ -764,13 +763,12 @@ def start_server(host="0.0.0.0", port=None):
                 "skip_llm": data.get("skip_llm", True),
             }
 
-            def run():
+            try:
                 result = extract(**params)
-                self._send(200, result)
+            except Exception as e:
+                result = {"ok": False, "error": str(e)[:500], "error_code": "E999"}
 
-            t = threading.Thread(target=run)
-            t.daemon = True
-            t.start()
+            self._send(200, result)
 
         def do_GET(self):
             self._send(200, {
@@ -785,7 +783,7 @@ def start_server(host="0.0.0.0", port=None):
         def log_message(self, format, *args):
             print(f"[extract-server] {args[0]}", file=sys.stderr)
 
-    server = HTTPServer((host, port), Handler)
+    server = ThreadingHTTPServer((host, port), Handler)
     print(f"视频提取服务已启动: http://{host}:{port}", file=sys.stderr)
     print(f"ffmpeg: {FFMPEG} ({'OK' if _ffmpeg_available() else 'NOT FOUND'})", file=sys.stderr)
     try:
