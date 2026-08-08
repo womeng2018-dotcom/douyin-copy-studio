@@ -1,0 +1,14 @@
+# Render.com 部署配置
+# https://render.com → 创建服务 → 选择 Docker
+
+services:
+  - type: web
+    name: video-extract
+    env: docker
+    dockerfilePath: ./server/Dockerfile
+    rootDir: .
+    envVars:
+      - key: PORT
+        value: 8765
+      - key: PYTHONUNBUFFERED
+        value: "1"
