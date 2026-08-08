@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>抖音来客投流文案工作台 · Copy Studio</title>
+<meta name="description" content="基于《抖音来客投流素材需求说明书》构建的本地生活投流文案生成与合规自检工具">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <div class="brand">
+      <span class="logo">投</span>
+      <div>
+        <h1>抖音来客投流文案工作台</h1>
+        <p>Creative Copy Studio · 依据《投流素材需求说明书 V1.0》</p>
+      </div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="gen">文案生成</button>
+      <button class="tab" data-tab="check">红线自检</button>
+      <button class="tab" data-tab="brief">Brief 速查</button>
+      <button class="tab" data-tab="history">历史记录</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ============ 文案生成 ============ -->
+<section class="panel active" id="tab-gen">
+  <div class="layout">
+
+    <!-- 左侧配置 -->
+    <aside class="config card">
+      <h2 class="card-title">投放配置</h2>
+
+      <div class="field">
+        <label>业务品类</label>
+        <select id="category"></select>
+        <p class="hint" id="catRisk"></p>
+      </div>
+
+      <div class="field">
+        <label>投流主目标 <span class="tag-warn">单一目标</span></label>
+        <div class="seg" id="goal">
+          <button class="on" data-v="groupbuy">团购核销</button>
+          <button data-v="traffic">门店引流</button>
+          <button data-v="brand">品牌曝光</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>视频时长档位</label>
+        <div class="seg" id="duration">
+          <button data-v="d15">15s</button>
+          <button class="on" data-v="d30">30s</button>
+          <button data-v="d60">45-60s</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>口播风格</label>
+        <div class="seg wrap-seg" id="style">
+          <button class="on" data-v="oral">口语化</button>
+          <button data-v="promo">促销感</button>
+          <button data-v="review">测评探店</button>
+          <button data-v="story">剧情反转</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>前3秒钩子类型</label>
+        <select id="hookType">
+          <option value="auto">自动（每条变体换一种）</option>
+        </select>
+      </div>
+
+      <hr class="sep">
+      <h3 class="sub-title">门店与优惠变量</h3>
+
+      <div class="grid2">
+        <div class="field"><label>品牌名</label><input id="brand" placeholder="如：星悦造型"></div>
+        <div class="field"><label>商圈/区域</label><input id="area" placeholder="如：静安大悦城"></div>
+        <div class="field"><label>连锁门店数</label><input id="storeCount" placeholder="100"></div>
+        <div class="field"><label>限时说明</label><input id="deadline" placeholder="8月10-16日有效"></div>
+        <div class="field"><label>引流品名称</label><input id="entryItem" placeholder="洗剪吹体验"></div>
+        <div class="field"><label>引流价(元)</label><input id="entryPrice" placeholder="9.9"></div>
+        <div class="field"><label>主推套餐</label><input id="mainItem" placeholder="护理套餐"></div>
+        <div class="field"><label>套餐价(元)</label><input id="mainPrice" placeholder="39.9"></div>
+        <div class="field"><label>门市原价(元)</label><input id="origPrice" placeholder="198"></div>
+        <div class="field"><label>到店赠品</label><input id="gift" placeholder="肩颈按摩5分钟"></div>
+      </div>
+
+      <div class="field">
+        <label>生成变体数量</label>
+        <div class="seg" id="count">
+          <button data-v="2">2条</button>
+          <button class="on" data-v="3">3条</button>
+          <button data-v="5">5条</button>
+        </div>
+      </div>
+
+      <button class="btn-main" id="genBtn">生成投流文案</button>
+      <button class="btn-ghost" id="demoBtn">载入美发示例</button>
+    </aside>
+
+    <!-- 右侧结果 -->
+    <div class="results">
+      <div class="results-head">
+        <div>
+          <h2 class="card-title" id="resultTitle">生成结果</h2>
+          <p class="hint" id="resultMeta">填写左侧配置后点击「生成投流文案」，将输出可直接交付制作团队的口播脚本与分镜表。</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn-sm" id="exportBtn" disabled>导出 Markdown</button>
+          <button class="btn-sm" id="copyAllBtn" disabled>复制全部</button>
+        </div>
+      </div>
+      <div id="output" class="empty-state">
+        <div class="empty-icon">🎬</div>
+        <p>还没有生成内容</p>
+        <span>建议先点「载入美发示例」体验完整效果</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 红线自检 ============ -->
+<section class="panel" id="tab-check">
+  <div class="card">
+    <h2 class="card-title">内容红线自检</h2>
+    <p class="hint">粘贴任意口播文案、标题或字幕，实时扫描广告法绝对化用语、医疗功效宣称、站外引流、虚假宣传等风险点。</p>
+    <textarea id="checkInput" rows="8" placeholder="把要投放的文案粘贴到这里，自动开始检测……"></textarea>
+    <div class="check-actions">
+      <button class="btn-sm" id="purifyBtn">一键净化建议</button>
+      <button class="btn-sm" id="clearCheck">清空</button>
+      <div class="score" id="checkScore"></div>
+    </div>
+    <div id="checkResult"></div>
+  </div>
+</section>
+
+<!-- ============ Brief 速查 ============ -->
+<section class="panel" id="tab-brief">
+  <div class="card">
+    <h2 class="card-title">Brief 速查 · 关键规则</h2>
+    <div id="briefContent"></div>
+  </div>
+  <div class="card">
+    <h2 class="card-title">交付验收 Checklist</h2>
+    <p class="hint">制作团队自审 + 投流负责人复核，勾选状态自动保存在本机。</p>
+    <div id="checklist"></div>
+    <div class="check-actions">
+      <span class="score" id="clScore"></span>
+      <button class="btn-sm" id="resetCl">重置勾选</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 历史记录 ============ -->
+<section class="panel" id="tab-history">
+  <div class="card">
+    <h2 class="card-title">生成历史</h2>
+    <p class="hint">最近 20 次生成记录保存在本机浏览器，可随时回看或重新导出。</p>
+    <div id="historyList"></div>
+    <button class="btn-sm" id="clearHistory">清空历史</button>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <p>抖音来客投流文案工作台 · 依据《抖音来客投流素材需求说明书 V1.0》构建</p>
+    <p class="muted">工具输出为创作参考，正式投放前请与抖音来客后台套餐、价格、期限核对一致，并完成合规复核。</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/data.js"></script>
+<script src="js/data-category.js"></script>
+<script src="js/data-lines.js"></script>
+<script src="js/data-compliance.js"></script>
+<script src="js/data-brief.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

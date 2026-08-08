@@ -1,0 +1,125 @@
+/* 品类预设：不同垂类的用词、场景、痛点、卖点与合规强度 */
+window.DS = window.DS || {};
+
+DS.categories = {
+  hair: {
+    name: '美发 · 理发造型',
+    staff: '技师',
+    entryItem: '洗剪吹体验',
+    mainItem: '护理套餐',
+    entryPrice: '9.9',
+    mainPrice: '39.9',
+    origPrice: '198',
+    scenes: ['洗发按摩', '修剪造型', '吹风定型', '发型成品展示'],
+    pains: ['怕剪毁了不敢换发型', '进店就被推销办卡', '随便剪个头也要小一百'],
+    benefits: [
+      '总部统一培训的{staff}，手法有标准',
+      '进店不推销、不办卡，做完就走',
+      '{storeCount}家连锁同一套服务标准'
+    ],
+    proofs: ['门店门头与营业执照齐全', '连锁品牌统一装修', '大众化价位、明码标价'],
+    visualHint: '门头招牌 → 洗发/剪发过程 → 成品发型 → 价签特写 → 团购贴片',
+    riskLevel: 'mid',
+    riskNote: '禁止出现生发、防脱、育发等医疗/特妆功效表述；前后对比仅限造型变化。'
+  },
+  beauty: {
+    name: '生活美容 · 皮肤管理',
+    staff: '美容师',
+    entryItem: '小气泡清洁体验',
+    mainItem: '面部护理套餐',
+    entryPrice: '19.9',
+    mainPrice: '69',
+    origPrice: '298',
+    scenes: ['接待与洁面', '清洁护理操作', '补水敷面', '护理后放松状态'],
+    pains: ['怕进了不正规的小店', '怕办了卡店就跑了', '怕全程被推销大项目'],
+    benefits: [
+      '连锁门店、平台担保，跑不了',
+      '{staff}持证上岗，操作有流程',
+      '体验价先试，满意再考虑其他'
+    ],
+    proofs: ['一客一用品、器具消毒', '连锁品牌统一管理', '团购未核销随时退'],
+    visualHint: '门头招牌 → 接待环境 → 清洁护理过程 → 护理后状态 → 团购贴片',
+    riskLevel: 'high',
+    riskNote: '仅限清洁、补水、保养类描述；禁止祛斑、祛痘、抗敏、修复、治疗等功效与医美项目。'
+  },
+  nail: {
+    name: '美甲美睫',
+    staff: '美甲师',
+    entryItem: '单色甲体验',
+    mainItem: '款式套餐',
+    entryPrice: '19.9',
+    mainPrice: '59',
+    origPrice: '168',
+    scenes: ['款式墙展示', '修甲上色过程', '成品手部特写', '门店环境'],
+    pains: ['怕款式土', '怕做一次两三百', '怕工具不干净'],
+    benefits: ['上百款式随便挑', '一人一套工具、当面消毒', '做完不满意可以调'],
+    proofs: ['款式墙实拍', '工具消毒过程', '连锁门店统一标准'],
+    visualHint: '款式墙 → 操作过程 → 成品特写 → 价格贴片 → 团购入口',
+    riskLevel: 'low',
+    riskNote: '避免绝对化用语与虚构划线价。'
+  },
+  food: {
+    name: '餐饮 · 到店堂食',
+    staff: '主厨',
+    entryItem: '双人套餐',
+    mainItem: '四人聚餐套餐',
+    entryPrice: '39.9',
+    mainPrice: '99',
+    origPrice: '268',
+    scenes: ['门头与排队', '后厨出餐', '菜品特写', '顾客用餐氛围'],
+    pains: ['不知道吃啥', '踩雷难吃还贵', '人多不好点菜'],
+    benefits: ['一份套餐搞定{people}人', '现点现做、分量实在', '门店就在{area}，说走就走'],
+    proofs: ['明档后厨', '门店客流实拍', '团购过期自动退'],
+    visualHint: '菜品特写开场 → 后厨出餐 → 顾客反应 → 套餐内容清单 → 团购贴片',
+    riskLevel: 'low',
+    riskNote: '不得宣称养生、治疗类功效；套餐内容须与后台一致。'
+  },
+  edu: {
+    name: '教培 · 兴趣课程',
+    staff: '老师',
+    entryItem: '体验课',
+    mainItem: '基础课包',
+    entryPrice: '9.9',
+    mainPrice: '199',
+    origPrice: '680',
+    scenes: ['校区环境', '课堂实拍', '学员练习', '成果展示'],
+    pains: ['不知道孩子适不适合', '怕报了不来上', '怕机构不靠谱'],
+    benefits: ['先上体验课再决定', '就在{area}，接送方便', '小班授课、有回访'],
+    proofs: ['校区实景', '师资介绍', '未核销随时退'],
+    visualHint: '校区外景 → 课堂实拍 → 学员状态 → 课程内容板 → 团购入口',
+    riskLevel: 'high',
+    riskNote: '禁止升学承诺、提分保证、名校暗示；不得涉及学科类违规宣传。'
+  },
+  fitness: {
+    name: '健身 · 运动馆',
+    staff: '教练',
+    entryItem: '单次体验课',
+    mainItem: '月卡体验',
+    entryPrice: '19.9',
+    mainPrice: '99',
+    origPrice: '399',
+    scenes: ['场馆全景', '器械区', '训练过程', '课后状态'],
+    pains: ['办了卡去两次', '怕被销售缠着', '不知道怎么练'],
+    benefits: ['单次体验、不办卡', '{staff}带练不放养', '{area}走路就能到'],
+    proofs: ['场馆实拍', '器械与淋浴设施', '团购随时退'],
+    visualHint: '场馆全景 → 训练过程 → 教练指导 → 价格贴片 → 团购入口',
+    riskLevel: 'mid',
+    riskNote: '禁止减重承诺、疗效表述（如"一个月瘦XX斤"）。'
+  },
+  home: {
+    name: '家装 · 局部服务',
+    staff: '师傅',
+    entryItem: '上门测量',
+    mainItem: '局部翻新套餐',
+    entryPrice: '0',
+    mainPrice: '299',
+    origPrice: '899',
+    scenes: ['施工现场', '材料展示', '完工效果', '业主验收'],
+    pains: ['怕报价不透明', '怕做完就找不到人', '怕材料以次充好'],
+    benefits: ['先量后报、明码标价', '本地团队、售后找得到人', '合同与质保齐全'],
+    proofs: ['真实工地实拍', '材料品牌展示', '质保条款'],
+    visualHint: '完工效果开场 → 施工过程 → 材料细节 → 报价方式 → 团购入口',
+    riskLevel: 'mid',
+    riskNote: '不得虚构工程案例与业主评价；报价须与实际一致。'
+  }
+};
