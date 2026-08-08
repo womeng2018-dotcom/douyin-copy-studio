@@ -3,7 +3,7 @@
 set -u
 REPO="womeng2018-dotcom/douyin-copy-studio"
 BRANCH="main"
-MSG="新增品类：足浴·SPA按摩（含痛点/卖点/合规红线/方言词/拍摄要点）"
+MSG="修复文字提取：FunASR短模型名 + 网络超时保护 + HTTPS/本地服务提示"
 
 FILES="css/app.css index.html js/app.js js/extract-tab.js js/data-category.js js/data-compliance.js js/data-lines.js js/engine.js build-single.js standalone.html stress-test.js upload-via-api.sh server/video-extract.py server/requirements.txt server/Dockerfile server/README.md server/.dockerignore docker-compose.yml .gitignore render.yaml"
 
