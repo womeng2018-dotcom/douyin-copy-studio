@@ -5,6 +5,8 @@ DS.categories = {
   hair: {
     name: '美发 · 理发造型',
     staff: '技师',
+    aud: '姐妹',
+    verb: '做',
     entryItem: '洗剪吹体验',
     mainItem: '护理套餐',
     entryPrice: '9.9',
@@ -25,6 +27,8 @@ DS.categories = {
   beauty: {
     name: '生活美容 · 皮肤管理',
     staff: '美容师',
+    aud: '姐妹',
+    verb: '做',
     entryItem: '小气泡清洁体验',
     mainItem: '面部护理套餐',
     entryPrice: '19.9',
@@ -45,6 +49,8 @@ DS.categories = {
   nail: {
     name: '美甲美睫',
     staff: '美甲师',
+    aud: '姐妹',
+    verb: '做',
     entryItem: '单色甲体验',
     mainItem: '款式套餐',
     entryPrice: '19.9',
@@ -61,6 +67,8 @@ DS.categories = {
   food: {
     name: '餐饮 · 到店堂食',
     staff: '主厨',
+    aud: '朋友',
+    verb: '吃到',
     entryItem: '双人套餐',
     mainItem: '四人聚餐套餐',
     entryPrice: '39.9',
@@ -77,6 +85,8 @@ DS.categories = {
   edu: {
     name: '教培 · 兴趣课程',
     staff: '老师',
+    aud: '家长',
+    verb: '上',
     entryItem: '体验课',
     mainItem: '基础课包',
     entryPrice: '9.9',
@@ -93,6 +103,8 @@ DS.categories = {
   fitness: {
     name: '健身 · 运动馆',
     staff: '教练',
+    aud: '朋友',
+    verb: '体验',
     entryItem: '单次体验课',
     mainItem: '月卡体验',
     entryPrice: '19.9',
@@ -109,6 +121,8 @@ DS.categories = {
   home: {
     name: '家装 · 局部服务',
     staff: '师傅',
+    aud: '邻居',
+    verb: '做',
     entryItem: '上门测量',
     mainItem: '局部翻新套餐',
     entryPrice: '0',
