@@ -257,6 +257,17 @@ var EXTRACT_API = localStorage.getItem('extract_api') || 'http://127.0.0.1:8765/
 
   /* ---- 启动检测 ---- */
   (function checkServer() {
+    var isHttps = location.protocol === 'https:';
+    var isLocalApi = /^http:\/\/127\.0\.0\.1/.test(EXTRACT_API);
+
+    if (isHttps && isLocalApi) {
+      extractStatus.style.display = '';
+      extractStatus.innerHTML = '<span class="chip bad">⚠️ HTTPS 页面无法访问本地服务</span> ' +
+        '<span class="hint">当前页面是 HTTPS（GitHub Pages），浏览器禁止访问 http://127.0.0.1 本地服务。<br>' +
+        '请改用 <b>http://127.0.0.1:8080</b> 打开本工具（本地服务已启动），或把 API 地址配置为云端 HTTPS 地址。</span>';
+      return;
+    }
+
     fetch(EXTRACT_API).then(function (r) { return r.json(); }).then(function (d) {
       if (d && d.status === 'running') {
         extractStatus.style.display = '';
