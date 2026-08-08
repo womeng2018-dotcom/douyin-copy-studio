@@ -706,11 +706,14 @@ def extract(url=None, file_path=None, engine="auto", language="zh",
 # ============================================================
 # HTTP 服务
 # ============================================================
-def start_server(host="127.0.0.1", port=8765):
+def start_server(host="0.0.0.0", port=None):
     """启动本地 HTTP 服务"""
     from http.server import HTTPServer, BaseHTTPRequestHandler
     import urllib.parse
     import threading
+
+    if port is None:
+        port = int(os.environ.get("PORT", 8765))
 
     class Handler(BaseHTTPRequestHandler):
         def _send(self, code, data):
@@ -814,7 +817,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.serve:
-        start_server(port=args.port)
+        port = int(os.environ.get("PORT", args.port or 8765))
+        start_server(port=port)
     else:
         if not args.url and not args.file:
             parser.print_help()
