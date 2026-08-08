@@ -17,9 +17,9 @@ RUN pip install --no-cache-dir \
     ctranslate2 \
     torch --index-url https://download.pytorch.org/whl/cpu
 
-# 复制源码（build context 在 server/ 目录下）
-COPY video-extract.py .
-COPY requirements.txt .
+# 复制源码（render.yaml rootDir=. 时，build context 为仓库根，需带 server/ 前缀；rootDir=server 时直接 COPY）
+COPY server/video-extract.py .
+COPY server/requirements.txt .
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
