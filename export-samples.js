@@ -39,6 +39,12 @@ const cases = [
       category: 'edu', duration: 'd30', style: 'story', goal: 'lead', brand: '橙果少儿美术', area: '莘庄',
       entryItem: '试听体验课', entryPrice: '9.9', mainItem: '季度班', mainPrice: '1280', origPrice: '1980', gift: '画材礼包'
     }), variants: 2
+  },
+  {
+    name: '餐饮 · 30秒 · 方言口语化 · 到店引流（2026 平台鼓励：方言+普通话字幕，拉高同城转化）', cfg: Object.assign({}, base, {
+      category: 'food', duration: 'd30', style: 'dialect', goal: 'traffic', brand: '川渝火锅', area: '南京西路',
+      entryItem: '双人套餐', entryPrice: '79', mainItem: '四人餐', mainPrice: '159', origPrice: '328', gift: '冰粉一份'
+    }), variants: 2
   }
 ];
 
@@ -80,6 +86,9 @@ cases.forEach((c, ci) => {
     W('- **视频标题**：' + r.title);
     W('- **话题标签**：' + r.topics);
     W('- **评论区置顶**：' + r.comment);
+    if (r.reviewLine) W('- **顾客评价引用（选插入）**：' + r.reviewLine);
+    if (r.certLabels) W('- **自证标签（角标/字幕）**：' + r.certLabels.join('、'));
+    if (r.refundLine) W('- **核销保障话术**：' + r.refundLine);
     W('- **合规自检**：P0=' + r.risk.p0 + '｜P1=' + r.risk.p1 + '｜P2=' + r.risk.p2 +
       (r.risk.hits.length ? '｜命中：' + DS.uniqueHits(r.risk.hits).map(h => h.level + ':' + h.word).join('、') : '｜✅ 全部通过'));
     W('');
