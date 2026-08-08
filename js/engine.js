@@ -66,6 +66,8 @@ DS.generate = function (cfg, variantIndex) {
     deadline: cfg.deadline || '本周有效',
     gift: cfg.gift || '',
     staff: cat.staff,
+    aud: cat.aud || '朋友',
+    verb: cat.verb || '做',
     catName: cat.name.split(' · ')[1] || cat.name,
     people: '2',
     scene1: cat.scenes[0], scene2: cat.scenes[1], scene3: cat.scenes[2],
