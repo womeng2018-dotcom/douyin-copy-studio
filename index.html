@@ -26,6 +26,7 @@
       <button class="tab" data-tab="check">红线自检</button>
       <button class="tab" data-tab="brief">Brief 速查</button>
       <button class="tab" data-tab="history">历史记录</button>
+      <button class="tab" data-tab="extract">视频提取</button>
     </nav>
   </div>
 </header>
@@ -176,6 +177,101 @@
   </div>
 </section>
 
+<!-- ============ 视频提取 ============ -->
+<section class="panel" id="tab-extract">
+  <div class="card">
+    <h2 class="card-title">视频文案提取</h2>
+    <p class="hint">粘贴抖音/小红书/B站/YouTube 视频链接，或上传本地视频文件。系统自动优先提取字幕轨道，无字幕时使用语音识别（FunASR → Whisper），经七层后处理输出高质量文案。</p>
+
+    <div class="extract-grid">
+      <!-- 左侧：输入 -->
+      <div class="extract-input">
+        <div class="field">
+          <label>输入方式</label>
+          <div class="seg" id="extractMode">
+            <button class="on" data-v="url">视频链接</button>
+            <button data-v="file">上传文件</button>
+          </div>
+        </div>
+
+        <div id="extractUrlField" class="field">
+          <label>视频链接</label>
+          <input id="extractUrl" placeholder="粘贴抖音/小红书/B站/YouTube 等视频链接">
+        </div>
+
+        <div id="extractFileField" class="field" style="display:none">
+          <label>上传视频/音频文件</label>
+          <input id="extractFile" type="file" accept="video/*,audio/*" style="padding:10px;font-size:12.5px">
+          <p class="hint" style="margin-top:4px">支持 MP4/MOV/MKV/AVI/M4A/MP3/WAV 等常见格式</p>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label>ASR 引擎</label>
+            <select id="extractEngine">
+              <option value="auto">自动（推荐）</option>
+              <option value="funasr">FunASR（中文最佳）</option>
+              <option value="faster-whisper">faster-whisper（多语言）</option>
+              <option value="whisper">openai-whisper（兜底）</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>语言</label>
+            <select id="extractLang">
+              <option value="zh">中文</option>
+              <option value="en">英文</option>
+              <option value="auto">自动识别</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>热词纠错 <span class="hint" style="margin-left:6px;font-weight:400">（逗号分隔，用于纠错品牌名/套餐名等）</span></label>
+          <input id="extractHotwords" placeholder="如：星悦造型,护理套餐,肩颈按摩">
+        </div>
+
+        <div class="grid2">
+          <div class="field"><label>品牌名</label><input id="extractBrand" placeholder="如：星悦造型"></div>
+          <div class="field"><label>商圈/区域</label><input id="extractArea" placeholder="如：静安大悦城"></div>
+        </div>
+
+        <div class="field">
+          <label>API Key（可选，用于 LLM 后处理纠偏）</label>
+          <input id="extractApiKey" type="password" placeholder="sk-..." style="font-family:ui-monospace,monospace;font-size:12px">
+        </div>
+
+        <button class="btn-main" id="extractBtn">开始提取</button>
+        <div id="extractStatus" class="extract-status" style="display:none"></div>
+      </div>
+
+      <!-- 右侧：结果 -->
+      <div class="extract-output">
+        <div class="results-head" style="margin-bottom:0">
+          <div>
+            <h2 class="card-title" id="extractResultTitle">提取结果</h2>
+            <p class="hint" id="extractResultMeta">等待输入……</p>
+          </div>
+          <div class="head-actions">
+            <button class="btn-sm" id="extractCopyBtn" disabled>复制文案</button>
+            <button class="btn-sm" id="extractSaveBtn" disabled>导出 Markdown</button>
+          </div>
+        </div>
+        <div id="extractOutput" class="empty-state">
+          <div class="empty-icon">
+            <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+              <path d="M15 3a12 12 0 100 24 12 12 0 000-24z" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M12 9l9 6-9 6V9z" fill="currentColor"/>
+            </svg>
+          </div>
+          <p>还没有提取内容</p>
+          <span>输入视频链接或上传文件后点击「开始提取」</span>
+        </div>
+        <div id="extractLog" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 </main>
 
 <footer class="footer">
@@ -194,5 +290,6 @@
 <script src="js/data-brief.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/app.js"></script>
+<script src="js/extract-tab.js"></script>
 </body>
 </html>
