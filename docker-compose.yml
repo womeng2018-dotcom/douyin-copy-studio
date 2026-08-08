@@ -1,0 +1,17 @@
+# ===== 视频提取服务本地开发 =====
+version: '3.8'
+
+services:
+  video-extract:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "8765:8765"
+    environment:
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8765/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
