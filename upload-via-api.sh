@@ -3,7 +3,7 @@
 set -u
 REPO="womeng2018-dotcom/douyin-copy-studio"
 BRANCH="main"
-MSG="后端部署配置：Docker/docker-compose/requirements/Railway 部署指引 + API 地址可配置"
+MSG="云端部署优化：Render.yaml + Dockerfile精简 + PORT环境变量支持"
 
 FILES="css/app.css index.html js/app.js js/extract-tab.js js/data-category.js js/data-compliance.js js/data-lines.js js/engine.js build-single.js standalone.html stress-test.js upload-via-api.sh server/video-extract.py server/requirements.txt server/Dockerfile server/README.md server/.dockerignore docker-compose.yml .gitignore"
 
