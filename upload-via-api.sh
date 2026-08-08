@@ -3,7 +3,7 @@
 set -u
 REPO="womeng2018-dotcom/douyin-copy-studio"
 BRANCH="main"
-MSG="全面增强：方言/自证标签/顾客评价/核销话术；修复扫描bug；分镜2026硬规"
+MSG="视觉升级：莫兰迪低饱和度蓝+米白配色，Claude风格字体与极简设计语言"
 
 FILES="css/app.css index.html js/app.js js/data-category.js js/data-compliance.js js/data-lines.js js/engine.js standalone.html stress-test.js upload-via-api.sh"
 
