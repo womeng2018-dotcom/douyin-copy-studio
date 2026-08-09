@@ -455,14 +455,15 @@ def layer5_itn(text):
 
 
 # Layer 6+7: LLM 两轮纠偏
-def layer6_llm_round1(text, brand_name=None, area_name=None, api_key=None, api_base=None):
+def layer6_llm_round1(text, brand_name=None, area_name=None, api_key=None, api_base=None, llm_model=None):
     """第一轮：语句流畅度、标点修正、口语化清理"""
     if not api_key:
         return text
 
     from openai import OpenAI
 
-    client = OpenAI(api_key=api_key, base_url=api_base or "https://api.openai.com/v1")
+    client = OpenAI(api_key=api_key, base_url=api_base or "https://token.sensenova.cn/v1")
+    model_name = llm_model or "deepseek-v4-flash"
 
     context = ""
     if brand_name:
@@ -483,7 +484,7 @@ def layer6_llm_round1(text, brand_name=None, area_name=None, api_key=None, api_b
 
     try:
         resp = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=model_name,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
             max_tokens=2048,
@@ -493,14 +494,15 @@ def layer6_llm_round1(text, brand_name=None, area_name=None, api_key=None, api_b
         return text
 
 
-def layer7_llm_round2(text, brand_name=None, api_key=None, api_base=None):
+def layer7_llm_round2(text, brand_name=None, api_key=None, api_base=None, llm_model=None):
     """第二轮：术语一致性、广告法合规检查"""
     if not api_key:
         return text
 
     from openai import OpenAI
 
-    client = OpenAI(api_key=api_key, base_url=api_base or "https://api.openai.com/v1")
+    client = OpenAI(api_key=api_key, base_url=api_base or "https://token.sensenova.cn/v1")
+    model_name = llm_model or "deepseek-v4-flash"
 
     context = f"品牌名：{brand_name or '未知'}。"
 
@@ -518,7 +520,7 @@ def layer7_llm_round2(text, brand_name=None, api_key=None, api_base=None):
 
     try:
         resp = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=model_name,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
             max_tokens=2048,
@@ -528,7 +530,7 @@ def layer7_llm_round2(text, brand_name=None, api_key=None, api_base=None):
         return text
 
 
-def post_process(text, hotwords=None, api_key=None, api_base=None,
+def post_process(text, hotwords=None, api_key=None, api_base=None, llm_model=None,
                  brand_name=None, area_name=None, skip_llm=False):
     """七层后处理主入口"""
     start = time.time()
@@ -559,14 +561,14 @@ def post_process(text, hotwords=None, api_key=None, api_base=None,
 
     # Layer 6
     if not skip_llm and api_key:
-        text = layer6_llm_round1(text, brand_name, area_name, api_key, api_base)
+        text = layer6_llm_round1(text, brand_name, area_name, api_key, api_base, llm_model)
         log.append({"layer": 6, "name": "LLM第一轮纠偏", "ok": True})
     else:
         log.append({"layer": 6, "name": "LLM第一轮纠偏", "skipped": "无API Key" if not api_key else "跳过"})
 
     # Layer 7
     if not skip_llm and api_key:
-        text = layer7_llm_round2(text, brand_name, api_key, api_base)
+        text = layer7_llm_round2(text, brand_name, api_key, api_base, llm_model)
         log.append({"layer": 7, "name": "LLM第二轮纠偏", "ok": True})
     else:
         log.append({"layer": 7, "name": "LLM第二轮纠偏", "skipped": "无API Key" if not api_key else "跳过"})
@@ -579,7 +581,7 @@ def post_process(text, hotwords=None, api_key=None, api_base=None,
 # ============================================================
 def extract(url=None, file_path=None, engine="auto", language="zh",
             hotwords=None, brand_name=None, area_name=None,
-            api_key=None, api_base=None, skip_llm=False, verbose=False):
+            api_key=None, api_base=None, llm_model=None, skip_llm=False, verbose=False):
     """
     完整提取流程
     参数:
@@ -696,7 +698,7 @@ def extract(url=None, file_path=None, engine="auto", language="zh",
         print("→ 七层后处理...", file=sys.stderr)
     text, log = post_process(
         raw_text, hotwords=hotword_list,
-        api_key=api_key, api_base=api_base,
+        api_key=api_key, api_base=api_base, llm_model=llm_model,
         brand_name=brand_name, area_name=area_name,
         skip_llm=skip_llm,
     )
@@ -757,6 +759,37 @@ def start_server(host="0.0.0.0", port=None):
                 self._send(400, {"ok": False, "error": "请提供 url 或 file_path"})
                 return
 
+            # 如果 file_path 以 "base64:" 开头，解码到临时文件
+            decoded_temp = None
+            if file_path and str(file_path).startswith("base64:"):
+                import base64 as _base64
+                try:
+                    header, _, body = str(file_path).partition(".ext:")
+                    ext = _  # 提取 .ext: 后的扩展名
+                    b64_raw = header[6:]  # 去掉 "base64:" 前缀
+
+                    # 防御：前端偶发传入完整 data URI，再剥离一次
+                    if b64_raw.startswith("data:"):
+                        b64_raw = b64_raw.split(",", 1)[1]
+
+                    # 校验：合法 base64 长度必须是 4 的倍数（允许末位 '=' 填充）
+                    b64_clean = b64_raw.strip().replace(" ", "").replace("\n", "")
+                    pad = (-len(b64_clean)) % 4
+                    b64_clean = b64_clean + ("=" * pad)
+
+                    raw_bytes = _base64.b64decode(b64_clean)
+                    tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.tmp')
+                    tmp.write(raw_bytes)
+                    tmp.close()
+                    file_path = tmp.name
+                    decoded_temp = tmp.name
+                    print(f"[extract-server] base64 文件解码: ext={ext}, raw={len(b64_raw)}b -> {len(raw_bytes)}B, {tmp.name}", file=sys.stderr)
+                except Exception as e:
+                    import traceback as _tb
+                    _tb.print_exc()
+                    self._send(400, {"ok": False, "error": f"base64 文件解码失败: {e}"})
+                    return
+
             params = {
                 "url": url,
                 "file_path": file_path,
@@ -765,8 +798,9 @@ def start_server(host="0.0.0.0", port=None):
                 "hotwords": data.get("hotwords"),
                 "brand_name": data.get("brand_name"),
                 "area_name": data.get("area_name"),
-                "api_key": data.get("api_key"),
-                "api_base": data.get("api_base"),
+                "api_key": data.get("api_key") or os.environ.get("LLM_API_KEY") or os.environ.get("SENSENOVA_API_KEY"),
+                "api_base": data.get("api_base") or os.environ.get("LLM_API_BASE") or "https://token.sensenova.cn/v1",
+                "llm_model": data.get("llm_model") or os.environ.get("LLM_MODEL") or "deepseek-v4-flash",
                 "skip_llm": data.get("skip_llm", True),
             }
 
@@ -774,6 +808,13 @@ def start_server(host="0.0.0.0", port=None):
                 result = extract(**params)
             except Exception as e:
                 result = {"ok": False, "error": str(e)[:500], "error_code": "E999"}
+            finally:
+                # 清理解码的临时文件
+                if decoded_temp and os.path.exists(decoded_temp):
+                    try:
+                        os.remove(decoded_temp)
+                    except Exception:
+                        pass
 
             self._send(200, result)
 
@@ -815,6 +856,7 @@ if __name__ == "__main__":
     parser.add_argument("--area", help="商圈")
     parser.add_argument("--api-key", help="OpenAI API Key")
     parser.add_argument("--api-base", help="OpenAI API Base URL")
+    parser.add_argument("--llm-model", help="LLM 模型名（默认 deepseek-v4-flash）")
     parser.add_argument("--no-llm", action="store_true", help="跳过 LLM 后处理")
     parser.add_argument("--verbose", "-v", action="store_true")
     parser.add_argument("--serve", action="store_true", help="启动 HTTP 服务")
@@ -839,6 +881,7 @@ if __name__ == "__main__":
             area_name=args.area,
             api_key=args.api_key,
             api_base=args.api_base,
+            llm_model=args.llm_model,
             skip_llm=args.no_llm,
             verbose=args.verbose,
         )
