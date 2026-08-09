@@ -83,6 +83,8 @@ var EXTRACT_API = localStorage.getItem('extract_api') || 'http://127.0.0.1:8765/
     var brand = document.getElementById('extractBrand').value.trim();
     var area = document.getElementById('extractArea').value.trim();
     var apiKey = document.getElementById('extractApiKey').value.trim();
+    var apiBase = document.getElementById('extractApiBase').value.trim() || 'https://token.sensenova.cn/v1';
+    var llmModel = document.getElementById('extractLlmModel').value.trim() || 'deepseek-v4-flash';
 
     if (mode === 'url' && !url) {
       showToast('请输入视频链接');
@@ -107,6 +109,8 @@ var EXTRACT_API = localStorage.getItem('extract_api') || 'http://127.0.0.1:8765/
       brand_name: brand || null,
       area_name: area || null,
       api_key: apiKey || null,
+      api_base: apiBase || null,
+      llm_model: llmModel || null,
       skip_llm: !apiKey,
     };
 
