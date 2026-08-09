@@ -9,7 +9,7 @@ let html = read('index.html');
 const css = read('css/app.css');
 
 const jsFiles = ['js/data.js', 'js/data-category.js', 'js/data-lines.js',
-  'js/data-compliance.js', 'js/data-brief.js', 'js/engine.js', 'js/app.js', 'js/extract-tab.js'];
+  'js/data-compliance.js', 'js/data-brief.js', 'js/engine.js', 'js/app.js', 'js/extract-tab.js', 'js/rewrite-tab.js'];
 
 /* 内联 CSS */
 html = html.replace(/<link rel="stylesheet" href="css\/app\.css">/,
