@@ -1,0 +1,19 @@
+{
+  "type": "web_service",
+  "ownerId": "tea-d9rmfdqjobas73dptmo0",
+  "name": "video-extract",
+  "repo": "https://github.com/womeng2018-dotcom/douyin-copy-studio",
+  "branch": "main",
+  "autoDeploy": "yes",
+  "rootDir": ".",
+  "envVars": [ { "key": "PYTHONUNBUFFERED", "value": "1" } ],
+  "serviceDetails": {
+    "runtime": "docker",
+    "plan": "starter",
+    "region": "singapore",
+    "dockerfilePath": "./server/Dockerfile",
+    "healthCheckPath": "/",
+    "numInstances": 1,
+    "pullRequestPreviewsEnabled": "no"
+  }
+}
