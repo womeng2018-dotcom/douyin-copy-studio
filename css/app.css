@@ -201,6 +201,15 @@ mark.hl.P2{background:#d8e0ec;color:#4a5c78}
 .brief-sec ul{list-style:none}
 .brief-sec ul li{padding:5px 0 5px 18px;position:relative;font-size:12.5px;line-height:1.7}
 .brief-sec ul li::before{content:'';position:absolute;left:4px;top:14px;width:5px;height:5px;border-radius:50%;background:var(--pri)}
+.brief-freq{float:right;font-size:11px;color:#c9a227;font-weight:600;letter-spacing:.05em;background:#fff8e1;border:1px solid #f0e0a8;border-radius:5px;padding:2px 8px}
+.brief-block{font-size:12px;line-height:1.7;border-radius:7px;padding:9px 12px;margin-top:8px}
+.brief-block .brief-tag{display:inline-block;font-size:10.5px;font-weight:600;margin-right:8px;letter-spacing:.02em}
+.brief-data{background:#e8f0fe;border-left:3px solid var(--pri)}
+.brief-data .brief-tag{color:var(--pri)}
+.brief-standard{background:#e8f5e9;border-left:3px solid #4caf50}
+.brief-standard .brief-tag{color:#2e7d32}
+.brief-boundary{background:#fff8e1;border-left:3px solid #ffc107}
+.brief-boundary .brief-tag{color:#c9a227}
 
 .cl-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid #ece8dd;cursor:pointer;font-size:13px}
 .cl-item:last-child{border-bottom:0}
