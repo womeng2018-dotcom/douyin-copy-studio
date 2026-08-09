@@ -242,6 +242,12 @@
           <input id="extractApiKey" type="password" placeholder="sk-..." style="font-family:ui-monospace,monospace;font-size:12px">
         </div>
 
+        <div class="grid2">
+          <div class="field"><label>API Base URL（可选）</label><input id="extractApiBase" placeholder="https://token.sensenova.cn/v1"></div>
+          <div class="field"><label>模型（可选）</label><input id="extractLlmModel" placeholder="deepseek-v4-flash"></div>
+        </div>
+        <p class="hint" style="margin-top:4px">留空默认商汤 SenseNova 免费模型 <code>deepseek-v4-flash</code>（OpenAI 兼容接口）</p>
+
         <button class="btn-main" id="extractBtn">开始提取</button>
         <div id="extractStatus" class="extract-status" style="display:none"></div>
       </div>
@@ -367,6 +373,7 @@
           <div class="settings-body">
             <div class="field"><label>服务商</label>
               <select id="rwLlmProvider">
+                <option value="sensenova">商汤 SenseNova（免费）</option>
                 <option value="deepseek">DeepSeek</option>
                 <option value="openai">OpenAI</option>
                 <option value="custom">自定义</option>
