@@ -297,7 +297,7 @@
   /* ---------- LLM 调用 ---------- */
   function callLLM(system, user, cb) {
     var cfg = loadLLM();
-    if (!cfg.key) { cb(null, { needKey: true }); return; }
+    if (!cfg.key) { cb({ needKey: true }, null); return; }
     var url = (cfg.base || '').replace(/\/+$/, '') + '/chat/completions';
     fetch(url, {
       method: 'POST',
@@ -428,7 +428,12 @@
           'LLM 调用出错：<b>' + esc(err) + '</b><br>已生成提示词，可复制到 AI 工具使用。');
         return;
       }
-      // 成功得到 LLM 结果
+      // 成功得到 LLM 结果（非字符串时按失败处理，避免崩溃）
+      if (typeof out !== 'string' || !out.trim()) {
+        renderPromptOnly(prompt.system + '\n\n------\n\n' + prompt.user, metaChips.concat([{ t: '返回异常', cls: 'bad' }]),
+          'LLM 返回内容为空或格式异常，已生成提示词，可复制到 AI 工具使用。');
+        return;
+      }
       var primaryOut = out;
       if (chain) {
         var h = humanize(stripCodeFence(primaryOut), 'mid');
