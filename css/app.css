@@ -271,3 +271,33 @@ mark.hl.P2{background:#d8e0ec;color:#4a5c78}
   table.shots th,table.shots td{padding:6px 7px}
   .script-line{font-size:12.5px}
 }
+
+/* ---------- 文案改写 ---------- */
+.rw-modes{margin:16px 0 12px}
+.rw-chain{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-2);margin:4px 0 16px;cursor:pointer;line-height:1.5}
+.rw-chain input{width:16px;height:16px;accent-color:var(--pri);cursor:pointer;flex:none}
+.rw-grid{display:grid;grid-template-columns:430px 1fr;gap:20px;margin-top:8px}
+.rw-config .field{margin-bottom:12px}
+.rw-params{padding:14px;background:var(--beige);border:1px solid var(--line);border-radius:8px;margin-bottom:14px}
+.rw-settings{margin-top:14px}
+.rw-settings details{background:var(--beige);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.rw-settings summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-2);letter-spacing:.01em}
+.rw-settings .settings-body{padding-top:10px}
+.rw-output .empty-state{margin-top:0}
+
+/* 对照展示 */
+.rw-compare{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.rw-col{background:var(--beige);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.rw-col-head{padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--text-2);background:#fff;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rw-col-head .rw-tag{font-size:10px;font-weight:600;padding:1px 8px;border-radius:20px;background:var(--pri-soft);color:var(--pri-dark);white-space:nowrap}
+.rw-col-head .rw-tag.after{background:#eef1ea;color:var(--ok)}
+.rw-col-body{padding:12px 14px;font-size:13px;line-height:1.85;white-space:pre-wrap;min-height:120px;word-break:break-word}
+.rw-col-body.marked{background:#fff}
+.rw-prompt{background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px;font-size:12px;line-height:1.8;white-space:pre-wrap;font-family:var(--font-mono);color:var(--text-2);max-height:440px;overflow:auto;word-break:break-word}
+.rw-note{font-size:12px;color:var(--text-2);background:var(--beige);border:1px solid var(--line);border-radius:7px;padding:10px 14px;margin-top:12px;line-height:1.7}
+.rw-note b{color:var(--pri-dark)}
+
+@media (max-width:900px){
+  .rw-grid{grid-template-columns:1fr}
+  .rw-compare{grid-template-columns:1fr}
+}
