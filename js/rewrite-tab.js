@@ -35,6 +35,7 @@
   /* ---------- LLM 设置 ---------- */
   var LLM_KEY = 'dycs_rw_llm';
   var PRESETS = {
+    sensenova: { base: 'https://token.sensenova.cn/v1', model: 'deepseek-v4-flash', free: true },
     deepseek: { base: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
     openai: { base: 'https://api.openai.com/v1', model: 'gpt-4o-mini' }
   };
@@ -51,6 +52,7 @@
     if (cfg.base) $('rwLlmBase').value = cfg.base;
     if (cfg.model) $('rwLlmModel').value = cfg.model;
     if (cfg.key) $('rwLlmStatus').innerHTML = '<span class="chip ok">已配置</span>';
+    else $('rwLlmStatus').innerHTML = '<span class="chip mid">未填 Key（可免费获取商汤/智谱 Key）</span>';
   }
   function onProviderChange() {
     var p = $('rwLlmProvider').value;
