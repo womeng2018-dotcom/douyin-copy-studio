@@ -120,6 +120,25 @@ var EXTRACT_API = localStorage.getItem('extract_api') || 'http://127.0.0.1:8765/
   function doExtract(payload, fileInput) {
     updateProgress('连接提取服务…');
 
+    // 文件上传模式：把文件转成 base64 注入 payload
+    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+      var file = fileInput.files[0];
+      var ext = file.name.split('.').pop().toLowerCase();
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        payload.file_path = 'base64:' + ev.target.result + '.ext:' + ext;
+        sendExtract(payload);
+      };
+      reader.onerror = function () {
+        showError('文件读取失败，请重新选择文件');
+      };
+      reader.readAsDataURL(file);
+    } else {
+      sendExtract(payload);
+    }
+  }
+
+  function sendExtract(payload) {
     fetch(EXTRACT_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
