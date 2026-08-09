@@ -300,7 +300,19 @@
           return '<div class="risk-item"><span class="lv ' + i[0] + '">' + i[0] + '</span><span><b>' + i[1] + '</b> — ' + i[2] + '</span></div>';
         }).join('');
       }
-      return '<div class="brief-sec"><h3>' + s.title + '</h3>' + body +
+      // 规则—数据—结论 闭环块
+      var meta = '';
+      if (s.data) {
+        meta += '<div class="brief-block brief-data"><span class="brief-tag">📊 数据支撑</span>' + s.data + '</div>';
+      }
+      if (s.standard) {
+        meta += '<div class="brief-block brief-standard"><span class="brief-tag">✅ 判定标准</span>' + s.standard + '</div>';
+      }
+      if (s.boundary) {
+        meta += '<div class="brief-block brief-boundary"><span class="brief-tag">⚠️ 边界条件</span>' + s.boundary + '</div>';
+      }
+      var freq = s.freq ? '<span class="brief-freq">' + s.freq + '</span>' : '';
+      return '<div class="brief-sec"><h3>' + s.title + freq + '</h3>' + body + meta +
         '<div class="brief-note">' + s.note + '</div></div>';
     }).join('');
     $('briefContent').innerHTML = html;
