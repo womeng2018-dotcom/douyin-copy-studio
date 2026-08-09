@@ -126,7 +126,9 @@ var EXTRACT_API = localStorage.getItem('extract_api') || 'http://127.0.0.1:8765/
       var ext = file.name.split('.').pop().toLowerCase();
       var reader = new FileReader();
       reader.onload = function (ev) {
-        payload.file_path = 'base64:' + ev.target.result + '.ext:' + ext;
+        // readAsDataURL 返回 'data:video/mp4;base64,XXXX'，只取逗号后的纯 base64
+        var raw = ev.target.result.split(',')[1];
+        payload.file_path = 'base64:' + raw + '.ext:' + ext;
         sendExtract(payload);
       };
       reader.onerror = function () {
