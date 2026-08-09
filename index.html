@@ -27,6 +27,7 @@
       <button class="tab" data-tab="brief">Brief 速查</button>
       <button class="tab" data-tab="history">历史记录</button>
       <button class="tab" data-tab="extract">视频提取</button>
+      <button class="tab" data-tab="rewrite">文案改写</button>
     </nav>
   </div>
 </header>
@@ -272,6 +273,145 @@
   </div>
 </section>
 
+<!-- ============ 文案改写 ============ -->
+<section class="panel" id="tab-rewrite">
+  <div class="card">
+    <h2 class="card-title">文案改写 · 三引擎</h2>
+    <p class="hint">集成 Humanizer-zh（中文去 AI 腔）、ai-copywriter（营销人味）、CopyGPT（232 公式）三种改写能力。可单用，也可开启串联模式顺序处理。</p>
+
+    <div class="seg rw-modes" id="rwMode">
+      <button class="on" data-v="humanizer">Humanizer-zh · 去 AI 腔</button>
+      <button data-v="copywriter">ai-copywriter · 营销人味</button>
+      <button data-v="copgpt">CopyGPT · 公式改写</button>
+    </div>
+
+    <label class="rw-chain"><input type="checkbox" id="rwChain"> 串联模式：当前改写完成后再自动过一遍 Humanizer-zh 人味化（去 AI 腔）</label>
+
+    <div class="rw-grid">
+      <!-- 左：输入 + 参数 -->
+      <div class="rw-config">
+        <div class="field">
+          <label>原文 / 待改写文案</label>
+          <textarea id="rwInput" rows="9" placeholder="粘贴要改写的文案……（建议先点「载入示例」体验 Humanizer-zh 去 AI 腔）"></textarea>
+        </div>
+
+        <!-- Humanizer-zh 参数 -->
+        <div class="rw-params" data-mode="humanizer">
+          <div class="grid2">
+            <div class="field"><label>语气风格</label>
+              <select id="rwHmTone">
+                <option value="口语自然">口语自然</option>
+                <option value="正式专业">正式专业</option>
+                <option value="亲切像朋友">亲切像朋友</option>
+                <option value="犀利直接">犀利直接</option>
+              </select></div>
+            <div class="field"><label>语言</label>
+              <select id="rwHmLang">
+                <option value="中文">中文</option>
+                <option value="中英混排">中英混排</option>
+              </select></div>
+          </div>
+          <div class="field"><label>去 AI 强度</label>
+            <div class="seg" id="rwHmLevel">
+              <button data-v="light">轻</button>
+              <button class="on" data-v="mid">中</button>
+              <button data-v="strong">强</button>
+            </div>
+          </div>
+          <p class="hint">离线即可运行：自动识别并替换「此外 / 至关重要 / 不仅…而且… / 在当今…时代」等中文 AI 惯用表达，输出人味文案。</p>
+        </div>
+
+        <!-- ai-copywriter 参数 -->
+        <div class="rw-params" data-mode="copywriter" style="display:none">
+          <div class="field"><label>文案类型</label>
+            <select id="rwCwType">
+              <option value="短视频口播">短视频口播</option>
+              <option value="小红书图文">小红书图文</option>
+              <option value="朋友圈">朋友圈</option>
+              <option value="电商详情页">电商详情页</option>
+              <option value="直播话术">直播话术</option>
+            </select></div>
+          <div class="field"><label>语气</label>
+            <select id="rwCwTone">
+              <option value="热情有感染力">热情有感染力</option>
+              <option value="专业可信">专业可信</option>
+              <option value="亲切像朋友">亲切像朋友</option>
+              <option value="犀利直接">犀利直接</option>
+            </select></div>
+          <div class="field"><label>核心卖点 / 关键词（逗号分隔）</label>
+            <input id="rwCwSell" placeholder="如：9.9 体验价, 肩颈按摩, 100 家连锁"></div>
+        </div>
+
+        <!-- CopyGPT 参数 -->
+        <div class="rw-params" data-mode="copgpt" style="display:none">
+          <div class="field"><label>文案公式（232 种）</label>
+            <select id="rwCgFormula"></select></div>
+          <div class="grid2">
+            <div class="field"><label>字数上限</label><input id="rwCgMax" placeholder="0=不限，如 200"></div>
+            <div class="field"><label>输出类型</label>
+              <select id="rwCgOut">
+                <option value="完整文案">完整文案</option>
+                <option value="仅结构框架">仅结构框架</option>
+                <option value="标题+正文">标题 + 正文</option>
+              </select></div>
+          </div>
+        </div>
+
+        <button class="btn-main" id="rwRun">开始改写</button>
+        <button class="btn-ghost" id="rwDemo">载入示例</button>
+
+        <!-- LLM 设置 -->
+        <details class="rw-settings">
+          <summary>LLM 改写设置（ai-copywriter / CopyGPT 需配置，Humanizer-zh 离线免配）</summary>
+          <div class="settings-body">
+            <div class="field"><label>服务商</label>
+              <select id="rwLlmProvider">
+                <option value="deepseek">DeepSeek</option>
+                <option value="openai">OpenAI</option>
+                <option value="custom">自定义</option>
+              </select></div>
+            <div class="field"><label>API Key</label>
+              <input id="rwLlmKey" type="password" placeholder="sk-..." style="font-family:var(--font-mono);font-size:12px"></div>
+            <div class="grid2">
+              <div class="field"><label>Base URL</label><input id="rwLlmBase" placeholder="https://api.deepseek.com/v1"></div>
+              <div class="field"><label>模型</label><input id="rwLlmModel" placeholder="deepseek-chat"></div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+              <button class="btn-sm" id="rwLlmSave">保存</button>
+              <span class="hint" id="rwLlmStatus"></span>
+            </div>
+            <p class="hint" style="margin-top:8px">密钥仅保存在本机浏览器（localStorage），不会上传。未配置时，ai-copywriter / CopyGPT 会生成可直接复制到 AI 工具的提示词。</p>
+          </div>
+        </details>
+      </div>
+
+      <!-- 右：结果对照 -->
+      <div class="rw-output">
+        <div class="results-head" style="margin-bottom:16px">
+          <div>
+            <h2 class="card-title" id="rwResultTitle">改写结果</h2>
+            <p class="hint" id="rwResultMeta">填写原文后点击「开始改写」，将在此对照展示原文与改写结果。</p>
+          </div>
+          <div class="head-actions">
+            <button class="btn-sm" id="rwCopyBtn" disabled>复制改写</button>
+            <button class="btn-sm" id="rwCopyPromptBtn" disabled style="display:none">复制提示词</button>
+          </div>
+        </div>
+        <div id="rwResult" class="empty-state">
+          <div class="empty-icon">
+            <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+              <path d="M15 3a12 12 0 100 24 12 12 0 000-24z" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M11 11h8M11 15h8M11 19h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <p>还没有改写内容</p>
+          <span>输入文案或点「载入示例」，选择模式后开始改写</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 </main>
 
 <footer class="footer">
@@ -291,5 +431,6 @@
 <script src="js/engine.js"></script>
 <script src="js/app.js"></script>
 <script src="js/extract-tab.js"></script>
+<script src="js/rewrite-tab.js"></script>
 </body>
 </html>
