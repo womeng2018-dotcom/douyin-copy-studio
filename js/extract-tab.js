@@ -1,6 +1,12 @@
 /* ===== 视频提取 Tab ===== */
 
-var EXTRACT_API = localStorage.getItem('extract_api') || 'http://127.0.0.1:8765/extract';
+/* 智能默认 API 地址：
+   - 本工具由本地服务同源托管（http://127.0.0.1:8765/）→ 用相对路径 /extract
+   - GitHub Pages（https://...github.io）→ 保持绝对地址，提示需配置云端 HTTPS 或本地访问 */
+var EXTRACT_API = localStorage.getItem('extract_api') ||
+  (location.protocol === 'http:' && (location.hostname === '127.0.0.1' || location.hostname === 'localhost')
+    ? location.origin + '/extract'
+    : 'http://127.0.0.1:8765/extract');
 
 (function () {
   'use strict';
@@ -18,7 +24,7 @@ var EXTRACT_API = localStorage.getItem('extract_api') || 'http://127.0.0.1:8765/
             '<button class="btn-sm" id="saveApiUrl">保存</button>' +
             '<span class="hint">修改后需刷新页面</span>' +
           '</div>' +
-          '<p class="hint" style="margin-top:8px">本地开发用 <code>http://127.0.0.1:8765/extract</code>；云端部署后改为你的服务器地址</p>' +
+          '<p class="hint" style="margin-top:8px">推荐：本地运行 <code>bash start-local.sh</code> 后直接访问 <code>http://127.0.0.1:8765</code>（页面与 API 同源，无需配置）；GitHub Pages 线上访问需填云端 HTTPS 地址</p>' +
         '</div>' +
       '</details>' +
     '</div>';
@@ -283,13 +289,22 @@ var EXTRACT_API = localStorage.getItem('extract_api') || 'http://127.0.0.1:8765/
   /* ---- 启动检测 ---- */
   (function checkServer() {
     var isHttps = location.protocol === 'https:';
-    var isLocalApi = /^http:\/\/127\.0\.0\.1/.test(EXTRACT_API);
+    var isLocalPage = location.protocol === 'http:' &&
+      (location.hostname === '127.0.0.1' || location.hostname === 'localhost');
+    var isLocalApi = /^http:\/\/127\.0\.0\.1/.test(EXTRACT_API) || EXTRACT_API.charAt(0) === '/';
 
     if (isHttps && isLocalApi) {
       extractStatus.style.display = '';
       extractStatus.innerHTML = '<span class="chip bad">⚠️ HTTPS 页面无法访问本地服务</span> ' +
         '<span class="hint">当前页面是 HTTPS（GitHub Pages），浏览器禁止访问 http://127.0.0.1 本地服务。<br>' +
-        '请改用 <b>http://127.0.0.1:8080</b> 打开本工具（本地服务已启动），或把 API 地址配置为云端 HTTPS 地址。</span>';
+        '<b>本地使用方式：</b>先启动本地服务 <code>bash start-local.sh</code>，然后用浏览器打开 <b><a href="http://127.0.0.1:8765" style="color:inherit">http://127.0.0.1:8765</a></b> 使用完整工具（页面与提取 API 同源，不受此限制）。<br>' +
+        '云端使用方式：把「API 地址」配置为已部署的云端 HTTPS 地址（如 Render）并保存。</span>';
+      return;
+    }
+
+    if (isLocalPage && isLocalApi) {
+      extractStatus.style.display = '';
+      extractStatus.innerHTML = '<span class="chip ok">同源本地模式：提取服务直接可用</span> <span class="hint">页面与 API 同源（' + location.origin + '），无需跨域</span>';
       return;
     }
 
@@ -303,7 +318,7 @@ var EXTRACT_API = localStorage.getItem('extract_api') || 'http://127.0.0.1:8765/
       }
     }).catch(function () {
       extractStatus.style.display = '';
-      extractStatus.innerHTML = '<span class="chip bad">提取服务未连接</span> <span class="hint">请先启动：python server/video-extract.py --serve</span>';
+      extractStatus.innerHTML = '<span class="chip bad">提取服务未连接</span> <span class="hint">请先启动：bash start-local.sh（自动开启页面+API 服务）</span>';
     });
   })();
 
