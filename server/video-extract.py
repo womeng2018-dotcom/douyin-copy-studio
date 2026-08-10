@@ -819,6 +819,62 @@ def start_server(host="0.0.0.0", port=None):
             self._send(200, result)
 
         def do_GET(self):
+            """GET：/extract 返回服务状态；其余路径托管前端静态页面（同源单端口）"""
+            import urllib.parse as _up
+            path = _up.urlparse(self.path).path
+
+            # 兼容前端探测：/extract 返回运行状态
+            if path == "/extract" or path == "/":
+                # / 返回静态 index.html（同源托管模式），前端 checkServer 用 GET /extract 探测
+                if path == "/extract":
+                    self._send(200, {
+                        "ok": True,
+                        "status": "running",
+                        "host": host,
+                        "port": port,
+                        "ffmpeg": FFMPEG,
+                        "ffmpeg_ok": _ffmpeg_available(),
+                    })
+                    return
+                serve_index = True
+            else:
+                serve_index = False
+
+            # 静态文件托管：项目根目录 = server 的上一级
+            WWW_ROOT = SCRIPT_DIR.parent
+            if path in ("/", ""):
+                rel = "index.html"
+            else:
+                rel = path.lstrip("/")
+            # 防目录穿越
+            full = (WWW_ROOT / rel).resolve()
+            if not str(full).startswith(str(WWW_ROOT.resolve())):
+                self._send(403, {"ok": False, "error": "forbidden"})
+                return
+            if full.is_file():
+                mime = {
+                    ".html": "text/html; charset=utf-8",
+                    ".css": "text/css; charset=utf-8",
+                    ".js": "application/javascript; charset=utf-8",
+                    ".png": "image/png",
+                    ".jpg": "image/jpeg",
+                    ".svg": "image/svg+xml",
+                    ".md": "text/plain; charset=utf-8",
+                    ".json": "application/json; charset=utf-8",
+                }.get(full.suffix.lower(), "application/octet-stream")
+                try:
+                    body = full.read_bytes()
+                    self.send_response(200)
+                    self.send_header("Content-Type", mime)
+                    self.send_header("Content-Length", str(len(body)))
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    self.wfile.write(body)
+                except Exception as e:
+                    self._send(500, {"ok": False, "error": str(e)[:200]})
+                return
+
+            # 兜底：返回服务状态 JSON
             self._send(200, {
                 "ok": True,
                 "status": "running",
@@ -826,6 +882,7 @@ def start_server(host="0.0.0.0", port=None):
                 "port": port,
                 "ffmpeg": FFMPEG,
                 "ffmpeg_ok": _ffmpeg_available(),
+                "hint": "页面不存在，仅 API 可用",
             })
 
         def log_message(self, format, *args):
