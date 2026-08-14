@@ -50,7 +50,19 @@
 2. **云端部署（推荐）**：页面内「一键部署到 Render」按钮，免费额度约 5-10 分钟完成，之后任何设备可用
 3. **已有服务**：在「提取服务配置」填入 API 地址 → 保存 → 测试连接
 
-### 6. 导出与历史
+### 6. 数据分析（支持自动抓取真实数据）
+足浴·SPA 品类数据洞察仪表盘（受众画像 / 消耗 / 地域 / 达人 / 定价建议）+ 运营计划生成器。
+
+默认展示 2026-08-09 的**静态示例数据**；安装油猴脚本后可在**抖音来客 / 巨量本地推后台自动抓取真实数据**注入本页：
+
+1. 浏览器安装 [Tampermonkey](https://www.tampermonkey.net/) 扩展
+2. 打开 [`userscript/douyin-laike-collector.user.js`](userscript/douyin-laike-collector.user.js)（或仓库内该文件）→ Tampermonkey 会提示安装
+3. 登录抖音来客后台（laike.douyin.com / 巨量本地推 ad.oceanengine.com），正常浏览「经营概览 / 数据报表 / 投放分析」页面
+4. 右下角悬浮面板会显示已采集的接口数量 → 点「**注入 Copy Studio**」（自动新开数据分析页并推送数据），也可「复制 JSON」后到数据分析页「粘贴抓取数据」导入
+
+采集器纯前端运行：只在你自己的浏览器里读取页面已加载的数据接口，**不保存账号密码、不经过任何服务器**。后台页面若改版导致采集不到，可在脚本的 `URL_KEYWORDS` 里补充接口关键词。
+
+### 7. 导出与历史
 - 复制单条口播 / 复制整条 / 复制全部变体
 - 一键导出 **Markdown 交付单**（含分镜表格与合规说明），可直接发给制作团队
 - 最近 20 次生成记录保存在本机浏览器
@@ -111,6 +123,8 @@ copy-studio/
 │   ├── video-extract.py    # 视频提取后端（字幕提取 + FunASR/faster-whisper + 七层后处理）
 │   ├── Dockerfile          # 云端 Docker 镜像
 │   └── requirements.txt
+├── userscript/
+│   └── douyin-laike-collector.user.js  # 油猴脚本：抖音来客/本地推后台自动采集数据 → 注入数据分析页
 ├── docs/
 │   ├── growth-os.md        # 增长操作系统（顶层方法论）
 │   ├── material-models.md  # 素材5模型实验模板

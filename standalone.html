@@ -3264,11 +3264,23 @@ if (typeof window.showToast !== 'function') {
     var d = DS.spaAnalysis;
     var html = '';
 
+    /* ---- 数据来源横幅 + 导入工具 ---- */
+    html += renderSourceBar();
+
+    /* ---- 实时抓取数据（油猴脚本注入） ---- */
+    if (liveData) {
+      html += renderLiveSections(liveData);
+      html += '<div style="padding:10px 14px;background:var(--beige);border:1px dashed var(--line);border-radius:8px;font-size:11.5px;color:var(--text-3);margin-bottom:20px">' +
+        '👇 以下为<b>静态示例数据</b>（2026-08-09 后台截图），用于演示分析方法；上方为实时抓取的真实数据。</div>';
+    }
+
     // 标题
     html += '<div style="margin-bottom:20px">';
     html += '<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--pri);font-weight:600;margin-bottom:6px">数据分析</div>';
     html += '<div style="font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.02em">足浴·SPA 品类 — 抖音来客数据洞察</div>';
-    html += '<div style="font-size:12px;color:var(--text-3);margin-top:4px">数据来源：2026-08-09 后台截图 · 指导投流、定价、内容、达人合作</div>';
+    html += '<div style="font-size:12px;color:var(--text-3);margin-top:4px">' +
+      (liveData ? '数据来源：实时抓取 · ' + (liveData.capturedAt || '') + '（静态示例见下）'
+                : '数据来源：2026-08-09 后台截图 · 指导投流、定价、内容、达人合作') + '</div>';
     html += '</div>';
 
     // ---- 一、受众画像 ----
@@ -3369,13 +3381,189 @@ if (typeof window.showToast !== 'function') {
     html += '</div>';
 
     container.innerHTML = html;
+    bindLiveUI();
   }
 
+  /* ============================================================
+   * 实时抓取数据（油猴脚本「抖音来客数据采集器」注入）
+   * ============================================================ */
+  var LIVE_KEY = 'dycs_live_data';
+  var liveData = null;
+
+  function toast(msg) {
+    var t = document.getElementById('toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(function () { t.classList.remove('show'); }, 2200);
+  }
+
+  function escHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = String(s == null ? '' : s);
+    return d.innerHTML;
+  }
+
+  function loadLive() {
+    try { liveData = JSON.parse(localStorage.getItem(LIVE_KEY) || 'null'); } catch (e) { liveData = null; }
+  }
+
+  function handleLivePayload(p) {
+    if (!p || !Array.isArray(p.blobs)) return false;
+    liveData = p;
+    try { localStorage.setItem(LIVE_KEY, JSON.stringify(p)); } catch (e) { /* 超出配额忽略 */ }
+    renderDataTab();
+    return true;
+  }
+
+  function clearLive() {
+    liveData = null;
+    localStorage.removeItem(LIVE_KEY);
+    renderDataTab();
+    toast('已清除实时数据');
+  }
+
+  /* ---- 数据来源横幅 + 粘贴导入 ---- */
+  function renderSourceBar() {
+    var h = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;background:var(--card);border:1px solid var(--line);border-radius:9px">';
+    h += '<span style="font-size:13px">📡</span>';
+    if (liveData) {
+      h += '<span class="chip ok">实时抓取数据</span>';
+      h += '<span class="hint" style="font-size:11.5px">' + escHtml((liveData.capturedAt || '') + ' · ' + (liveData.blobs ? liveData.blobs.length : 0) + ' 个数据接口') + '</span>';
+      h += '<button class="btn-sm" id="dycsClearBtn" style="margin-left:auto">清除实时数据</button>';
+    } else {
+      h += '<span class="chip mid">示例数据</span>';
+      h += '<span class="hint" style="font-size:11.5px">安装油猴脚本后，可在抖音来客后台一键抓取真实数据注入本页（见 README）</span>';
+    }
+    h += '<button class="btn-sm" id="dycsPasteBtn">' + (liveData ? '重新导入' : '粘贴抓取数据') + '</button>';
+    h += '</div>';
+    h += '<div id="dycsPasteBox" style="display:none;margin-bottom:14px">' +
+      '<textarea id="dycsPasteInput" rows="5" placeholder="将油猴脚本「复制 JSON」得到的内容粘贴到这里，点击导入……" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:ui-monospace,monospace;font-size:11.5px;background:#fff"></textarea>' +
+      '<div style="display:flex;gap:8px;margin-top:8px"><button class="btn-sm" id="dycsImportBtn">导入</button>' +
+      '<span class="hint">也支持 URL 注入：?data=base64 或 #data=base64（油猴脚本「注入 Copy Studio」自动使用）</span></div>' +
+      '</div>';
+    return h;
+  }
+
+  /* ---- 实时数据区块渲染 ---- */
+  function renderLiveSections(p) {
+    var html = '';
+
+    /* 核心指标卡 */
+    if (p.metrics && p.metrics.length) {
+      html += '<div class="shot" style="margin-bottom:20px"><div class="shot-title">实时核心指标（从接口自动提取）</div>';
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">';
+      p.metrics.forEach(function (m) {
+        var v = typeof m.value === 'number' && m.value >= 10000 ? (m.value / 10000).toFixed(2) + '万' : m.value;
+        html += '<div style="padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">' +
+          '<div style="font-size:11px;color:var(--text-3);margin-bottom:2px">' + escHtml(m.key) + '</div>' +
+          '<div style="font-size:17px;font-weight:700;color:var(--pri)">' + escHtml(v) + '</div>' +
+          '<div style="font-size:10px;color:var(--text-3);margin-top:2px">' + escHtml(m.source) + '</div></div>';
+      });
+      html += '</div></div>';
+    }
+
+    /* 页面表格 */
+    if (p.tables && p.tables.length) {
+      html += '<div class="shot" style="margin-bottom:20px"><div class="shot-title">页面表格（' + p.tables.length + ' 个）</div>';
+      p.tables.forEach(function (t, i) {
+        html += '<details style="margin-bottom:8px"><summary style="font-size:12.5px;color:var(--text-2);cursor:pointer">' +
+          escHtml(t.title || ('表格 ' + (i + 1))) + '（' + (t.rows || []).length + ' 行）</summary>';
+        html += '<table class="shots"><thead><tr>' + (t.headers || []).map(function (h) { return '<th>' + escHtml(h) + '</th>'; }).join('') + '</tr></thead><tbody>';
+        (t.rows || []).forEach(function (r) {
+          html += '<tr>' + (r || []).map(function (c) { return '<td>' + escHtml(c) + '</td>'; }).join('') + '</tr>';
+        });
+        html += '</tbody></table></details>';
+      });
+      html += '</div>';
+    }
+
+    /* 接口 JSON */
+    if (p.blobs && p.blobs.length) {
+      html += '<div class="shot" style="margin-bottom:20px"><div class="shot-title">抓取的数据接口（' + p.blobs.length + ' 个，最新在前）</div>';
+      p.blobs.slice(-10).reverse().forEach(function (b) {
+        var pretty;
+        try { pretty = JSON.stringify(b.data, null, 2); } catch (e) { pretty = String(b.data); }
+        html += '<details style="margin-bottom:8px"><summary style="font-size:12px;color:var(--text-2);cursor:pointer;word-break:break-all">' +
+          escHtml(b.url) + ' · ' + escHtml(b.time || '') + '</summary>';
+        html += '<pre style="max-height:320px;overflow:auto;font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px;white-space:pre-wrap;word-break:break-all">' +
+          escHtml(pretty) + '</pre></details>';
+      });
+      html += '</div>';
+    }
+
+    if (!p.metrics || !p.metrics.length) {
+      if (!p.tables || !p.tables.length) {
+        if (!p.blobs || !p.blobs.length) {
+          html += '<div class="shot" style="margin-bottom:20px"><div class="shot-title">实时数据</div>' +
+            '<p class="hint" style="padding:8px 0">采集到 0 条数据。请在抖音来客后台打开「经营概览 / 数据报表 / 投放分析」等页面后重新采集。</p></div>';
+        }
+      }
+    }
+    return html;
+  }
+
+  /* ---- 导入 UI 事件 ---- */
+  function bindLiveUI() {
+    var pb = document.getElementById('dycsPasteBtn');
+    if (pb) pb.addEventListener('click', function () {
+      var box = document.getElementById('dycsPasteBox');
+      box.style.display = box.style.display === 'none' ? '' : 'none';
+    });
+    var ib = document.getElementById('dycsImportBtn');
+    if (ib) ib.addEventListener('click', function () {
+      var t = document.getElementById('dycsPasteInput').value.trim();
+      if (!t) { toast('请先粘贴数据'); return; }
+      try {
+        var p = JSON.parse(t);
+        if (handleLivePayload(p)) toast('✅ 已导入抓取数据');
+        else toast('数据格式不正确（缺少 blobs 数组）');
+      } catch (e) { toast('❌ JSON 解析失败，请检查粘贴内容'); }
+    });
+    var cb = document.getElementById('dycsClearBtn');
+    if (cb) cb.addEventListener('click', clearLive);
+  }
+
+  /* ---- 接收油猴脚本 postMessage 注入 ---- */
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (d && d.type === 'DYCS_DATA' && d.data) {
+      if (handleLivePayload(d.data)) {
+        toast('✅ 已接收实时抓取数据（' + (d.data.blobs ? d.data.blobs.length : 0) + ' 个接口）');
+      }
+    }
+  });
+
+  /* ---- URL 参数/哈希兜底：#data= 或 ?data=（base64url） ---- */
+  function b64ToUtf8(s) {
+    var bin = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder('utf-8').decode(bytes);
+  }
+  function parseInjected() {
+    var m = location.hash.match(/data=([A-Za-z0-9_\-]+)/) ||
+            location.search.match(/[?&]data=([A-Za-z0-9_\-]+)/);
+    if (!m) return;
+    try {
+      var p = JSON.parse(b64ToUtf8(m[1]));
+      if (handleLivePayload(p)) toast('已通过链接导入抓取数据');
+    } catch (e) { /* 非法数据忽略 */ }
+  }
+  /* 页面已打开时用户再粘贴带 #data= 的链接：监听 hashchange 免刷新导入 */
+  window.addEventListener('hashchange', function () { parseInjected(); });
+
   /* 初始化 */
+  loadLive();
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', renderDataTab);
+    document.addEventListener('DOMContentLoaded', function () {
+      renderDataTab();
+      parseInjected();
+    });
   } else {
     renderDataTab();
+    parseInjected();
   }
 })();
 
