@@ -303,6 +303,8 @@
    * ============================================================ */
   var LIVE_KEY = 'dycs_live_data';
   var liveData = null;
+  var pasteBoxOpen = false;
+  var lastParseStatus = '';
 
   function toast(msg) {
     var t = document.getElementById('toast');
@@ -338,24 +340,193 @@
     toast('已清除实时数据');
   }
 
+  /* ============================================================
+   * 粘贴即解析：自动识别 JSON / CSV / 表格文字 / 键值对
+   * ============================================================ */
+  var HEADER_WORDS = /城市|地域|金额|占比|数量|指标|名称|时间|消耗|核销|订单|退款|达人|粉丝|指数|年龄|性别|人群|渠道|费用|预算|曝光|点击|转化|客单|日期|项目|价格|销量|评价|评分|内容|标题|状态|类型|品牌|门店|套餐|收藏|点赞|评论|播放|涨粉/i;
+
+  function isHeaderLike(cells) {
+    var text = cells.join(' ');
+    if (HEADER_WORDS.test(text)) return true;
+    /* 表头行应基本不含数字，且单元较短 */
+    var digitCount = (text.match(/\d/g) || []).length;
+    return digitCount <= 2 && cells.every(function (c) { return c.length < 12; });
+  }
+
+  function parsePastedText(text) {
+    var t = String(text || '').trim();
+    if (!t) return null;
+
+    /* 1) JSON（对象或数组） */
+    if (t.charAt(0) === '{' || t.charAt(0) === '[') {
+      try { return { type: 'json', data: JSON.parse(t) }; } catch (e) { /* 继续尝试其他格式 */ }
+    }
+
+    var lines = t.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+    if (lines.length < 2) return null;
+
+    /* 2) 键值对优先："key: value" / "key：value"（值里可能含逗号，需先于 CSV 判断） */
+    var kvRe = /^([^:：]{1,24})[:：]\s*(.+)$/;
+    var kv = [];
+    lines.forEach(function (l) {
+      var m = l.match(kvRe);
+      if (m && m[1].trim() && m[2].trim()) kv.push([m[1].trim(), m[2].trim()]);
+    });
+    if (kv.length >= 2 && kv.length / lines.length >= 0.7) {
+      return { type: 'table', table: { title: '粘贴指标', headers: ['指标', '值'], rows: kv }, isKv: true };
+    }
+
+    /* 3) 分隔符表格：Tab > 逗号 > 多空格 */
+    function isKvLike(line) { return kvRe.test(line); }
+    function splitCells(line) {
+      if (line.indexOf('\t') !== -1) return line.split('\t').map(function (c) { return c.trim(); });
+      if (line.indexOf(',') !== -1 && !isKvLike(line) && line.split(',').length >= 2) {
+        return line.split(',').map(function (c) { return c.trim(); });
+      }
+      var m = line.match(/\S+/g);
+      return m || [line];
+    }
+    var rows = lines.map(splitCells);
+    var widths = rows.map(function (r) { return r.length; });
+    var common = Math.max.apply(null, widths);
+    var consistentRatio = widths.filter(function (w) { return w === common; }).length / widths.length;
+    if (common >= 2 && consistentRatio >= 0.7) {
+      var hasHeader = isHeaderLike(rows[0]);
+      return {
+        type: 'table',
+        table: {
+          title: hasHeader ? '粘贴数据（' + rows[0][0] + '…）' : '粘贴数据',
+          headers: hasHeader ? rows[0] : [],
+          rows: hasHeader ? rows.slice(1) : rows
+        }
+      };
+    }
+
+    return null;
+  }
+
+  /* JSON 对象/数组 → 表格 */
+  function objToTable(obj) {
+    var rows = [];
+    Object.keys(obj).forEach(function (k) {
+      var v = obj[k];
+      if (v !== null && typeof v === 'object') v = JSON.stringify(v);
+      rows.push([k, String(v)]);
+    });
+    return rows.length ? { title: 'JSON 数据', headers: ['键', '值'], rows: rows } : null;
+  }
+  function jsonArrayToTable(arr) {
+    if (!arr.length || typeof arr[0] !== 'object' || arr[0] === null) return null;
+    var headers = [];
+    arr.forEach(function (o) { Object.keys(o).forEach(function (k) { if (headers.indexOf(k) === -1) headers.push(k); }); });
+    var rows = arr.map(function (o) {
+      return headers.map(function (h) {
+        var v = o[h];
+        if (v !== null && typeof v === 'object') v = JSON.stringify(v);
+        return v === undefined ? '' : String(v);
+      });
+    });
+    return { title: 'JSON 数组', headers: headers, rows: rows };
+  }
+
+  /* 键值表 → 核心指标卡 */
+  function kvToMetrics(kvRows) {
+    var out = [];
+    var re = /消耗|金额|gmv|核销|订单|退款|roi|cpa|成交|曝光|点击|客单|预算|费用/i;
+    kvRows.forEach(function (r) {
+      if (!re.test(r[0])) return;
+      var n = parseFloat(String(r[1]).replace(/[^\d.\-]/g, ''));
+      if (!isNaN(n)) out.push({ key: r[0], value: n, source: '粘贴数据' });
+    });
+    return out;
+  }
+
+  /* 合并一个表格进实时数据 */
+  function mergeTable(tbl) {
+    var p = liveData || {
+      source: 'paste-parse', capturedAt: new Date().toLocaleString('zh-CN'),
+      blobs: [], tables: [], metrics: []
+    };
+    p.tables = p.tables || [];
+    p.tables.unshift(tbl);
+    liveData = p;
+    try { localStorage.setItem(LIVE_KEY, JSON.stringify(p)); } catch (e) { /* 忽略 */ }
+    renderDataTab();
+  }
+
+  /* 智能导入入口 */
+  function importPasted(raw) {
+    pasteBoxOpen = true;
+    var parsed = parsePastedText(raw);
+    if (!parsed) {
+      lastParseStatus = '<span class="chip bad">无法识别，请检查内容（支持 JSON / CSV / 表格文字 / 键值对）</span>';
+      renderDataTab();
+      return;
+    }
+    if (parsed.type === 'json') {
+      var j = parsed.data;
+      if (j && Array.isArray(j.blobs)) {
+        lastParseStatus = '<span class="chip ok">已识别：采集器 JSON（' + j.blobs.length + ' 接口）</span>';
+        handleLivePayload(j);
+      } else if (Array.isArray(j)) {
+        var tblA = jsonArrayToTable(j);
+        if (tblA) {
+          lastParseStatus = '<span class="chip ok">已识别：JSON 数组 → 表格（' + tblA.rows.length + ' 行）</span>';
+          mergeTable(tblA);
+        } else { lastParseStatus = '<span class="chip bad">JSON 数组无法转表格</span>'; }
+      } else if (j && typeof j === 'object') {
+        var tblO = objToTable(j);
+        if (tblO) {
+          lastParseStatus = '<span class="chip ok">已识别：JSON 对象 → 键值表（' + tblO.rows.length + ' 项）</span>';
+          mergeTable(tblO);
+        } else { lastParseStatus = '<span class="chip bad">JSON 对象为空</span>'; }
+      } else {
+        lastParseStatus = '<span class="chip bad">JSON 内容为空</span>';
+      }
+      renderDataTab();
+      return;
+    }
+    /* table 类型 */
+    var t = parsed.table;
+    var p2 = liveData || {
+      source: 'paste-parse', capturedAt: new Date().toLocaleString('zh-CN'),
+      blobs: [], tables: [], metrics: []
+    };
+    p2.tables = p2.tables || [];
+    p2.tables.unshift(t);
+    if (parsed.isKv) {
+      var ms = kvToMetrics(t.rows);
+      if (ms.length) {
+        p2.metrics = (p2.metrics || []).concat(ms);
+      }
+    }
+    liveData = p2;
+    try { localStorage.setItem(LIVE_KEY, JSON.stringify(p2)); } catch (e) { /* 忽略 */ }
+    lastParseStatus = '<span class="chip ok">已识别：' + (parsed.isKv ? '键值对指标（' + t.rows.length + ' 项' + (kvToMetrics(t.rows).length ? '，' + kvToMetrics(t.rows).length + ' 项生成指标卡' : '') + '）' : '表格（' + t.rows.length + ' 行 × ' + (t.headers.length || t.rows[0].length) + ' 列）') + '</span>';
+    renderDataTab();
+    toast('✅ 已导入');
+  }
+
   /* ---- 数据来源横幅 + 粘贴导入 ---- */
   function renderSourceBar() {
     var h = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;background:var(--card);border:1px solid var(--line);border-radius:9px">';
     h += '<span style="font-size:13px">📡</span>';
     if (liveData) {
       h += '<span class="chip ok">实时抓取数据</span>';
-      h += '<span class="hint" style="font-size:11.5px">' + escHtml((liveData.capturedAt || '') + ' · ' + (liveData.blobs ? liveData.blobs.length : 0) + ' 个数据接口') + '</span>';
+      h += '<span class="hint" style="font-size:11.5px">' + escHtml((liveData.capturedAt || '') + ' · ' + (liveData.blobs ? liveData.blobs.length : 0) + ' 个数据接口' + (liveData.tables ? ' · ' + liveData.tables.length + ' 个表格' : '')) + '</span>';
       h += '<button class="btn-sm" id="dycsClearBtn" style="margin-left:auto">清除实时数据</button>';
     } else {
       h += '<span class="chip mid">示例数据</span>';
-      h += '<span class="hint" style="font-size:11.5px">安装油猴脚本后，可在抖音来客后台一键抓取真实数据注入本页（见 README）</span>';
+      h += '<span class="hint" style="font-size:11.5px">安装油猴脚本可自动抓取后台数据；也可直接用 AI 浏览器（如 Tabbit）复制数据粘贴导入</span>';
     }
     h += '<button class="btn-sm" id="dycsPasteBtn">' + (liveData ? '重新导入' : '粘贴抓取数据') + '</button>';
     h += '</div>';
-    h += '<div id="dycsPasteBox" style="display:none;margin-bottom:14px">' +
-      '<textarea id="dycsPasteInput" rows="5" placeholder="将油猴脚本「复制 JSON」得到的内容粘贴到这里，点击导入……" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:ui-monospace,monospace;font-size:11.5px;background:#fff"></textarea>' +
-      '<div style="display:flex;gap:8px;margin-top:8px"><button class="btn-sm" id="dycsImportBtn">导入</button>' +
-      '<span class="hint">也支持 URL 注入：?data=base64 或 #data=base64（油猴脚本「注入 Copy Studio」自动使用）</span></div>' +
+    h += '<div id="dycsPasteBox" style="display:' + (pasteBoxOpen ? '' : 'none') + ';margin-bottom:14px">' +
+      '<textarea id="dycsPasteInput" rows="6" placeholder="粘贴任意数据，自动识别格式：\n· 油猴脚本复制的 JSON\n· 从后台页面复制的表格文字 / CSV（Tab、逗号或空格分隔）\n· 指标键值对（如：消耗金额：¥1,769.78）\n· AI 浏览器（Tabbit 等）复制的任何表格" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:ui-monospace,monospace;font-size:11.5px;background:#fff"></textarea>' +
+      '<div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">' +
+      '<button class="btn-sm" id="dycsImportBtn">导入（自动识别）</button>' +
+      '<span class="hint" id="dycsParseStatus">' + (lastParseStatus || '') + '</span></div>' +
+      '<div class="hint" style="margin-top:6px">也支持 URL 注入：?data=base64 或 #data=base64（油猴脚本「注入 Copy Studio」自动使用）</div>' +
       '</div>';
     return h;
   }
@@ -422,18 +593,14 @@
   function bindLiveUI() {
     var pb = document.getElementById('dycsPasteBtn');
     if (pb) pb.addEventListener('click', function () {
-      var box = document.getElementById('dycsPasteBox');
-      box.style.display = box.style.display === 'none' ? '' : 'none';
+      pasteBoxOpen = !pasteBoxOpen;
+      renderDataTab();
     });
     var ib = document.getElementById('dycsImportBtn');
     if (ib) ib.addEventListener('click', function () {
       var t = document.getElementById('dycsPasteInput').value.trim();
       if (!t) { toast('请先粘贴数据'); return; }
-      try {
-        var p = JSON.parse(t);
-        if (handleLivePayload(p)) toast('✅ 已导入抓取数据');
-        else toast('数据格式不正确（缺少 blobs 数组）');
-      } catch (e) { toast('❌ JSON 解析失败，请检查粘贴内容'); }
+      importPasted(t);
     });
     var cb = document.getElementById('dycsClearBtn');
     if (cb) cb.addEventListener('click', clearLive);
@@ -445,6 +612,12 @@
     if (d && d.type === 'DYCS_DATA' && d.data) {
       if (handleLivePayload(d.data)) {
         toast('✅ 已接收实时抓取数据（' + (d.data.blobs ? d.data.blobs.length : 0) + ' 个接口）');
+        /* 回 ACK 通知采集器停止重试 */
+        if (d.token && e.source) {
+          try {
+            e.source.postMessage({ type: 'DYCS_ACK', token: d.token, source: 'dycs-studio' }, '*');
+          } catch (err) { /* ignore */ }
+        }
       }
     }
   });

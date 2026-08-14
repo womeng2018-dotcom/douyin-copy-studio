@@ -174,7 +174,11 @@
   }
 
   /* ---------- 悬浮面板 ---------- */
-  var panelEl = null, listEl = null, countEl = null;
+  var panelEl = null, listEl = null, countEl = null, hintEl = null;
+
+  function setHint(msg) {
+    if (hintEl) hintEl.textContent = msg;
+  }
 
   function updatePanel() {
     if (!panelEl) return;
@@ -242,6 +246,7 @@
     document.body.appendChild(panelEl);
     listEl = panelEl.querySelector('.dycs-body');
     countEl = panelEl.querySelector('.dycs-count');
+    hintEl = panelEl.querySelector('.dycs-hint');
 
     panelEl.querySelector('.dycs-fab').addEventListener('click', function () {
       panelEl.classList.toggle('open');
@@ -250,13 +255,17 @@
       var btn = e.target.closest('[data-act]');
       if (!btn) return;
       var act = btn.dataset.act;
-      if (act === 'clear') { blobs = []; updatePanel(); }
-      else if (act === 'tables') {
+      if (act === 'clear') {
+        blobs = [];
+        setHint('已清空采集数据');
+        updatePanel();
+      } else if (act === 'tables') {
         var n = collectTables();
-        alert('已采集 ' + n + ' 个表格（计入注入数据）');
+        setHint('✅ 已采集 ' + n + ' 个页面表格，可点「注入 Copy Studio」');
       } else if (act === 'copy') {
+        var cnt = payload().blobs.length;
         copyPayload(JSON.stringify(payload()));
-        alert('已复制 JSON（' + payload().blobs.length + ' 个接口）。\n请到 Copy Studio 数据分析页，粘贴到「粘贴抓取数据」输入框并点击导入。');
+        setHint('✅ 已复制 JSON（' + cnt + ' 个接口），请到 Copy Studio 数据分析页「粘贴抓取数据」导入');
       } else if (act === 'inject') {
         injectToStudio();
       }
@@ -305,28 +314,44 @@
     });
   }
 
-  /* ---------- 注入 Copy Studio ---------- */
+  /* ---------- 注入 Copy Studio（重试 + ACK 确认，不阻塞页面） ---------- */
   function injectToStudio() {
     var p = payload();
     if (!p.blobs.length && !p.tables.length) {
-      alert('还没有采集到数据。请先在抖音来客后台打开「经营概览 / 数据报表 / 投放分析」等页面，再回来点注入。');
+      setHint('还没有采集到数据。请先打开「经营概览 / 数据报表 / 投放分析」等页面。');
       return;
     }
-    var win = window.open(COPY_STUDIO_URL, '_blank');
-    // 等待目标页加载后 postMessage（跨域安全：目标页自行校验数据）
-    var sent = false;
-    var trySend = function () {
-      if (sent) return;
-      try {
-        win.postMessage({ type: 'DYCS_DATA', data: p, source: 'douyin-laike-collector' }, '*');
-        sent = true;
-      } catch (e) { /* ignore */ }
+    var token = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    var win = null;
+    try { win = window.open(COPY_STUDIO_URL, '_blank'); } catch (e) { win = null; }
+
+    var attempts = 0;
+    var timer = setInterval(function () {
+      attempts++;
+      if (win && !win.closed) {
+        try {
+          win.postMessage({ type: 'DYCS_DATA', data: p, source: 'douyin-laike-collector', token: token }, '*');
+        } catch (e) { /* 目标页尚未就绪，继续重试 */ }
+      }
+      if (attempts >= 20) {
+        clearInterval(timer);
+        setHint('⚠️ 已重试 20 次未收到确认。请到数据分析页「粘贴抓取数据」手动导入（JSON 已复制到剪贴板）。');
+      }
+    }, 1000);
+
+    /* 收到 Copy Studio 的 ACK 后停止重试 */
+    var ackHandler = function (e) {
+      if (e.data && e.data.type === 'DYCS_ACK' && e.data.token === token) {
+        clearInterval(timer);
+        window.removeEventListener('message', ackHandler);
+        setHint('✅ 已成功注入 Copy Studio（' + p.blobs.length + ' 个接口' + (p.tables.length ? ' + ' + p.tables.length + ' 个表格' : '') + '）');
+      }
     };
-    setTimeout(trySend, 1500);
-    setTimeout(trySend, 3000);
-    // 兜底：复制到剪贴板
+    window.addEventListener('message', ackHandler);
+
+    /* 兜底：复制到剪贴板 */
     copyPayload(JSON.stringify(p));
-    alert('已尝试自动注入 Copy Studio（新标签页）。\n若页面未收到数据，剪贴板里已复制 JSON，请到数据分析页「粘贴抓取数据」导入。');
+    setHint('正在注入 Copy Studio…（若新标签页已打开，请等待几秒）');
   }
 
   function copyPayload(text) {
