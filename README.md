@@ -43,7 +43,14 @@
 ### 4. 交付验收 Checklist
 11 项验收清单，勾选状态本地保存，制作团队自审与投流负责人复核共用。
 
-### 5. 导出与历史
+### 5. 视频文案提取（需提取服务）
+粘贴抖音/小红书/B站/YouTube 链接或上传本地视频，优先提取字幕轨道，无字幕时走语音识别（FunASR / faster-whisper），再经七层后处理输出文案。**提取需要独立后端服务**（纯静态 GitHub Pages 无法直接处理视频），页面内提供三种用法引导：
+
+1. **本地使用**：`bash start-local.sh` → 浏览器打开 `http://127.0.0.1:8765`（页面与 API 同源）
+2. **云端部署（推荐）**：页面内「一键部署到 Render」按钮，免费额度约 5-10 分钟完成，之后任何设备可用
+3. **已有服务**：在「提取服务配置」填入 API 地址 → 保存 → 测试连接
+
+### 6. 导出与历史
 - 复制单条口播 / 复制整条 / 复制全部变体
 - 一键导出 **Markdown 交付单**（含分镜表格与合规说明），可直接发给制作团队
 - 最近 20 次生成记录保存在本机浏览器
@@ -84,17 +91,26 @@ Top 10% 素材 → 主计划放量 + 再次变体
 
 ```
 copy-studio/
-├── index.html              # 主页面（四个页签）
+├── index.html              # 主页面（七个页签）
+├── standalone.html         # 单文件版（内联全部 CSS/JS，可离线使用）
 ├── css/
 │   └── app.css             # 响应式样式
 ├── js/
 │   ├── data.js             # 命名空间入口
-│   ├── data-category.js    # 7 个品类预设
+│   ├── data-category.js    # 7 个品类预设（美发/美容/美甲/餐饮/教培/健身/家装/足浴）
 │   ├── data-lines.js       # 钩子库、句式库、标题话题库
 │   ├── data-compliance.js  # 三级红线词库与替换词典
 │   ├── data-brief.js       # Brief 速查内容与验收清单
 │   ├── engine.js           # 生成引擎 + 合规扫描器
-│   └── app.js              # 界面交互
+│   ├── app.js              # 界面交互
+│   ├── extract-tab.js      # 视频提取 Tab（对接提取服务）
+│   ├── rewrite-tab.js      # 文案改写 Tab（Humanizer-zh / ai-copywriter / CopyGPT）
+│   ├── data-analysis.js    # 数据分析 Tab（足浴·SPA 后台数据洞察）
+│   └── plan-generator.js   # 运营计划生成器（数据分析板块）
+├── server/
+│   ├── video-extract.py    # 视频提取后端（字幕提取 + FunASR/faster-whisper + 七层后处理）
+│   ├── Dockerfile          # 云端 Docker 镜像
+│   └── requirements.txt
 ├── docs/
 │   ├── growth-os.md        # 增长操作系统（顶层方法论）
 │   ├── material-models.md  # 素材5模型实验模板

@@ -126,7 +126,7 @@
 
   function renderResults(cfg, list) {
     var goalMap = { groupbuy: '团购核销', traffic: '门店引流', brand: '品牌曝光' };
-    var styleMap = { oral: '口语化', promo: '促销感', review: '测评探店', story: '剧情反转' };
+    var styleMap = { oral: '口语化', promo: '促销感', review: '测评探店', story: '剧情反转', dialect: '方言口语' };
     $('resultMeta').innerHTML =
       '<span class="chip cyan">' + DS.categories[cfg.category].name + '</span>' +
       '<span class="chip">' + goalMap[cfg.goal] + '</span>' +

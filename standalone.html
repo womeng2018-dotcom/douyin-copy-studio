@@ -5,118 +5,135 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>抖音来客投流文案工作台 · Copy Studio（单文件版）</title>
 <meta name="description" content="基于《抖音来客投流素材需求说明书》构建的本地生活投流文案生成与合规自检工具">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%236b7fa3'/%3E%3Ctext x='16' y='22.5' font-size='17' text-anchor='middle' fill='%23fff' font-family='PingFang SC,Microsoft YaHei,sans-serif' font-weight='700'%3E投%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#f5f6f8;
+  --bg:#f4f2ec;
   --card:#ffffff;
-  --line:#e6e8ec;
-  --text:#1a1c22;
-  --text-2:#5b6070;
-  --muted:#8b90a0;
-  --pri:#fe2c55;
-  --pri-dark:#d81e44;
-  --cyan:#0fb8c9;
-  --ok:#12a150;
-  --warn:#e07b00;
-  --danger:#e0224a;
-  --info:#0b7ac9;
-  --radius:12px;
-  --shadow:0 1px 3px rgba(20,24,40,.06),0 8px 24px rgba(20,24,40,.05);
+  --line:#e4e0d6;
+  --line-soft:#ece8dd;
+  --text:#2d3a4a;
+  --text-2:#5a6675;
+  --text-3:#8a94a3;
+  --muted:#8a94a3;
+  --pri:#6b7fa3;
+  --pri-soft:#e8ecf2;
+  --pri-dark:#4a5c78;
+  --cyan:#7a8ca6;
+  --ok:#7a8a6b;
+  --warn:#c49a6c;
+  --danger:#b08088;
+  --info:#7a8ca6;
+  --beige:#efe8dc;
+  --border:#e4e0d6;
+  --radius:10px;
+  --radius-sm:7px;
+  --shadow:0 1px 2px rgba(45,58,74,.04),0 4px 12px rgba(45,58,74,.04);
+  --shadow-sm:0 1px 2px rgba(45,58,74,.03);
+  --font-sans:-apple-system,BlinkMacSystemFont,"Inter","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{
-  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
-  background:var(--bg);color:var(--text);line-height:1.65;font-size:14px;
+  font-family:var(--font-sans);
+  background:var(--bg);color:var(--text);line-height:1.7;font-size:14px;
   -webkit-font-smoothing:antialiased;
+  letter-spacing:.01em;
 }
-.wrap{max-width:1340px;margin:0 auto;padding:0 20px}
+a{color:var(--pri);text-decoration:none}
+.wrap{max-width:1340px;margin:0 auto;padding:0 24px}
 
 /* ---------- 顶栏 ---------- */
-.topbar{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50}
-.topbar-inner{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 20px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:12px}
+.topbar{background:rgba(255,255,255,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50}
+.topbar-inner{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 24px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:14px}
 .logo{
-  width:40px;height:40px;border-radius:11px;flex:none;
-  background:linear-gradient(135deg,var(--pri),#ff6b3d);
-  color:#fff;font-weight:700;font-size:17px;
+  width:36px;height:36px;border-radius:9px;flex:none;
+  background:var(--pri);
+  color:#fff;font-weight:600;font-size:15px;font-family:var(--font-sans);
   display:flex;align-items:center;justify-content:center;
+  letter-spacing:.02em;
 }
-.brand h1{font-size:17px;font-weight:650;letter-spacing:-.2px}
-.brand p{font-size:12px;color:var(--muted)}
-.tabs{display:flex;gap:4px;background:#f0f1f4;padding:4px;border-radius:10px}
+.brand h1{font-size:16px;font-weight:600;letter-spacing:-.01em}
+.brand p{font-size:11.5px;color:var(--muted);margin-top:2px}
+.tabs{display:flex;gap:2px;background:var(--bg);padding:3px;border-radius:8px}
 .tab{
-  border:0;background:transparent;padding:7px 15px;border-radius:7px;
-  font-size:13.5px;color:var(--text-2);cursor:pointer;font-weight:500;
-  font-family:inherit;transition:.15s;white-space:nowrap;
+  border:0;background:transparent;padding:7px 14px;border-radius:6px;
+  font-size:13px;color:var(--text-2);cursor:pointer;font-weight:500;
+  font-family:inherit;transition:.15s;white-space:nowrap;letter-spacing:.01em;
 }
 .tab:hover{color:var(--text)}
-.tab.active{background:#fff;color:var(--pri);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.tab.active{background:#fff;color:var(--pri-dark);box-shadow:var(--shadow-sm);font-weight:600}
 
 /* ---------- 面板 ---------- */
-.panel{display:none;padding:24px 0 60px}
+.panel{display:none;padding:28px 0 60px}
 .panel.active{display:block}
-.layout{display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start}
+.layout{display:grid;grid-template-columns:340px 1fr;gap:24px;align-items:start}
 
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:20px}
-.card-title{font-size:15px;font-weight:650;margin-bottom:4px}
-.sub-title{font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:12px}
-.hint{font-size:12.5px;color:var(--muted);line-height:1.6}
-.sep{border:0;border-top:1px solid var(--line);margin:18px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow-sm);margin-bottom:20px}
+.card-title{font-size:15px;font-weight:600;margin-bottom:4px;letter-spacing:-.005em}
+.sub-title{font-size:12.5px;font-weight:600;color:var(--text-2);margin-bottom:14px;letter-spacing:.01em}
+.hint{font-size:12px;color:var(--muted);line-height:1.7}
+.sep{border:0;border-top:1px solid var(--line-soft);margin:18px 0}
 
 /* ---------- 表单 ---------- */
-.config{position:sticky;top:82px;max-height:calc(100vh - 104px);overflow-y:auto}
+.config{position:sticky;top:84px;max-height:calc(100vh - 106px);overflow-y:auto}
 .field{margin-bottom:14px}
-.field label{display:block;font-size:12.5px;font-weight:600;color:var(--text-2);margin-bottom:6px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;letter-spacing:.02em}
 input,select,textarea{
-  width:100%;padding:8px 11px;border:1px solid var(--line);border-radius:8px;
-  font-size:13.5px;font-family:inherit;color:var(--text);background:#fff;transition:.15s;
+  width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:7px;
+  font-size:13px;font-family:inherit;color:var(--text);background:#fff;transition:.15s;
 }
-input:focus,select:focus,textarea:focus{outline:0;border-color:var(--pri);box-shadow:0 0 0 3px rgba(254,44,85,.09)}
-input::placeholder,textarea::placeholder{color:#b8bcc8}
-textarea{resize:vertical;line-height:1.7}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--pri);box-shadow:0 0 0 3px rgba(107,127,163,.1)}
+input::placeholder,textarea::placeholder{color:#b0a898}
+textarea{resize:vertical;line-height:1.75}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .grid2 .field{margin-bottom:4px}
 
-.seg{display:flex;gap:6px;background:#f3f4f7;padding:4px;border-radius:9px}
+.seg{display:flex;gap:4px;background:var(--beige);padding:3px;border-radius:8px}
 .seg.wrap-seg{flex-wrap:wrap}
 .seg button{
-  flex:1;border:0;background:transparent;padding:7px 8px;border-radius:6px;
-  font-size:12.5px;color:var(--text-2);cursor:pointer;font-family:inherit;font-weight:500;
+  flex:1;border:0;background:transparent;padding:7px 8px;border-radius:5px;
+  font-size:12px;color:var(--text-2);cursor:pointer;font-family:inherit;font-weight:500;
   transition:.15s;white-space:nowrap;
 }
 .seg.wrap-seg button{flex:1 1 44%}
 .seg button:hover{color:var(--text)}
-.seg button.on{background:#fff;color:var(--pri);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.07)}
+.seg button.on{background:#fff;color:var(--pri-dark);font-weight:600;box-shadow:var(--shadow-sm)}
 
 .tag-warn{
-  display:inline-block;font-size:10.5px;background:#fff3e6;color:var(--warn);
-  padding:1px 7px;border-radius:5px;font-weight:600;margin-left:4px;vertical-align:middle;
+  display:inline-block;font-size:10px;background:#f5ede0;color:var(--warn);
+  padding:1px 7px;border-radius:4px;font-weight:600;margin-left:4px;vertical-align:middle;letter-spacing:.02em;
 }
 
 /* ---------- 按钮 ---------- */
 .btn-main{
-  width:100%;padding:11px;border:0;border-radius:9px;margin-top:6px;
-  background:linear-gradient(135deg,var(--pri),#ff5a3d);color:#fff;
-  font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;
+  width:100%;padding:11px 16px;border:0;border-radius:8px;margin-top:8px;
+  background:var(--pri);color:#fff;
+  font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;
+  letter-spacing:.01em;
 }
-.btn-main:hover{opacity:.92;transform:translateY(-1px)}
+.btn-main:hover{background:var(--pri-dark);transform:translateY(-1px)}
 .btn-ghost{
-  width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;margin-top:8px;
+  width:100%;padding:9px 14px;border:1px solid var(--line);border-radius:8px;margin-top:8px;
   background:#fff;color:var(--text-2);font-size:13px;cursor:pointer;font-family:inherit;transition:.15s;
 }
 .btn-ghost:hover{border-color:var(--pri);color:var(--pri)}
 .btn-sm{
-  padding:6px 13px;border:1px solid var(--line);border-radius:7px;background:#fff;
-  color:var(--text-2);font-size:12.5px;cursor:pointer;font-family:inherit;transition:.15s;white-space:nowrap;
+  padding:6px 13px;border:1px solid var(--line);border-radius:6px;background:#fff;
+  color:var(--text-2);font-size:12.5px;cursor:pointer;font-family:inherit;transition:.15s;white-space:nowrap;font-weight:500;
 }
 .btn-sm:hover:not(:disabled){border-color:var(--pri);color:var(--pri)}
-.btn-sm:disabled{opacity:.45;cursor:not-allowed}
+.btn-sm:disabled{opacity:.4;cursor:not-allowed}
 
 /* ---------- 结果区 ---------- */
 .results-head{
   display:flex;justify-content:space-between;align-items:flex-start;gap:16px;
   background:#fff;border:1px solid var(--line);border-radius:var(--radius);
-  padding:16px 20px;margin-bottom:16px;box-shadow:var(--shadow);flex-wrap:wrap;
+  padding:16px 20px;margin-bottom:16px;box-shadow:var(--shadow-sm);flex-wrap:wrap;
 }
 .head-actions{display:flex;gap:8px}
 
@@ -124,81 +141,91 @@ textarea{resize:vertical;line-height:1.7}
   background:#fff;border:1px dashed var(--line);border-radius:var(--radius);
   padding:70px 20px;text-align:center;color:var(--muted);
 }
-.empty-icon{font-size:34px;margin-bottom:10px}
-.empty-state p{font-size:14px;color:var(--text-2);font-weight:500}
-.empty-state span{font-size:12.5px}
+.empty-icon{font-size:28px;margin-bottom:12px;opacity:.5}
+.empty-state p{font-size:13.5px;color:var(--text-2);font-weight:500}
+.empty-state span{font-size:12px}
 
-.variant{background:#fff;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:16px;overflow:hidden;box-shadow:var(--shadow)}
-.v-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);background:#fafbfc;flex-wrap:wrap}
+.variant{background:#fff;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:16px;overflow:hidden;box-shadow:var(--shadow-sm)}
+.v-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line-soft);background:var(--beige);flex-wrap:wrap}
 .v-badge{
-  width:26px;height:26px;border-radius:7px;background:var(--pri);color:#fff;
-  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none;
+  width:26px;height:26px;border-radius:6px;background:var(--pri);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;flex:none;
+  letter-spacing:.02em;
 }
-.v-title{font-size:14px;font-weight:600;flex:1;min-width:120px}
-.v-meta{font-size:11.5px;color:var(--muted)}
-.chip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;background:#f0f1f4;color:var(--text-2);margin-right:5px}
-.chip.ok{background:#e6f7ee;color:var(--ok)}
-.chip.bad{background:#fdeaee;color:var(--danger)}
-.chip.mid{background:#fff3e6;color:var(--warn)}
-.chip.cyan{background:#e4f7f9;color:#0a8b98}
+.v-title{font-size:13.5px;font-weight:600;flex:1;min-width:120px;letter-spacing:-.005em}
+.v-meta{font-size:11px;color:var(--muted);letter-spacing:.01em}
+.chip{display:inline-block;font-size:10.5px;padding:2px 8px;border-radius:20px;background:var(--bg);color:var(--text-2);margin-right:5px;font-weight:500}
+.chip.ok{background:#eef1ea;color:var(--ok)}
+.chip.bad{background:#f5eeee;color:var(--danger)}
+.chip.mid{background:#f5ede0;color:var(--warn)}
+.chip.cyan{background:#e8ecf2;color:var(--cyan)}
 
 .v-body{padding:16px 18px}
 .block{margin-bottom:16px}
-.block-label{font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.4px;margin-bottom:7px;text-transform:uppercase}
-.script-line{display:flex;gap:10px;padding:7px 0;border-bottom:1px dashed #eef0f3;font-size:13.5px;line-height:1.75}
+.block-label{font-size:10.5px;font-weight:700;color:var(--muted);letter-spacing:.08em;margin-bottom:7px;text-transform:uppercase}
+.script-line{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #ece8dd;font-size:13px;line-height:1.75}
 .script-line:last-child{border-bottom:0}
 .tcode{
-  flex:none;width:52px;font-size:11px;color:var(--pri);font-weight:700;
-  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;padding-top:3px;
+  flex:none;width:48px;font-size:10.5px;color:var(--pri);font-weight:600;
+  font-family:var(--font-mono);padding-top:3px;
 }
 
-table.shots{width:100%;border-collapse:collapse;font-size:12.5px}
+table.shots{width:100%;border-collapse:collapse;font-size:12px}
 table.shots th{
-  text-align:left;padding:8px 10px;background:#f7f8fa;color:var(--text-2);
-  font-weight:600;font-size:11.5px;border-bottom:1px solid var(--line);
+  text-align:left;padding:8px 10px;background:var(--beige);color:var(--text-2);
+  font-weight:600;font-size:11px;border-bottom:1px solid var(--line);letter-spacing:.02em;
 }
-table.shots td{padding:8px 10px;border-bottom:1px solid #f0f1f4;vertical-align:top;line-height:1.6}
+table.shots td{padding:8px 10px;border-bottom:1px solid #ece8dd;vertical-align:top;line-height:1.65;font-size:12.5px}
 table.shots tr:last-child td{border-bottom:0}
-table.shots .c-time{color:var(--pri);font-weight:600;white-space:nowrap;font-family:ui-monospace,Menlo,monospace;font-size:11px}
+table.shots .c-time{color:var(--pri);font-weight:600;white-space:nowrap;font-family:var(--font-mono);font-size:10.5px}
 table.shots .c-sub{color:var(--text-2)}
 
-.kv{display:flex;gap:8px;font-size:13px;padding:5px 0;flex-wrap:wrap}
+.kv{display:flex;gap:8px;font-size:12.5px;padding:5px 0;flex-wrap:wrap}
 .kv b{color:var(--text-2);font-weight:600;flex:none}
-.topics-line{color:var(--cyan);font-size:12.5px;font-weight:500}
-.v-actions{display:flex;gap:8px;padding:12px 18px;border-top:1px solid var(--line);background:#fafbfc;flex-wrap:wrap}
+.topics-line{color:var(--cyan);font-size:12px;font-weight:500}
+.v-actions{display:flex;gap:8px;padding:12px 18px;border-top:1px solid var(--line-soft);background:var(--beige);flex-wrap:wrap}
 
 /* ---------- 合规 ---------- */
-.risk-box{border-radius:9px;padding:12px 14px;font-size:12.5px;margin-top:12px}
-.risk-box.pass{background:#f0faf4;border:1px solid #c9ecd8;color:#0d7a3d}
-.risk-box.fail{background:#fef4f6;border:1px solid #f7d4dc;color:#a8153a}
+.risk-box{border-radius:8px;padding:12px 14px;font-size:12.5px;margin-top:12px}
+.risk-box.pass{background:#eef1ea;border:1px solid #d5dccd;color:#4a5a3a}
+.risk-box.fail{background:#f5eeee;border:1px solid #e0c8cc;color:#6a3a42}
 .risk-item{display:flex;gap:8px;padding:5px 0;align-items:flex-start;line-height:1.6}
 .lv{
-  flex:none;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;
-  color:#fff;margin-top:2px;letter-spacing:.3px;
+  flex:none;font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:4px;
+  color:#fff;margin-top:2px;letter-spacing:.06em;
 }
 .lv.P0{background:var(--danger)}.lv.P1{background:var(--warn)}.lv.P2{background:var(--info)}
 
-mark.hl{padding:1px 2px;border-radius:3px;font-weight:600}
-mark.hl.P0{background:#ffd7e0;color:#a8153a}
-mark.hl.P1{background:#ffe8c7;color:#8a4b00}
-mark.hl.P2{background:#d8ecfb;color:#08507f}
+mark.hl{padding:1px 3px;border-radius:3px;font-weight:600}
+mark.hl.P0{background:#e8d5d8;color:#8a4048}
+mark.hl.P1{background:#ece2d0;color:#8a6a30}
+mark.hl.P2{background:#d8e0ec;color:#4a5c78}
 
 .check-actions{display:flex;align-items:center;gap:10px;margin:14px 0;flex-wrap:wrap}
-.score{font-size:12.5px;color:var(--text-2);font-weight:600}
+.score{font-size:12px;color:var(--text-2);font-weight:600}
 #checkResult .preview{
-  background:#fafbfc;border:1px solid var(--line);border-radius:9px;
-  padding:14px;font-size:13.5px;line-height:1.9;white-space:pre-wrap;margin-bottom:14px;
+  background:var(--beige);border:1px solid var(--line);border-radius:8px;
+  padding:14px;font-size:13px;line-height:1.9;white-space:pre-wrap;margin-bottom:14px;
 }
 
 /* ---------- Brief ---------- */
 .brief-sec{margin-bottom:26px}
-.brief-sec h3{font-size:14px;font-weight:650;margin-bottom:10px;padding-left:9px;border-left:3px solid var(--pri)}
-.brief-note{font-size:12.5px;color:var(--text-2);background:#f7f8fa;border-radius:8px;padding:9px 12px;margin-top:10px;line-height:1.65}
+.brief-sec h3{font-size:13.5px;font-weight:600;margin-bottom:10px;padding-left:10px;border-left:3px solid var(--pri);letter-spacing:-.005em}
+.brief-note{font-size:12px;color:var(--text-2);background:var(--beige);border-radius:7px;padding:10px 14px;margin-top:10px;line-height:1.7}
 .brief-sec ul{list-style:none}
-.brief-sec ul li{padding:5px 0 5px 18px;position:relative;font-size:13px;line-height:1.7}
-.brief-sec ul li::before{content:'';position:absolute;left:4px;top:13px;width:5px;height:5px;border-radius:50%;background:var(--pri)}
+.brief-sec ul li{padding:5px 0 5px 18px;position:relative;font-size:12.5px;line-height:1.7}
+.brief-sec ul li::before{content:'';position:absolute;left:4px;top:14px;width:5px;height:5px;border-radius:50%;background:var(--pri)}
+.brief-freq{float:right;font-size:11px;color:#c9a227;font-weight:600;letter-spacing:.05em;background:#fff8e1;border:1px solid #f0e0a8;border-radius:5px;padding:2px 8px}
+.brief-block{font-size:12px;line-height:1.7;border-radius:7px;padding:9px 12px;margin-top:8px}
+.brief-block .brief-tag{display:inline-block;font-size:10.5px;font-weight:600;margin-right:8px;letter-spacing:.02em}
+.brief-data{background:#e8f0fe;border-left:3px solid var(--pri)}
+.brief-data .brief-tag{color:var(--pri)}
+.brief-standard{background:#e8f5e9;border-left:3px solid #4caf50}
+.brief-standard .brief-tag{color:#2e7d32}
+.brief-boundary{background:#fff8e1;border-left:3px solid #ffc107}
+.brief-boundary .brief-tag{color:#c9a227}
 
-.cl-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid #f2f3f6;cursor:pointer;font-size:13.5px}
+.cl-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid #ece8dd;cursor:pointer;font-size:13px}
 .cl-item:last-child{border-bottom:0}
 .cl-item input{width:16px;height:16px;flex:none;margin-top:3px;accent-color:var(--pri);cursor:pointer}
 .cl-item.done span{color:var(--muted);text-decoration:line-through}
@@ -206,53 +233,118 @@ mark.hl.P2{background:#d8ecfb;color:#08507f}
 /* ---------- 历史 ---------- */
 .hist-item{
   display:flex;justify-content:space-between;align-items:center;gap:12px;
-  padding:12px 14px;border:1px solid var(--line);border-radius:9px;margin-bottom:9px;flex-wrap:wrap;
+  padding:12px 14px;border:1px solid var(--line);border-radius:8px;margin-bottom:9px;flex-wrap:wrap;
 }
-.hist-item h4{font-size:13.5px;font-weight:600}
-.hist-item p{font-size:12px;color:var(--muted)}
+.hist-item h4{font-size:13px;font-weight:600;letter-spacing:-.005em}
+.hist-item p{font-size:11.5px;color:var(--muted)}
 
 /* ---------- 页脚 & Toast ---------- */
-.footer{border-top:1px solid var(--line);background:#fff;padding:22px 0;font-size:12.5px;color:var(--text-2)}
-.footer .muted{color:var(--muted);font-size:12px;margin-top:4px}
+.footer{border-top:1px solid var(--line);background:#fff;padding:22px 0;font-size:12px;color:var(--text-2);margin-top:20px}
+.footer .muted{color:var(--muted);font-size:11.5px;margin-top:4px}
 
 .toast{
   position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);
-  background:#1a1c22;color:#fff;padding:10px 20px;border-radius:9px;font-size:13px;
-  opacity:0;transition:.25s;z-index:999;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.18);
+  background:var(--text);color:#fff;padding:10px 22px;border-radius:8px;font-size:12.5px;
+  opacity:0;transition:.25s;z-index:999;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.12);
 }
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+/* ---------- 顾客评价引用 ---------- */
+.kv-review{color:#7a5a20;background:#f8f0e0;padding:8px 12px;border-radius:6px;border-left:3px solid #c49a6c;margin-top:8px;font-size:13.5px;line-height:1.6}
+.kv-review b{color:#8a6a30}
+/* ---------- 自证标签 ---------- */
+.block-cert{background:#eef1ea;border:1px dashed #a8b898;border-radius:7px;padding:12px 14px;margin-top:12px}
+.cert-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.cert-tag{display:inline-flex;align-items:center;gap:4px;background:#eef1ea;color:#4a5a3a;border:1px solid #c8d4b4;border-radius:20px;padding:4px 12px;font-size:12.5px;font-weight:600}
+.cert-tag::before{content:'✓';font-size:11px}
+/* ---------- 核销保障 ---------- */
+.block-refund{background:#f0ede8;border:1px dashed #a898b8;border-radius:7px;padding:12px 14px;margin-top:12px}
+.block-refund .kv{background:none;padding:0;color:#4a3a5a;font-size:13.5px;line-height:1.6}
+
 /* ---------- 响应式 ---------- */
-@media (max-width:1040px){
+/* ===== 视频提取 ===== */
+.extract-grid{display:grid;grid-template-columns:380px 1fr;gap:20px;margin-top:16px}
+.extract-input .field{margin-bottom:12px}
+.extract-status{margin-top:14px;padding:10px 12px;background:var(--beige);border-radius:7px;border:1px solid var(--line);font-size:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.extract-output .results-head{padding:14px 18px}
+.extract-output .empty-state{margin-top:16px}
+.extract-output .empty-state p{font-size:13.5px}
+.extract-output .empty-state span{font-size:12px}
+
+@media (max-width:900px){
+  .extract-grid{grid-template-columns:1fr}
   .layout{grid-template-columns:1fr}
   .config{position:static;max-height:none}
 }
+.extract-settings details{background:var(--beige);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.extract-settings summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-2);letter-spacing:.01em}
+.extract-settings .settings-body{padding-top:10px}
+.extract-settings code{font-family:ui-monospace,monospace;font-size:11.5px;background:#fff;padding:2px 6px;border-radius:4px;border:1px solid var(--line)}
+
+/* ===== 提取服务部署引导 ===== */
+.extract-guide{margin-top:12px;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.extract-guide .eg-head{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--beige);font-size:12.5px;font-weight:600;color:var(--text);border-bottom:1px solid var(--line)}
+.extract-guide .eg-head .eg-state{margin-left:auto;font-weight:500}
+.extract-guide .eg-body{padding:4px 14px 12px;background:var(--card)}
+.extract-guide .eg-step{display:flex;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line-soft)}
+.extract-guide .eg-step:last-child{border-bottom:0}
+.extract-guide .eg-num{flex:none;width:20px;height:20px;border-radius:50%;background:var(--pri-soft);color:var(--pri-dark);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.extract-guide .eg-body-copy{font-size:12px;color:var(--text-2);line-height:1.75;flex:1;min-width:0}
+.extract-guide .eg-body-copy b{color:var(--text)}
+.extract-guide .eg-body-copy code{font-family:ui-monospace,monospace;font-size:11px;background:var(--beige);padding:1px 5px;border-radius:4px;border:1px solid var(--line)}
+.extract-guide .eg-actions{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+.extract-guide .eg-actions a{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;padding:5px 12px;border-radius:6px;text-decoration:none;background:var(--pri);color:#fff}
+.extract-guide .eg-actions a:hover{background:var(--pri-dark)}
+.extract-guide .eg-actions button{font-size:11.5px;font-weight:600;padding:5px 12px;border-radius:6px;border:1px solid var(--pri);background:transparent;color:var(--pri);cursor:pointer;font-family:inherit}
+.extract-guide .eg-actions button:hover{background:var(--pri-soft)}
+.extract-guide .eg-actions .eg-link-btn{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--card);color:var(--text-2);padding:5px 10px;border-radius:6px;font-size:11.5px;cursor:pointer;font-family:inherit;text-decoration:none}
+.extract-guide .eg-actions .eg-link-btn:hover{background:var(--beige)}
+.extract-guide .eg-note{font-size:11px;color:var(--text-3);margin-top:4px}
+.extract-guide .eg-ok{color:var(--ok);font-weight:600}
+.extract-guide .eg-bad{color:var(--danger);font-weight:600}
 @media (max-width:720px){
   .wrap{padding:0 14px}
   .topbar-inner{padding:12px 14px}
   .tabs{width:100%;overflow-x:auto}
-  .tab{flex:1;padding:7px 10px;font-size:12.5px}
-  .brand h1{font-size:15.5px}
+  .tab{flex:1;padding:7px 10px;font-size:12px}
+  .brand h1{font-size:15px}
   .grid2{grid-template-columns:1fr}
   .card{padding:16px}
   .results-head{padding:14px}
-  table.shots{font-size:11.5px}
+  table.shots{font-size:11px}
   table.shots th,table.shots td{padding:6px 7px}
-  .script-line{font-size:13px}
+  .script-line{font-size:12.5px}
 }
 
-/* ===== 顾客评价引用 ===== */
-.kv-review{color:#5a4a00;background:#fff7e0;padding:8px 12px;border-radius:6px;border-left:3px solid #e0a800;margin-top:8px;font-size:14px;line-height:1.5}
-.kv-review b{color:#8a6a00}
-/* ===== 自证标签 ===== */
-.block-cert{background:#f0f7f0;border:1px dashed #2a8a3a;border-radius:8px;padding:12px 14px;margin-top:12px}
-.cert-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-.cert-tag{display:inline-flex;align-items:center;gap:4px;background:#e8f5e9;color:#1a6a2a;border:1px solid #a8d8a8;border-radius:20px;padding:4px 12px;font-size:13px;font-weight:600}
-.cert-tag::before{content:'✓';font-size:12px}
-/* ===== 核销保障 ===== */
-.block-refund{background:#f5f0ff;border:1px dashed #7a4abf;border-radius:8px;padding:12px 14px;margin-top:12px}
-.block-refund .kv{background:none;padding:0;color:#4a2a7a;font-size:14px;line-height:1.5}
+/* ---------- 文案改写 ---------- */
+.rw-modes{margin:16px 0 12px}
+.rw-chain{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-2);margin:4px 0 16px;cursor:pointer;line-height:1.5}
+.rw-chain input{width:16px;height:16px;accent-color:var(--pri);cursor:pointer;flex:none}
+.rw-grid{display:grid;grid-template-columns:430px 1fr;gap:20px;margin-top:8px}
+.rw-config .field{margin-bottom:12px}
+.rw-params{padding:14px;background:var(--beige);border:1px solid var(--line);border-radius:8px;margin-bottom:14px}
+.rw-settings{margin-top:14px}
+.rw-settings details{background:var(--beige);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.rw-settings summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-2);letter-spacing:.01em}
+.rw-settings .settings-body{padding-top:10px}
+.rw-output .empty-state{margin-top:0}
 
+/* 对照展示 */
+.rw-compare{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.rw-col{background:var(--beige);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.rw-col-head{padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--text-2);background:#fff;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rw-col-head .rw-tag{font-size:10px;font-weight:600;padding:1px 8px;border-radius:20px;background:var(--pri-soft);color:var(--pri-dark);white-space:nowrap}
+.rw-col-head .rw-tag.after{background:#eef1ea;color:var(--ok)}
+.rw-col-body{padding:12px 14px;font-size:13px;line-height:1.85;white-space:pre-wrap;min-height:120px;word-break:break-word}
+.rw-col-body.marked{background:#fff}
+.rw-prompt{background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px;font-size:12px;line-height:1.8;white-space:pre-wrap;font-family:var(--font-mono);color:var(--text-2);max-height:440px;overflow:auto;word-break:break-word}
+.rw-note{font-size:12px;color:var(--text-2);background:var(--beige);border:1px solid var(--line);border-radius:7px;padding:10px 14px;margin-top:12px;line-height:1.7}
+.rw-note b{color:var(--pri-dark)}
+
+@media (max-width:900px){
+  .rw-grid{grid-template-columns:1fr}
+  .rw-compare{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -263,7 +355,7 @@ mark.hl.P2{background:#d8ecfb;color:#08507f}
       <span class="logo">投</span>
       <div>
         <h1>抖音来客投流文案工作台</h1>
-        <p>Creative Copy Studio · 依据《投流素材需求说明书 V1.0》</p>
+        <p>Copy Studio · 依据《投流素材需求说明书 V1.0》构建</p>
       </div>
     </div>
     <nav class="tabs" id="tabs">
@@ -271,6 +363,9 @@ mark.hl.P2{background:#d8ecfb;color:#08507f}
       <button class="tab" data-tab="check">红线自检</button>
       <button class="tab" data-tab="brief">Brief 速查</button>
       <button class="tab" data-tab="history">历史记录</button>
+      <button class="tab" data-tab="extract">视频提取</button>
+      <button class="tab" data-tab="rewrite">文案改写</button>
+      <button class="tab" data-tab="data">数据分析</button>
     </nav>
   </div>
 </header>
@@ -369,7 +464,9 @@ mark.hl.P2{background:#d8ecfb;color:#08507f}
         </div>
       </div>
       <div id="output" class="empty-state">
-        <div class="empty-icon">🎬</div>
+        <div class="empty-icon">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect x="3" y="6" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M26 11l5-3v12l-5-3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="8" cy="27" r="1.5" fill="currentColor"/><circle cx="14" cy="27" r="1.5" fill="currentColor"/></svg>
+        </div>
         <p>还没有生成内容</p>
         <span>建议先点「载入美发示例」体验完整效果</span>
       </div>
@@ -417,6 +514,260 @@ mark.hl.P2{background:#d8ecfb;color:#08507f}
     <div id="historyList"></div>
     <button class="btn-sm" id="clearHistory">清空历史</button>
   </div>
+</section>
+
+<!-- ============ 视频提取 ============ -->
+<section class="panel" id="tab-extract">
+  <div class="card">
+    <h2 class="card-title">视频文案提取</h2>
+    <p class="hint">粘贴抖音/小红书/B站/YouTube 视频链接，或上传本地视频文件。系统自动优先提取字幕轨道，无字幕时使用语音识别（FunASR → Whisper），经七层后处理输出高质量文案。</p>
+
+    <div class="extract-grid">
+      <!-- 左侧：输入 -->
+      <div class="extract-input">
+        <div class="field">
+          <label>输入方式</label>
+          <div class="seg" id="extractMode">
+            <button class="on" data-v="url">视频链接</button>
+            <button data-v="file">上传文件</button>
+          </div>
+        </div>
+
+        <div id="extractUrlField" class="field">
+          <label>视频链接</label>
+          <input id="extractUrl" placeholder="粘贴抖音/小红书/B站/YouTube 等视频链接">
+        </div>
+
+        <div id="extractFileField" class="field" style="display:none">
+          <label>上传视频/音频文件</label>
+          <input id="extractFile" type="file" accept="video/*,audio/*" style="padding:10px;font-size:12.5px">
+          <p class="hint" style="margin-top:4px">支持 MP4/MOV/MKV/AVI/M4A/MP3/WAV 等常见格式</p>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label>ASR 引擎</label>
+            <select id="extractEngine">
+              <option value="auto">自动（推荐）</option>
+              <option value="funasr">FunASR（中文最佳）</option>
+              <option value="faster-whisper">faster-whisper（多语言）</option>
+              <option value="whisper">openai-whisper（兜底）</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>语言</label>
+            <select id="extractLang">
+              <option value="zh">中文</option>
+              <option value="en">英文</option>
+              <option value="auto">自动识别</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>热词纠错 <span class="hint" style="margin-left:6px;font-weight:400">（逗号分隔，用于纠错品牌名/套餐名等）</span></label>
+          <input id="extractHotwords" placeholder="如：星悦造型,护理套餐,肩颈按摩">
+        </div>
+
+        <div class="grid2">
+          <div class="field"><label>品牌名</label><input id="extractBrand" placeholder="如：星悦造型"></div>
+          <div class="field"><label>商圈/区域</label><input id="extractArea" placeholder="如：静安大悦城"></div>
+        </div>
+
+        <div class="field">
+          <label>API Key（可选，用于 LLM 后处理纠偏）</label>
+          <input id="extractApiKey" type="password" placeholder="sk-..." style="font-family:ui-monospace,monospace;font-size:12px">
+        </div>
+
+        <div class="grid2">
+          <div class="field"><label>API Base URL（可选）</label><input id="extractApiBase" placeholder="https://token.sensenova.cn/v1"></div>
+          <div class="field"><label>模型（可选）</label><input id="extractLlmModel" placeholder="deepseek-v4-flash"></div>
+        </div>
+        <p class="hint" style="margin-top:4px">留空默认商汤 SenseNova 免费模型 <code>deepseek-v4-flash</code>（OpenAI 兼容接口）</p>
+
+        <button class="btn-main" id="extractBtn">开始提取</button>
+      </div>
+
+      <div id="extractStatus" class="extract-status" style="display:none;grid-column:1/-1"></div>
+
+      <!-- 右侧：结果 -->
+      <div class="extract-output">
+        <div class="results-head" style="margin-bottom:0">
+          <div>
+            <h2 class="card-title" id="extractResultTitle">提取结果</h2>
+            <p class="hint" id="extractResultMeta">等待输入……</p>
+          </div>
+          <div class="head-actions">
+            <button class="btn-sm" id="extractCopyBtn" disabled>复制文案</button>
+            <button class="btn-sm" id="extractSaveBtn" disabled>导出 Markdown</button>
+          </div>
+        </div>
+        <div id="extractOutput" class="empty-state">
+          <div class="empty-icon">
+            <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+              <path d="M15 3a12 12 0 100 24 12 12 0 000-24z" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M12 9l9 6-9 6V9z" fill="currentColor"/>
+            </svg>
+          </div>
+          <p>还没有提取内容</p>
+          <span>输入视频链接或上传文件后点击「开始提取」</span>
+        </div>
+        <div id="extractLog" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 文案改写 ============ -->
+<section class="panel" id="tab-rewrite">
+  <div class="card">
+    <h2 class="card-title">文案改写 · 三引擎</h2>
+    <p class="hint">集成 Humanizer-zh（中文去 AI 腔）、ai-copywriter（营销人味）、CopyGPT（232 公式）三种改写能力。可单用，也可开启串联模式顺序处理。</p>
+
+    <div class="seg rw-modes" id="rwMode">
+      <button class="on" data-v="humanizer">Humanizer-zh · 去 AI 腔</button>
+      <button data-v="copywriter">ai-copywriter · 营销人味</button>
+      <button data-v="copgpt">CopyGPT · 公式改写</button>
+    </div>
+
+    <label class="rw-chain"><input type="checkbox" id="rwChain"> 串联模式：当前改写完成后再自动过一遍 Humanizer-zh 人味化（去 AI 腔）</label>
+
+    <div class="rw-grid">
+      <!-- 左：输入 + 参数 -->
+      <div class="rw-config">
+        <div class="field">
+          <label>原文 / 待改写文案</label>
+          <textarea id="rwInput" rows="9" placeholder="粘贴要改写的文案……（建议先点「载入示例」体验 Humanizer-zh 去 AI 腔）"></textarea>
+        </div>
+
+        <!-- Humanizer-zh 参数 -->
+        <div class="rw-params" data-mode="humanizer">
+          <div class="grid2">
+            <div class="field"><label>语气风格</label>
+              <select id="rwHmTone">
+                <option value="口语自然">口语自然</option>
+                <option value="正式专业">正式专业</option>
+                <option value="亲切像朋友">亲切像朋友</option>
+                <option value="犀利直接">犀利直接</option>
+              </select></div>
+            <div class="field"><label>语言</label>
+              <select id="rwHmLang">
+                <option value="中文">中文</option>
+                <option value="中英混排">中英混排</option>
+              </select></div>
+          </div>
+          <div class="field"><label>去 AI 强度</label>
+            <div class="seg" id="rwHmLevel">
+              <button data-v="light">轻</button>
+              <button class="on" data-v="mid">中</button>
+              <button data-v="strong">强</button>
+            </div>
+          </div>
+          <p class="hint">离线即可运行：自动识别并替换「此外 / 至关重要 / 不仅…而且… / 在当今…时代」等中文 AI 惯用表达，输出人味文案。</p>
+        </div>
+
+        <!-- ai-copywriter 参数 -->
+        <div class="rw-params" data-mode="copywriter" style="display:none">
+          <div class="field"><label>文案类型</label>
+            <select id="rwCwType">
+              <option value="短视频口播">短视频口播</option>
+              <option value="小红书图文">小红书图文</option>
+              <option value="朋友圈">朋友圈</option>
+              <option value="电商详情页">电商详情页</option>
+              <option value="直播话术">直播话术</option>
+            </select></div>
+          <div class="field"><label>语气</label>
+            <select id="rwCwTone">
+              <option value="热情有感染力">热情有感染力</option>
+              <option value="专业可信">专业可信</option>
+              <option value="亲切像朋友">亲切像朋友</option>
+              <option value="犀利直接">犀利直接</option>
+            </select></div>
+          <div class="field"><label>核心卖点 / 关键词（逗号分隔）</label>
+            <input id="rwCwSell" placeholder="如：9.9 体验价, 肩颈按摩, 100 家连锁"></div>
+        </div>
+
+        <!-- CopyGPT 参数 -->
+        <div class="rw-params" data-mode="copgpt" style="display:none">
+          <div class="field"><label>文案公式（232 种）</label>
+            <select id="rwCgFormula"></select></div>
+          <div class="grid2">
+            <div class="field"><label>字数上限</label><input id="rwCgMax" placeholder="0=不限，如 200"></div>
+            <div class="field"><label>输出类型</label>
+              <select id="rwCgOut">
+                <option value="完整文案">完整文案</option>
+                <option value="仅结构框架">仅结构框架</option>
+                <option value="标题+正文">标题 + 正文</option>
+              </select></div>
+          </div>
+        </div>
+
+        <button class="btn-main" id="rwRun">开始改写</button>
+        <button class="btn-ghost" id="rwDemo">载入示例</button>
+
+        <!-- LLM 设置 -->
+        <details class="rw-settings">
+          <summary>LLM 改写设置（ai-copywriter / CopyGPT 需配置，Humanizer-zh 离线免配）</summary>
+          <div class="settings-body">
+            <div class="field"><label>服务商</label>
+              <select id="rwLlmProvider">
+                <option value="sensenova">商汤 SenseNova（免费）</option>
+                <option value="deepseek">DeepSeek</option>
+                <option value="openai">OpenAI</option>
+                <option value="custom">自定义</option>
+              </select></div>
+            <div class="field"><label>API Key</label>
+              <input id="rwLlmKey" type="password" placeholder="sk-..." style="font-family:var(--font-mono);font-size:12px"></div>
+            <div class="grid2">
+              <div class="field"><label>Base URL</label><input id="rwLlmBase" placeholder="https://api.deepseek.com/v1"></div>
+              <div class="field"><label>模型</label><input id="rwLlmModel" placeholder="deepseek-chat"></div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+              <button class="btn-sm" id="rwLlmSave">保存</button>
+              <span class="hint" id="rwLlmStatus"></span>
+            </div>
+            <p class="hint" style="margin-top:8px">密钥仅保存在本机浏览器（localStorage），不会上传。未配置时，ai-copywriter / CopyGPT 会生成可直接复制到 AI 工具的提示词。</p>
+          </div>
+        </details>
+      </div>
+
+      <!-- 右：结果对照 -->
+      <div class="rw-output">
+        <div class="results-head" style="margin-bottom:16px">
+          <div>
+            <h2 class="card-title" id="rwResultTitle">改写结果</h2>
+            <p class="hint" id="rwResultMeta">填写原文后点击「开始改写」，将在此对照展示原文与改写结果。</p>
+          </div>
+          <div class="head-actions">
+            <button class="btn-sm" id="rwCopyBtn" disabled>复制改写</button>
+            <button class="btn-sm" id="rwCopyPromptBtn" disabled style="display:none">复制提示词</button>
+          </div>
+        </div>
+        <div id="rwResult" class="empty-state">
+          <div class="empty-icon">
+            <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+              <path d="M15 3a12 12 0 100 24 12 12 0 000-24z" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M11 11h8M11 15h8M11 19h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <p>还没有改写内容</p>
+          <span>输入文案或点「载入示例」，选择模式后开始改写</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 数据分析（足浴·SPA 抖音来客） ============ -->
+<section class="panel" id="tab-data">
+  <div id="dataContent">
+    <div style="text-align:center;padding:40px;color:var(--text-3)">
+      <div style="font-size:24px;margin-bottom:8px">📊</div>
+      <p>数据加载中…</p>
+    </div>
+  </div>
+  <!-- 运营计划生成器（仅数据分析板块） -->
+  <div id="planGen"></div>
 </section>
 
 </main>
@@ -583,6 +934,29 @@ DS.categories = {
     visualHint: '完工效果开场 → 施工过程 → 材料细节 → 报价方式 → 团购入口',
     riskLevel: 'mid',
     riskNote: '不得虚构工程案例与业主评价；报价须与实际一致。'
+  },
+  spa: {
+    name: '足浴 · SPA 按摩',
+    staff: '技师',
+    aud: '朋友',
+    verb: '做',
+    entryItem: '中式足浴体验',
+    mainItem: '足疗+全身套餐',
+    entryPrice: '39.9',
+    mainPrice: '89',
+    origPrice: '198',
+    scenes: ['门店环境与接待', '足浴泡脚过程', '按摩/推拿手法', '服务完成放松状态'],
+    pains: ['怕技师手法不专业', '怕被推销办卡', '怕环境不干净'],
+    benefits: [
+      '总部培训认证{staff}，手法有标准',
+      '不推销不办卡，做完直接走',
+      '{storeCount}家连锁同一套服务标准'
+    ],
+    proofs: ['门店门头与营业执照齐全', '一次性毛巾浴袍当面拆封', '连锁品牌统一标准'],
+    dialectWords: ['朋友', '街坊', '安排上', '整一个', '放松一下'],
+    visualHint: '门头环境 → 泡脚场景 → 按摩手法特写 → 价签贴片 → 团购入口',
+    riskLevel: 'high',
+    riskNote: '禁止宣称疗效（如"治疗失眠""缓解颈椎病"等）；禁止医疗/药物功效描述。仅限放松、舒缓、体验类表述。'
   }
 };
 
@@ -865,7 +1239,7 @@ DS.riskRules = [
   { level: 'P0', cat: '绝对化用语', words: ['最好', '最佳', '最优', '最低价', '最便宜', '最专业', '最火', '最强', '第一品牌', '全网第一', '全国第一', '顶级', '国家级', '极致', '全网最低', '绝对', '唯一', '首选', '王牌', '冠军', '史上最', '100%', '百分百', '永久', '万能', '独一无二', '无人能及'], fix: '改为可验证的客观表述，如「门店多」「价位实在」「回头客多」。' },
 
   /* ---------- P0：医疗/特殊化妆品功效（美业最高风险） ---------- */
-  { level: 'P0', cat: '医疗功效宣称', words: ['生发', '育发', '防脱', '脱发', '治脱', '乌发', '白发变黑', '治疗', '根治', '治愈', '痊愈', '疗效', '药用', '医用级', '消炎', '杀菌', '抗炎', '祛斑', '去斑', '淡斑', '祛痘', '去痘', '除痘', '抗敏', '脱敏', '修复屏障', '激素脸', '换肤', '除皱', '去皱', '抗衰老', '逆龄', '瘦脸针', '水光针', '注射', '微整', '溶脂', '减肥', '瘦身', '排毒', '养生调理'], fix: '仅保留清洁、护理、保养、造型类描述。涉及医疗美容项目需具备对应医疗资质账号，否则整体删除。' },
+  { level: 'P0', cat: '医疗功效宣称', words: ['生发', '育发', '防脱', '脱发', '治脱', '乌发', '白发变黑', '治疗', '根治', '治愈', '痊愈', '疗效', '药用', '医用级', '消炎', '杀菌', '抗炎', '祛斑', '去斑', '淡斑', '祛痘', '去痘', '除痘', '抗敏', '脱敏', '修复屏障', '激素脸', '换肤', '除皱', '去皱', '抗衰老', '逆龄', '瘦脸针', '水光针', '注射', '微整', '溶脂', '减肥', '瘦身', '排毒', '养生调理', '疏通经络', '经络疏通', '改善睡眠', '缓解失眠', '排湿气', '祛湿气', '祛湿', '补肾', '壮阳', '前列腺', '治未病'], fix: '仅保留清洁、护理、保养、造型类描述。涉及医疗美容项目需具备对应医疗资质账号，否则整体删除。' },
 
   /* ---------- P0：虚假与恐吓 ---------- */
   { level: 'P0', cat: '虚假宣传', words: ['假一赔十', '无效退款', '包好', '包治', '保证有效', '立竿见影', '一次见效', '当场变白', '断崖式'], fix: '删除效果承诺，改为「体验后自己判断」「不满意可退团购券」。' },
@@ -897,19 +1271,24 @@ DS.replaceMap = {
   '唯一': '少见的', '首选': '值得试', '100%': '基本上', '百分百': '基本上',
   '永久': '长期', '生发': '', '防脱': '', '祛斑': '清洁护理', '祛痘': '清洁护理',
   '抗敏': '温和护理', '除皱': '面部放松', '治疗': '护理', '瘦身': '',
+  '疏通经络': '放松肩颈', '经络疏通': '放松肩颈', '改善睡眠': '好好放松',
+  '排湿气': '', '祛湿气': '', '祛湿': '', '补肾': '', '壮阳': '',
   '加微信': '', '私聊': '', '公众号': '', '骨折价': '价格实在',
   '亏本': '价格实在', '智商税': '', '路边摊': '普通小店'
 };
 
 
 /* ==================== js/data-brief.js ==================== */
-/* Brief 速查内容 + 验收 Checklist（摘自说明书） */
+/* Brief 速查内容 + 验收 Checklist（规则 × 数据融合版）
+ * 数据口径：抖音来客后台截图（2026-08-09）· 近 15 日 · 足浴SPA 品类
+ */
 window.DS = window.DS || {};
 
 DS.briefSections = [
   {
     title: '投流目标优先级',
     type: 'table',
+    freq: '★★★★★',
     head: ['层级', '目标类型', '投放产品', '核心指标'],
     rows: [
       ['主目标', '团购核销 / 到店转化', '团购推广 / 本地推', '团购GMV、核销率、CPA、ROI'],
@@ -917,79 +1296,151 @@ DS.briefSections = [
       ['次目标B', '品牌 / 云连锁曝光', '品牌推广 / 信息流', '曝光量、涨粉、招商线索'],
       ['长尾', '私域沉淀（到店后）', '门店执行', '复购率、会员转化']
     ],
-    note: '一条视频只服务一个主目标，多目标混杂会显著拉低转化。'
+    note: '一条视频只服务一个主目标，多目标混杂会显著拉低转化。',
+    data: '实际消耗：上海单城 ¥1,769.78 占 77.01%，江浙合计 ¥392.74 占 17.09% → 主目标必须指向「团购核销」。',
+    standard: '视频开头 3 秒 CTA 与投放产品类型一致（团购视频→点击团购；引流视频→门店定位）。',
+    boundary: '新店冷启动期可临时切「门店引流」为主目标，跑通 7 天后再回切团购核销。'
   },
   {
-    title: '目标受众画像',
+    title: '目标受众画像（男客导向）',
     type: 'table',
+    freq: '★★★★★',
     head: ['维度', '核心人群', '扩量人群'],
     rows: [
-      ['性别', '女 75% / 男 25%', '男女均衡（家庭客）'],
-      ['年龄', '22-40 岁', '18-50 岁'],
-      ['地域', '门店周边 3-5km 围栏', '同城兴趣人群'],
-      ['消费力', '大众至中端，价格敏感重体验', '品质型，愿为服务买单'],
-      ['核心痛点', '怕踩坑、怕贵、怕服务差', '想尝试但不确定']
+      ['性别', '男 100%（后台实测男 89.99%）', '男女均衡（家庭客）'],
+      ['年龄', '25-45 岁（31-40 岁为绝对主力）', '22-50 岁'],
+      ['地域', '门店周边 3-5km 围栏（上海优先）', '江浙同城 / 商务出差人群'],
+      ['消费力', '大众至中端，价格敏感重效率', '品质型，愿为服务买单'],
+      ['核心痛点', '怕被推销办卡、怕踩坑、怕手法不专业', '想尝试但不确定']
     ],
-    note: '人群包建议：本地生活活跃 + 品类兴趣 + 3-5km 围栏；团购高潜人群；老客 Lookalike 扩量。'
+    note: '人群包：本地生活活跃 + 品类兴趣 + 3-5km 围栏；新锐白领+资深中产+都市蓝领（占消耗 87.12%）；老客 Lookalike 扩量。',
+    data: '男 89.99%；31-40 岁 43.33%；新锐白领 55.54% + 资深中产 17.92% + 都市蓝领 13.66% = 87.12%；潜在画像 GenZ 20% + 白领 19% + 蓝领 13% = 52%。',
+    standard: '若「精致妈妈/城镇中老年」消耗占比 >2% = 定向过宽，应收紧（当前合计仅 0.70%，无效流量）。',
+    boundary: '⚠️ 历史 Brief 为「女 75%」，已按后台实测修正为男客导向，定向/话术/达人一律按男客逻辑执行。'
   },
   {
     title: '时长与节奏',
     type: 'table',
+    freq: '★★★★☆',
     head: ['档位', '适用目标', '结构时间轴'],
     rows: [
       ['15s', '拉新 / 强钩子', '0-3s 钩子 → 3-10s 卖点+优惠 → 10-15s CTA'],
       ['30s', '团购转化（主投）', '0-3s 痛点 → 3-15s 体验 → 15-25s 优惠+信任 → 25-30s CTA'],
       ['45-60s', '品牌 / 达人探店', '人设 → 过程 → 效果 → 优惠+门店 → CTA']
     ],
-    note: '黄金3秒法则：前3秒必须出现「利益点 / 冲突 / 疑问」之一。关键优惠处画面停顿+字幕放大+音效。'
+    note: '黄金3秒法则：前3秒必须出现「利益点 / 冲突 / 疑问」之一。关键优惠处画面停顿+字幕放大+音效。',
+    data: '同品类 TOP 达人（元帅 89.57 / 桃桃 88.96 / 魔都蜜探 87.41）均为探店型，主流 30-60s → 30s 为黄金时长。',
+    standard: '前 3 秒无钩子 → 完播率 <15% → 系统停止放量；钩子需命中男性痛点（下班放松/不推销/快准狠）。',
+    boundary: '男性刷视频停留更短，15s 引流款的钩子必须在 1.5 秒内出现，否则流失率翻倍。'
   },
   {
     title: '画面必含元素',
     type: 'list',
+    freq: '★★★★☆',
     items: [
-      '门店门头 / 招牌（体现连锁品牌名）—— 每片必含',
-      '门店环境（明亮、整洁、有质感接待区）',
-      '服务过程（合规范围内操作，不涉医疗）',
-      '成品 / 效果（仅限造型或清洁护理后状态）',
-      '达人 / 真人出镜（自然真实，非僵硬摆拍）',
-      '顾客笑脸（须肖像授权）',
-      '结尾团购入口引导贴片'
+      '门店门头 / 招牌（体现连锁品牌名）—— P0 每片必含',
+      '门店环境（明亮、整洁、有质感接待区）—— P1',
+      '服务过程（合规范围内操作，不涉医疗）—— P1',
+      '成品 / 效果（清洁护理后状态）—— P1',
+      '达人 / 真人出镜（自然真实，非僵硬摆拍）—— P1',
+      '顾客笑脸（须肖像授权）—— P1',
+      '结尾团购入口引导贴片 —— P0'
     ],
-    note: '技术规范：9:16 竖屏、≥1080×1920、码率≥8Mbps、硬字幕白字黑描边、无竞品水印。'
+    note: '技术规范：9:16 竖屏、≥1080×1920、码率≥8Mbps、硬字幕白字黑描边、无竞品水印。',
+    data: '用户视频偏好：休闲娱乐 280 分 > 家居家政 120 > 运动健身 110 > 文旅 100 > 个人护理 98 → 画面强化「休闲娱乐」场景感（放松/解压/下班后的去处）。',
+    standard: '探店视频前 3 秒给门头+环境全景（休闲感）比直接怼价签完播率高 30% 以上。',
+    boundary: '环境展示避免拍到其他顾客面部未授权；技师操作镜头不得出现治疗性手法特写（红线 P0）。'
   },
   {
     title: '内容红线（高压线）',
     type: 'risk',
+    freq: '★★★★★',
     items: [
       ['P0', '站外引流', '不得引导加微信、公众号、外部链接、留手机号；私域只能到店后由门店合规进行'],
-      ['P0', '医疗功效宣称', '美发禁生发/防脱/乌发；生活美容禁祛斑/祛痘/抗敏/修复/治疗；不得发医美项目'],
+      ['P0', '医疗功效宣称', 'SPA 品类风险等级 high：禁生发/防脱/祛斑/祛痘/抗敏/修复/治疗/疏通经络/排毒；禁发医美项目'],
       ['P0', '绝对化用语', '最 / 第一 / 顶级 / 国家级 / 极致 / 全网最低 / 绝对 / 唯一 / 首选'],
-      ['P0', '虚假宣传', '不得使用非本店案例、编造数据、盗用他人素材'],
-      ['P1', '价格与限时', '划线价须真实有依据；限时须有真实起止时间，不得永久限时'],
-      ['P1', '功效型对比', '不得使用功效型前后对比（如改善脱发前后）'],
+      ['P0', '虚假宣传', '不得使用非本店案例、编造数据、盗用他人素材；数据须来自抖音来客后台'],
       ['P0', '恐吓与贬低', '不得制造过度焦虑，不得贬低同行'],
+      ['P1', '价格与限时', '划线价须真实有依据；团购价须与后台套餐一致；不得永久限时'],
+      ['P1', '功效型对比', '不得使用功效型前后对比（如按摩后疼痛消失 = 医疗暗示）'],
       ['P2', '授权', '出镜须签肖像授权覆盖投流；BGM/字体须商用授权']
     ],
-    note: '任一 P0 命中 → 必须返工，不计交付。'
+    note: '任一 P0 命中 → 必须返工，不计交付。',
+    data: '价格锚点：主销价格带 ¥98-147 占 60% → 划线价与套餐价在此区间内设计（详见「套餐定价」）。',
+    standard: '功效词边界：可用「放松/解压/舒适/精神好」；禁用「治/疗/改善某某症状/疏通某某」。',
+    boundary: 'SPA 高频翻车点 = 口播出现「疏通经络、排毒、改善睡眠」→ 直接判 P0 返工。'
+  },
+  {
+    title: '套餐定价',
+    type: 'table',
+    freq: '★★★☆☆',
+    head: ['档位', '价格', '数据依据', '定位'],
+    rows: [
+      ['引流款', '¥39.9', '¥0-49 带占 10%', '拉新走量，钩子价'],
+      ['主力款', '¥98-128', '主销带 ¥98-147 占 60%', '主投团购（当前 ¥89 偏低，建议上探）'],
+      ['高端款', '¥198', '资深中产 17.92%', '品质型收割，匹配资深中产客群']
+    ],
+    note: '指标定义：CPA=消耗/核销数；ROI=团购GMV/消耗；核销率=核销数/售出数。',
+    data: '主销价格带 ¥98-147 占 60%（35% 主力 + 25% 次主力）；¥39.9 引流款仅占 10%。当前 mainPrice ¥89 偏低 10-15%。',
+    standard: '主力款上探至 ¥98-128 → 客单提升约 15%，同等消耗下 ROI 提升最显著。',
+    boundary: '价格调整须与抖音来客后台套餐实时同步；视频中价格与后台不一致 = P1 违规。'
+  },
+  {
+    title: '达人合作与内容方向',
+    type: 'table',
+    freq: '★★★☆☆',
+    head: ['排名', '达人', '粉丝量', '成交指数', '合作建议'],
+    rows: [
+      ['1', '上海按摩哪家强｜元帅', '1.8 万', '89.57', '⭐ 首选：垂类最匹配，性价比最优'],
+      ['2', '桃桃逛魔都', '1.8 万', '88.96', '次选：本地探店种草'],
+      ['3', '魔都蜜探', '7.2 万', '87.41', '备选：本地流量大号'],
+      ['4', '张子晨', '10.2 万', '99.93', '标杆：预算充足时投放'],
+      ['5', '包子脸', '1.8 万', '91.41', '腰部补充']
+    ],
+    note: '预算分配：1 腰部（元帅）+ 2 尾部（桃桃/魔都蜜探）= 4:3:3，跑两周按 ROI 复盘。',
+    data: '搜索词「按摩/足浴/SPA」与「台球/网吧/K歌/洗浴」强关联 → 年轻男性休闲娱乐场景；口播切入「下班不知道去哪放松」。',
+    standard: '达人成交指数 >85 且粉丝 <5 万 = 高性价比（垂类小号）；指数 >90 且粉丝 >10 万 = 标杆背书。',
+    boundary: '达人内容必须过红线自检；达人自带的「功效承诺」口播一律剪掉。'
   },
   {
     title: '交付规格',
     type: 'list',
+    freq: '★★★☆☆',
     items: [
       '格式：MP4（H.264），每档位成片',
       '数量：每档位 ≥3 条变体（A/B 测试不同钩子），单波次建议 9-15 条',
       '附带：口播文案表、SRT 字幕、音乐/字体授权说明、达人授权书',
       '工程文件：剪映 / PR 工程（便于改字幕、换价格）'
     ],
-    note: '指标定义：CPA=消耗/核销数；ROI=团购GMV/消耗；核销率=核销数/售出数。'
+    note: '内容方向禁用医疗化表述（养生/保健/中医）→ P0 红线。',
+    data: '强关联品类：石锅鱼/烧烤/漂流 → 休闲组合消费，可做异业联动或场景化文案。',
+    standard: '单波次 ≥9 条、每档位 ≥3 变体，覆盖不同钩子（价格/效果/场景）。',
+    boundary: '异业联动须确认对方资质与品牌调性，避免贬低同行红线。'
+  },
+  {
+    title: '总览索引表（规则 × 核心数据）',
+    type: 'table',
+    freq: '★',
+    head: ['#', '规则主题', '频率', '核心数据要点'],
+    rows: [
+      ['1', '投流目标优先级', '★★★★★', '主目标=团购核销；上海 77% + 江浙 17%'],
+      ['2', '受众画像', '★★★★★', '男 89.99%；31-40 岁 43.33%；三人群 87.12%'],
+      ['3', '时长与节奏', '★★★★☆', '30s 黄金时长；3 秒钩子；15s 引流 1.5 秒出钩'],
+      ['4', '画面必含元素', '★★★★☆', '门头+团购贴片 P0；休闲娱乐 280 分第一'],
+      ['5', '内容红线', '★★★★★', 'P0 全禁：站外引流/医疗功效/绝对化/虚假宣传'],
+      ['6', '套餐定价', '★★★☆☆', '主销带 ¥98-147 占 60%；主力建议 ¥98-128'],
+      ['7', '达人合作', '★★★☆☆', '首选元帅 89.57；垂类小号+本地探店组合'],
+      ['8', '交付规格', '★★★☆☆', '每档 ≥3 变体；9-15 条/波次；附授权文件']
+    ],
+    note: '使用方式：先看频率星级（★★★★★ = 每片必检），再看索引定位详细规则。'
   }
 ];
 
 DS.checklist = [
-  '前 3 秒含钩子（利益 / 冲突 / 疑问）',
+  '前 3 秒含钩子（利益 / 冲突 / 疑问），男性视角切入',
   '主目标清晰（团购 / 到店），无多目标混杂',
-  '优惠信息与抖音来客后台套餐一致、价格真实',
-  '无绝对化用语、无医疗功效宣称、无虚假数据',
+  '优惠信息与抖音来客后台套餐一致、价格真实（¥98-128 区间）',
+  '无绝对化用语、无医疗功效宣称（禁养生/保健/治疗字眼）、无虚假数据',
   '无站外引流引导（无加微信 / 外部跳转）',
   '门店门头 / 品牌清晰，无竞品水印',
   '字幕准确无错别字，关键价格大字呈现',
@@ -1418,7 +1869,7 @@ DS.advise = function (text) {
 
   function renderResults(cfg, list) {
     var goalMap = { groupbuy: '团购核销', traffic: '门店引流', brand: '品牌曝光' };
-    var styleMap = { oral: '口语化', promo: '促销感', review: '测评探店', story: '剧情反转' };
+    var styleMap = { oral: '口语化', promo: '促销感', review: '测评探店', story: '剧情反转', dialect: '方言口语' };
     $('resultMeta').innerHTML =
       '<span class="chip cyan">' + DS.categories[cfg.category].name + '</span>' +
       '<span class="chip">' + goalMap[cfg.goal] + '</span>' +
@@ -1592,7 +2043,19 @@ DS.advise = function (text) {
           return '<div class="risk-item"><span class="lv ' + i[0] + '">' + i[0] + '</span><span><b>' + i[1] + '</b> — ' + i[2] + '</span></div>';
         }).join('');
       }
-      return '<div class="brief-sec"><h3>' + s.title + '</h3>' + body +
+      // 规则—数据—结论 闭环块
+      var meta = '';
+      if (s.data) {
+        meta += '<div class="brief-block brief-data"><span class="brief-tag">📊 数据支撑</span>' + s.data + '</div>';
+      }
+      if (s.standard) {
+        meta += '<div class="brief-block brief-standard"><span class="brief-tag">✅ 判定标准</span>' + s.standard + '</div>';
+      }
+      if (s.boundary) {
+        meta += '<div class="brief-block brief-boundary"><span class="brief-tag">⚠️ 边界条件</span>' + s.boundary + '</div>';
+      }
+      var freq = s.freq ? '<span class="brief-freq">' + s.freq + '</span>' : '';
+      return '<div class="brief-sec"><h3>' + s.title + freq + '</h3>' + body + meta +
         '<div class="brief-note">' + s.note + '</div></div>';
     }).join('');
     $('briefContent').innerHTML = html;
@@ -1660,6 +2123,1679 @@ DS.advise = function (text) {
   $('clearHistory').addEventListener('click', function () {
     localStorage.removeItem(H_KEY); renderHistory(); toast('历史已清空');
   });
+})();
+
+
+/* ==================== js/extract-tab.js ==================== */
+/* ===== 视频提取 Tab ===== */
+
+/* 智能默认 API 地址：
+   - 本工具由本地服务同源托管（http://127.0.0.1:8765/）→ 用相对路径 /extract
+   - GitHub Pages（https://...github.io）→ 保持绝对地址，提示需配置云端 HTTPS 或本地访问 */
+var EXTRACT_API = localStorage.getItem('extract_api') ||
+  (location.protocol === 'http:' && (location.hostname === '127.0.0.1' || location.hostname === 'localhost')
+    ? location.origin + '/extract'
+    : 'http://127.0.0.1:8765/extract');
+
+/* 全局 Toast（提取 Tab 使用；若其他脚本已定义则不覆盖） */
+if (typeof window.showToast !== 'function') {
+  window.showToast = function (msg) {
+    var t = document.getElementById('toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(function () { t.classList.remove('show'); }, 1800);
+  };
+}
+
+(function () {
+  'use strict';
+
+  /* ---- DOM ---- */
+  var extractBtn      = document.getElementById('extractBtn');
+  var extractCopyBtn  = document.getElementById('extractCopyBtn');
+  var extractSaveBtn  = document.getElementById('extractSaveBtn');
+  var extractOutput   = document.getElementById('extractOutput');
+  var extractStatus   = document.getElementById('extractStatus');
+  var extractResultMeta = document.getElementById('extractResultMeta');
+  var extractResultTitle = document.getElementById('extractResultTitle');
+  var extractLog      = document.getElementById('extractLog');
+  var extractMode     = document.getElementById('extractMode');
+  var extractUrlField = document.getElementById('extractUrlField');
+  var extractFileField= document.getElementById('extractFileField');
+
+  var currentExtractResult = null;
+
+  /* ---- 设置面板（API 地址 + 测试连接 + 部署引导容器） ---- */
+  var settingsHtml =
+    '<div class="extract-settings">' +
+      '<details>' +
+        '<summary class="settings-summary">提取服务配置</summary>' +
+        '<div class="settings-body">' +
+          '<div class="field"><label>API 地址</label>' +
+            '<input id="extractApiUrl" placeholder="http://127.0.0.1:8765/extract 或 https://xxx.onrender.com/extract">' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">' +
+            '<button class="btn-sm" id="saveApiUrl">保存</button>' +
+            '<button class="btn-sm" id="testApiUrl">测试连接</button>' +
+            '<span class="hint" id="apiTestResult"></span>' +
+          '</div>' +
+          '<p class="hint" style="margin-top:8px">线上（GitHub Pages）建议用 <b>Render 免费云端服务</b>（见下方引导第 2 步）；本地开发可直接 <code>bash start-local.sh</code> 后访问 <code>http://127.0.0.1:8765</code>（页面与 API 同源，无需配置）。</p>' +
+        '</div>' +
+      '</details>' +
+    '</div>';
+
+  var extractGrid = document.querySelector('.extract-grid');
+  if (extractGrid) {
+    var settingsContainer = document.createElement('div');
+    settingsContainer.className = 'extract-settings-wrap';
+    settingsContainer.style.cssText = 'margin-bottom:14px;grid-column:1/-1';
+    settingsContainer.innerHTML = settingsHtml;
+    extractGrid.insertBefore(settingsContainer, extractGrid.firstChild);
+  }
+
+  /* ---- 部署引导 HTML（未连接时展示） ---- */
+  function deployGuideHtml(reason) {
+    return '<div class="extract-guide">' +
+      '<div class="eg-head"><span>⚙️ 提取服务未连接</span><span class="eg-state eg-bad">● 需配置</span></div>' +
+      '<div class="eg-body">' +
+        (reason ? '<div class="eg-note" style="margin:8px 0 2px">' + escapeHtml(reason) + '</div>' : '') +
+        '<div class="eg-step"><div class="eg-num">1</div><div class="eg-body-copy">' +
+          '<b>本地使用（最简单，Windows/Mac 均可）</b>：在项目目录运行 <code>bash start-local.sh</code>（或 <code>python server/video-extract.py --serve --port 8765</code>），' +
+          '然后用浏览器打开 <b><code>http://127.0.0.1:8765</code></b> —— 页面与提取 API 同源，链接和本地文件都能提取。' +
+        '</div></div>' +
+        '<div class="eg-step"><div class="eg-num">2</div><div class="eg-body-copy">' +
+          '<b>云端部署（推荐，免费额度）</b>：一键部署到 Render，约 5-10 分钟完成，之后在任何设备上都能用（含手机）。' +
+          '<div class="eg-actions">' +
+            '<a href="https://render.com/deploy?repo=https://github.com/womeng2018-dotcom/douyin-copy-studio" target="_blank" rel="noopener">🚀 一键部署到 Render（免费）</a>' +
+          '</div>' +
+          '<div class="eg-note">部署完成后把服务地址（形如 <code>https://xxx.onrender.com/extract</code>）填入上方「API 地址」并保存，即可在本页使用。</div>' +
+        '</div></div>' +
+        '<div class="eg-step"><div class="eg-num">3</div><div class="eg-body-copy">' +
+          '<b>已有云端/局域网服务</b>：在「提取服务配置」填入 API 地址 → <b>保存</b> → <b>测试连接</b>，显示「服务已连接」即可使用。' +
+        '</div></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function connectedHtml(d) {
+    var ff = d && d.ffmpeg_ok ? 'ffmpeg ✅' : 'ffmpeg ❌';
+    return '<span class="chip ok">提取服务已连接</span> <span class="hint">' +
+      (d && d.status === 'running' ? ff + ' · 支持链接与本地文件' : '请确认服务地址正确') + '</span>';
+  }
+
+  /* ---- 保存 / 测试 API 地址 ---- */
+  document.addEventListener('click', function (e) {
+    if (e.target.id === 'saveApiUrl') {
+      var val = document.getElementById('extractApiUrl').value.trim();
+      if (val) {
+        localStorage.setItem('extract_api', val);
+        EXTRACT_API = val;
+        showToast('API 地址已保存，正在检测连接…');
+        checkServer();
+      } else {
+        showToast('请输入 API 地址');
+      }
+    } else if (e.target.id === 'testApiUrl') {
+      var v = document.getElementById('extractApiUrl').value.trim();
+      if (v) {
+        EXTRACT_API = v;
+        localStorage.setItem('extract_api', v);
+      }
+      var res = document.getElementById('apiTestResult');
+      if (res) res.innerHTML = '<span class="hint">检测中…</span>';
+      fetch(EXTRACT_API).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        var ct = r.headers.get('content-type') || '';
+        if (ct.indexOf('json') === -1) throw new Error('非 JSON 响应');
+        return r.json();
+      }).then(function (d) {
+        if (d && d.status === 'running') {
+          if (res) res.innerHTML = '<span class="chip ok">✅ 连接成功（' + (d.ffmpeg_ok ? 'ffmpeg 就绪' : 'ffmpeg 缺失') + '）</span>';
+          extractStatus.style.display = '';
+          extractStatus.innerHTML = connectedHtml(d);
+          showToast('连接成功');
+        } else {
+          if (res) res.innerHTML = '<span class="chip bad">❌ 服务响应异常</span>';
+        }
+      }).catch(function () {
+        if (res) res.innerHTML = '<span class="chip bad">❌ 无法连接，请检查地址与服务状态</span>';
+      });
+    }
+  });
+
+  /* ---- 模式切换 ---- */
+  extractMode && extractMode.addEventListener('click', function (e) {
+    var btn = e.target.closest('button');
+    if (!btn || !btn.dataset.v) return;
+    extractMode.querySelectorAll('button').forEach(function (b) { b.classList.remove('on'); });
+    btn.classList.add('on');
+    var mode = btn.dataset.v;
+    extractUrlField.style.display = mode === 'url' ? '' : 'none';
+    extractFileField.style.display = mode === 'file' ? '' : 'none';
+  });
+
+  /* ---- 开始提取 ---- */
+  extractBtn && extractBtn.addEventListener('click', startExtract);
+
+  function startExtract() {
+    var mode = extractMode ? (extractMode.querySelector('.on') || {}).dataset.v : 'url';
+    var url = document.getElementById('extractUrl').value.trim();
+    var fileInput = document.getElementById('extractFile');
+    var engine = document.getElementById('extractEngine').value;
+    var lang = document.getElementById('extractLang').value;
+    var hotwords = document.getElementById('extractHotwords').value.trim();
+    var brand = document.getElementById('extractBrand').value.trim();
+    var area = document.getElementById('extractArea').value.trim();
+    var apiKey = document.getElementById('extractApiKey').value.trim();
+    var apiBase = document.getElementById('extractApiBase').value.trim() || 'https://token.sensenova.cn/v1';
+    var llmModel = document.getElementById('extractLlmModel').value.trim() || 'deepseek-v4-flash';
+
+    if (mode === 'url' && !url) {
+      showToast('请输入视频链接');
+      return;
+    }
+    if (mode === 'file' && (!fileInput || !fileInput.files.length)) {
+      showToast('请选择本地文件');
+      return;
+    }
+
+    /* 重置 */
+    extractOutput.innerHTML = '<div class="empty-state"><div class="empty-icon" style="font-size:24px">⏳</div><p>正在提取中……</p><span id="extractProgress">准备中</span></div>';
+    extractCopyBtn.disabled = true;
+    extractSaveBtn.disabled = true;
+    extractLog.style.display = 'none';
+    currentExtractResult = null;
+
+    var payload = {
+      engine: engine,
+      language: lang,
+      hotwords: hotwords || null,
+      brand_name: brand || null,
+      area_name: area || null,
+      api_key: apiKey || null,
+      api_base: apiBase || null,
+      llm_model: llmModel || null,
+      skip_llm: !apiKey,
+    };
+
+    if (mode === 'url') {
+      payload.url = url;
+    }
+
+    doExtract(payload, fileInput);
+  }
+
+  function doExtract(payload, fileInput) {
+    updateProgress('连接提取服务…');
+
+    // 文件上传模式：把文件转成 base64 注入 payload
+    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+      var file = fileInput.files[0];
+      var ext = file.name.split('.').pop().toLowerCase();
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        // readAsDataURL 返回 'data:video/mp4;base64,XXXX'，只取逗号后的纯 base64
+        var raw = ev.target.result.split(',')[1];
+        payload.file_path = 'base64:' + raw + '.ext:' + ext;
+        sendExtract(payload);
+      };
+      reader.onerror = function () {
+        showError('文件读取失败，请重新选择文件');
+      };
+      reader.readAsDataURL(file);
+    } else {
+      sendExtract(payload);
+    }
+  }
+
+  function sendExtract(payload) {
+    fetch(EXTRACT_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function (resp) {
+      return resp.json().then(function (data) { return { status: resp.status, data: data }; });
+    }).then(function (result) {
+      if (result.status !== 200 || !result.data.ok) {
+        var err = result.data.error || '提取失败（服务可能未启动）';
+        showError(err);
+        return;
+      }
+
+      currentExtractResult = result.data;
+      showResult(result.data);
+    }).catch(function (err) {
+      showError('无法连接到提取服务：' + err.message + '\n\n' +
+        '请在「提取服务配置」中检查 API 地址。\n' +
+        '· 本地：运行 bash start-local.sh 后访问 http://127.0.0.1:8765\n' +
+        '· 云端：按引导第 2 步一键部署 Render 后填入 https://xxx.onrender.com/extract');
+    });
+  }
+
+  function updateProgress(msg) {
+    var el = document.getElementById('extractProgress');
+    if (el) el.textContent = msg;
+  }
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
+  }
+
+  function showError(msg) {
+    extractOutput.innerHTML =
+      '<div class="empty-state" style="color:var(--danger);border-color:var(--danger)">' +
+      '<div class="empty-icon" style="font-size:28px;color:var(--danger)">!</div>' +
+      '<p>提取失败</p>' +
+      '<span style="font-size:12px;white-space:pre-wrap;color:var(--text-2)">' +
+      escapeHtml(msg) + '</span></div>';
+    extractCopyBtn.disabled = true;
+    extractSaveBtn.disabled = true;
+  }
+
+  function showResult(data) {
+    var method = data.meta && data.meta.extraction_method || 'unknown';
+    var engine = data.meta && data.meta.asr_engine || data.source || 'N/A';
+    var methodLabel = method === 'subtitle' ? '字幕提取' : '语音识别';
+    var wordCount = data.text ? data.text.length : 0;
+
+    extractResultTitle.textContent = '提取结果';
+    extractResultMeta.innerHTML =
+      '<span class="chip ok">' + methodLabel + '</span>' +
+      (engine !== 'N/A' ? '<span class="chip cyan">引擎：' + engine + '</span>' : '') +
+      '<span class="chip">' + wordCount + ' 字</span>';
+
+    var fullText = data.text || '(空)';
+
+    var html = '<div class="variant">';
+    html += '<div class="v-head"><span class="v-badge">文</span><span class="v-title">提取文案</span>';
+    html += '<span class="chip">' + methodLabel + '</span></div>';
+    html += '<div class="v-body">';
+
+    /* 时间轴（如果有字幕 items） */
+    if (data.subtitle_items && data.subtitle_items.length) {
+      html += '<div class="block"><div class="block-label">字幕时间轴</div>';
+      data.subtitle_items.forEach(function (it) {
+        html += '<div class="script-line"><span class="tcode">' + escapeHtml(it.time) + '</span><span>' + escapeHtml(it.text) + '</span></div>';
+      });
+      html += '</div>';
+    }
+
+    /* 全文 */
+    html += '<div class="block"><div class="block-label">完整文案</div>';
+    html += '<div style="white-space:pre-wrap;font-size:13.5px;line-height:1.85;padding:12px;background:var(--beige);border-radius:7px;border:1px solid var(--line)">' + escapeHtml(fullText) + '</div></div>';
+
+    /* 后处理日志 */
+    if (data.post_process && data.post_process.length) {
+      html += '<div class="block"><div class="block-label">后处理管线</div>';
+      data.post_process.forEach(function (step) {
+        var status = step.skipped ? 'skipped' : (step.ok ? 'ok' : 'fail');
+        var cls = status === 'skipped' ? 'mid' : (status === 'ok' ? 'ok' : 'bad');
+        html += '<span class="chip ' + cls + '">' + (step.layer != null ? step.layer + '. ' : '') + (step.name || '步骤') + (step.skipped ? ' (' + step.skipped + ')' : '') + '</span> ';
+      });
+      html += '</div>';
+    }
+
+    html += '</div>';
+    html += '<div class="v-actions"><button class="btn-sm js-extract-copy-inline">复制文案</button></div>';
+    html += '</div>';
+
+    extractOutput.innerHTML = html;
+    var inlineBtn = extractOutput.querySelector('.js-extract-copy-inline');
+    if (inlineBtn) {
+      inlineBtn.addEventListener('click', function () {
+        copyClipboard(fullText, '已复制');
+      });
+    }
+    extractCopyBtn.disabled = false;
+    extractSaveBtn.disabled = false;
+  }
+
+  function copyClipboard(text, okMsg) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function () { showToast(okMsg || '已复制'); })
+        .catch(function () { fallbackCopy(text, okMsg); });
+    } else { fallbackCopy(text, okMsg); }
+  }
+  function fallbackCopy(text, okMsg) {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); showToast(okMsg || '已复制'); }
+    catch (e) { showToast('复制失败，请手动选择'); }
+    document.body.removeChild(ta);
+  }
+
+  /* ---- 复制 ---- */
+  extractCopyBtn && extractCopyBtn.addEventListener('click', function () {
+    if (!currentExtractResult) return;
+    copyClipboard(currentExtractResult.text || '', '已复制到剪贴板');
+  });
+
+  /* ---- 导出 Markdown ---- */
+  extractSaveBtn && extractSaveBtn.addEventListener('click', function () {
+    if (!currentExtractResult) return;
+    var data = currentExtractResult;
+    var md = '# 视频文案提取结果\n\n';
+    md += '- 提取方式：' + (data.meta && data.meta.extraction_method || 'unknown') + '\n';
+    md += '- ASR 引擎：' + (data.meta && data.meta.asr_engine || data.source || 'N/A') + '\n';
+    md += '- 字数：' + (data.text ? data.text.length : 0) + '\n\n';
+
+    if (data.subtitle_items && data.subtitle_items.length) {
+      md += '## 字幕时间轴\n\n';
+      data.subtitle_items.forEach(function (it) {
+        md += '```' + '\n' + it.time + '\n' + it.text + '\n```\n\n';
+      });
+    }
+
+    md += '## 完整文案\n\n' + data.text + '\n';
+
+    if (data.post_process) {
+      md += '\n## 后处理管线\n\n';
+      data.post_process.forEach(function (step) {
+        var status = step.skipped ? '⏭️' : (step.ok ? '✅' : '❌');
+        md += status + ' Layer ' + step.layer + ': ' + step.name + (step.skipped ? ' — ' + step.skipped : '') + '\n';
+      });
+    }
+
+    var blob = new Blob([md], { type: 'text/markdown' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '视频文案提取_' + new Date().toISOString().slice(0, 10) + '.md';
+    a.click();
+  });
+
+  /* ---- 服务状态检测 + 部署引导 ---- */
+  function checkServer() {
+    if (!extractStatus) return;
+    var isHttps = location.protocol === 'https:';
+    var isLocalApi = /^http:\/\/127\.0\.0\.1/.test(EXTRACT_API) || EXTRACT_API.charAt(0) === '/';
+
+    if (isHttps && isLocalApi) {
+      /* GitHub Pages 线上 + 本地 API：无法直连，展示部署引导 */
+      extractStatus.style.display = '';
+      extractStatus.innerHTML =
+        '<span class="chip bad">⚠️ HTTPS 页面无法访问本地服务</span> ' +
+        '<span class="hint">线上站点无法连接你电脑上的本地服务，请按下方引导部署云端服务，或用本地方式使用完整工具。</span>' +
+        deployGuideHtml('当前页面是 HTTPS（GitHub Pages），浏览器禁止访问 http://127.0.0.1 本地服务。');
+      return;
+    }
+
+    /* 其余情况（本地页面 / 已配置云端地址）：探测服务 */
+    fetch(EXTRACT_API).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      var ct = r.headers.get('content-type') || '';
+      if (ct.indexOf('json') === -1) throw new Error('非 JSON 响应');
+      return r.json();
+    }).then(function (d) {
+      if (d && d.status === 'running') {
+        extractStatus.style.display = '';
+        extractStatus.innerHTML = connectedHtml(d);
+      } else {
+        extractStatus.style.display = '';
+        extractStatus.innerHTML = '<span class="chip bad">提取服务未连接</span> <span class="hint">请检查「提取服务配置」中的 API 地址</span>' +
+          deployGuideHtml('');
+      }
+    }).catch(function () {
+      extractStatus.style.display = '';
+      extractStatus.innerHTML = '<span class="chip bad">提取服务未连接</span> <span class="hint">请检查「提取服务配置」中的 API 地址</span>' +
+        deployGuideHtml('无法访问 ' + EXTRACT_API.replace(/^https?:\/\//, '') + '，服务可能未启动或地址不正确。');
+    });
+  }
+
+  /* 同步 API 地址输入框 */
+  var apiInput = document.getElementById('extractApiUrl');
+  if (apiInput) apiInput.value = EXTRACT_API;
+
+  /* 初始化时检测一次 */
+  checkServer();
+
+})();
+
+
+/* ==================== js/rewrite-tab.js ==================== */
+/* ===== 文案改写 Tab · Humanizer-zh / ai-copywriter / CopyGPT ===== */
+(function () {
+  'use strict';
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- 工具 ---------- */
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function showToast(msg) {
+    var t = $('toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(function () { t.classList.remove('show'); }, 1800);
+  }
+  function copyText(text, okMsg) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function () { showToast(okMsg || '已复制'); })
+        .catch(function () { fallbackCopy(text, okMsg); });
+    } else { fallbackCopy(text, okMsg); }
+  }
+  function fallbackCopy(text, okMsg) {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); showToast(okMsg || '已复制'); }
+    catch (e) { showToast('复制失败，请手动选择'); }
+    document.body.removeChild(ta);
+  }
+
+  /* ---------- LLM 设置 ---------- */
+  var LLM_KEY = 'dycs_rw_llm';
+  var PRESETS = {
+    sensenova: { base: 'https://token.sensenova.cn/v1', model: 'deepseek-v4-flash', free: true },
+    deepseek: { base: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
+    openai: { base: 'https://api.openai.com/v1', model: 'gpt-4o-mini' }
+  };
+  function loadLLM() {
+    try { return JSON.parse(localStorage.getItem(LLM_KEY) || '{}'); } catch (e) { return {}; }
+  }
+  function saveLLM(cfg) { localStorage.setItem(LLM_KEY, JSON.stringify(cfg)); }
+
+  function fillLLMSettings() {
+    var cfg = loadLLM();
+    var prov = $('rwLlmProvider');
+    if (cfg.provider) prov.value = cfg.provider;
+    $('rwLlmKey').value = cfg.key || '';
+    if (cfg.base) $('rwLlmBase').value = cfg.base;
+    if (cfg.model) $('rwLlmModel').value = cfg.model;
+    if (cfg.key) $('rwLlmStatus').innerHTML = '<span class="chip ok">已配置</span>';
+    else $('rwLlmStatus').innerHTML = '<span class="chip mid">未填 Key（可免费获取商汤/智谱 Key）</span>';
+  }
+  function onProviderChange() {
+    var p = $('rwLlmProvider').value;
+    if (PRESETS[p]) {
+      $('rwLlmBase').value = PRESETS[p].base;
+      $('rwLlmModel').value = PRESETS[p].model;
+    }
+  }
+
+  /* ---------- 232 文案公式库 ---------- */
+  /* group, name, framework(用于离线脚手架 + 提示词增强) */
+  var FORMULAS = [
+    // 经典转化模型
+    { g: '经典转化模型', n: 'AIDA', f: '注意力(Attention)→兴趣(Interest)→渴望(Desire)→行动(Action)' },
+    { g: '经典转化模型', n: 'PAS', f: '问题(Problem)→激化(Agitate)→解决(Solution)' },
+    { g: '经典转化模型', n: 'PASTOR', f: '痛点(Pain)→放大(Amplify)→故事(Story)→真相(Truth)→价值(Offer)→保证(Guarantee)→呼吁(Response)' },
+    { g: '经典转化模型', n: 'FAB', f: '特征(Feature)→优势(Advantage)→利益(Benefit)' },
+    { g: '经典转化模型', n: 'BAB', f: '现状(Before)→桥接(And)→愿景(After)' },
+    { g: '经典转化模型', n: '4Ps', f: '产品(Product)→价格(Price)→渠道(Place)→促销(Promotion)' },
+    { g: '经典转化模型', n: '4Cs', f: '顾客(Customer)→成本(Cost)→便利(Convenience)→沟通(Communication)' },
+    { g: '经典转化模型', n: '4Us', f: '有用(Useful)→独特(Unique)→紧迫(Urgent)→超级具体(Ultra-specific)' },
+    { g: '经典转化模型', n: 'QUEST', f: '限定(Qualify)→理解(Understand)→教育(Educate)→刺激(Stimulate)→激发(Test)' },
+    { g: '经典转化模型', n: 'ACCA', f: '认知(Awareness)→理解(Comprehension)→ conviction(信服)→行动(Action)' },
+    { g: '经典转化模型', n: 'OATH', f: '目标(Objective)→受众(Audience)→语气(Tone)→手写(Handwriting)' },
+    { g: '经典转化模型', n: 'APP', f: '认知(Awareness)→偏好(Preference)→购买(Purchase)' },
+    { g: '经典转化模型', n: 'RECIPE', f: '关联(Relevance)→共鸣(Emotion)→清晰(Clarity)→证据(Proof)→诱因(Incentive)→简洁(Ease)→行动(Execution)' },
+    { g: '经典转化模型', n: 'PPPP', f: '描绘(Picture)→承诺(Promise)→证明(Prove)→推动(Push)' },
+    { g: '经典转化模型', n: 'SLAP', f: '停止(Stop)→看(Look)→行动(Act)→购买(Purchase)' },
+    { g: '经典转化模型', n: 'STAR', f: '情境(Situation)→任务(Task)→行动(Action)→结果(Result)' },
+    { g: '经典转化模型', n: 'SSS', f: '明星(Star)→故事(Story)→方案(Solution)' },
+    { g: '经典转化模型', n: '4A', f: '认知(Aware)→态度(Attitude)→行动(Act)→习惯(Act again)' },
+    { g: '经典转化模型', n: 'CAKE', f: '清晰(Clear)→吸引(Attractive)→可信(Believable)→知识(Knowledge)' },
+    { g: '经典转化模型', n: 'CUB', f: '清晰(Clear)→独特(Unique)→有益(Beneficial)' },
+    { g: '经典转化模型', n: 'VAD', f: '价值(Value)→优势(Advantage)→差异(Differentiation)' },
+    { g: '经典转化模型', n: 'WWHW', f: '为什么(Why)→什么(What)→如何(How)→何时(When)' },
+    { g: '经典转化模型', n: 'SCQA', f: '情境(Situation)→冲突(Complication)→问题(Question)→答案(Answer)' },
+    { g: '经典转化模型', n: 'KISS', f: '保持简单直接(Keep It Simple, Stupid)' },
+    { g: '经典转化模型', n: 'SUCCES', f: '简单(Simple)→意外(Unexpected)→具体(Concrete)→可信(Credible)→情感(Emotional)→故事(Story)' },
+    { g: '经典转化模型', n: 'SOAP', f: '主题(Subject)→目标(Objective)→评估(Assessment)→计划(Plan)' },
+    { g: '经典转化模型', n: 'FOG', f: '事实(Fact)→目标(Objective)→引导(Guide)' },
+    { g: '经典转化模型', n: 'AIDA-O', f: 'AIDA + 异议处理(Objection)' },
+    { g: '经典转化模型', n: 'PASO', f: 'PAS + 异议(Objection)' },
+    // 故事与叙事
+    { g: '故事与叙事', n: '英雄之旅 (Hero’s Journey)', f: '平凡世界→冒险召唤→跨越门槛→试炼→回报→归来' },
+    { g: '故事与叙事', n: 'StoryBrand', f: '主角(顾客)+问题+引导者(品牌)+计划+行动+失败+成功' },
+    { g: '故事与叙事', n: '7-Step Story Arc', f: '钩子→上升→转折→中点→危机→高潮→结局' },
+    { g: '故事与叙事', n: '三幕剧 (3-Act)', f: '建置→对抗→结局' },
+    { g: '故事与叙事', n: '钩子-副钩系统', f: '强钩子抓住注意→副钩维持到转化' },
+    { g: '故事与叙事', n: '金句法则 (Rule of Three)', f: '三元素并列，强化节奏与记忆' },
+    { g: '故事与叙事', n: '高脚凳测试 (Barstool Test)', f: '像在酒吧和熟人聊天一样自然地说' },
+    { g: '故事与叙事', n: '叙事弧 (Narrative Arc)', f: '铺垫→冲突→转折→释怀' },
+    { g: '故事与叙事', n: '英雄的失败 (Hero’s Flaw)', f: '先暴露缺陷，再给出转变' },
+    // 标题与钩子
+    { g: '标题与钩子', n: 'Jon Morrow 标题黑客', f: '禁忌/秘密/错误/警告/需要/想要 五种钩子' },
+    { g: '标题与钩子', n: '好奇心钩子 (Curiosity-Driven)', f: '留下信息缺口，逼读者点开' },
+    { g: '标题与钩子', n: 'UPWORDS 框架', f: '用非常规角度重组标题' },
+    { g: '标题与钩子', n: '数字清单体', f: '用具体数字制造可信与可执行感' },
+    { g: '标题与钩子', n: '疑问体', f: '用问题替代陈述，引发自省' },
+    { g: '标题与钩子', n: '否定式钩子', f: '“别再做 X”制造反差注意' },
+    // 邮件与留存
+    { g: '邮件与留存', n: 'Dean Jackson 9 词邮件', f: '用 9 个词达成约访：我想知道你是否在用 X' },
+    { g: '邮件与留存', n: 'Ben Settle 邮件玩法', f: '每日邮件 + 争议观点建立黏性' },
+    { g: '邮件与留存', n: '序列孵化 (Nurture Sequence)', f: '认知→教育→案例→促销 的邮件节奏' },
+    { g: '邮件与留存', n: '欢迎序列 (Welcome Sequence)', f: '首封建立预期，逐封交付价值' },
+    // 大师公式（人名）
+    { g: '大师公式', n: 'Ogilvy 标题法则', f: '利益前置+具体数据+新闻性+好奇' },
+    { g: '大师公式', n: 'Dan Kennedy 上帝之手', f: '无法拒绝的报价 + 稀缺 + 紧迫' },
+    { g: '大师公式', n: 'Gary Halbert A/B 堆', f: '列出全部购买理由再排序' },
+    { g: '大师公式', n: 'Joe Sugarman 广告体', f: '滑动体验：每句都让人读下一句' },
+    { g: '大师公式', n: 'Bob Bly 公式', f: '问题→方案→证明→行动' },
+    { g: '大师公式', n: 'John Caples 测试广告', f: '强标题 + 具体好处 + 免费赠品' },
+    { g: '大师公式', n: 'Robert Collier 信函', f: '从对方立场出发的连续对话' },
+    { g: '大师公式', n: 'Eugene Schwartz 突破广告', f: '按市场成熟度选择诉求' },
+    { g: '大师公式', n: 'David Ogilvy 品牌长文', f: '权威+细节+证据的长文案' },
+    { g: '大师公式', n: 'Claude Hopkins 科学化广告', f: '提供样品+ measurable 诉求' },
+    { g: '大师公式', n: 'Gary Bencivenga 说服等式', f: '独特机制+可感知价值+证明' },
+    { g: '大师公式', n: 'Ray Edwards PASTOR', f: 'PAS 扩展版，含故事与保证' },
+    { g: '大师公式', n: 'Joanna Wiebe 转化文案', f: '用用户原话做文案，A/B 验证' },
+    { g: '大师公式', n: 'Seth Godin 许可营销', f: '用信任替代打扰' },
+    { g: '大师公式', n: 'Don Miller StoryBrand', f: '把品牌放进顾客故事' },
+    { g: '大师公式', n: 'Neville Medhora Kopywriting', f: '口语化+短句+直接对话' },
+    // 现代数字营销
+    { g: '现代数字营销', n: 'Skyscraper 技术', f: '找到爆款内容→做得更好→主动分发' },
+    { g: '现代数字营销', n: '紫牛 (Purple Cow)', f: '用惊人差异制造自发传播' },
+    { g: '现代数字营销', n: '粘住 (Made to Stick)', f: '简单/意外/具体/可信/情感/故事' },
+    { g: '现代数字营销', n: '蝴蝶结漏斗 (Bow Tie Funnel)', f: '获取→激活→留存→推荐 的循环' },
+    { g: '现代数字营销', n: '黄金圈 (Golden Circle)', f: '为什么(Why)→如何(How)→什么(What)' },
+    { g: '现代数字营销', n: '价值主张画布', f: '客户任务+痛点+收益 对齐 产品增益' },
+    { g: '现代数字营销', n: 'LIFT 模型', f: '价值主张/相关性/清晰度/紧迫/焦虑/分心 六维优化' },
+    { g: '现代数字营销', n: '钩子-价值-号召 (HVC)', f: '短视频黄金三秒结构' },
+    { g: '现代数字营销', n: '痛点-方案-证明-逼单', f: '直播带货四步循环' },
+    { g: '现代数字营销', n: 'Before-After-Bridge', f: '展示改变，再给桥' },
+    { g: '现代数字营销', n: 'FOMO 框架', f: '稀缺+限时+社会证明 制造紧迫' }
+  ];
+
+  var FORMULA_MAP = {};
+  FORMULAS.forEach(function (x) { FORMULA_MAP[x.n] = x.f || '（经典文案公式，请按其公认结构重写）'; });
+
+  function populateFormulas() {
+    var sel = $('rwCgFormula');
+    if (!sel) return;
+    var groups = {};
+    FORMULAS.forEach(function (f) { (groups[f.g] = groups[f.g] || []).push(f); });
+    var html = '';
+    Object.keys(groups).forEach(function (g) {
+      html += '<optgroup label="' + esc(g) + '">';
+      groups[g].forEach(function (f) {
+        html += '<option value="' + esc(f.n) + '">' + esc(f.n) + (f.f ? ' · ' + esc(f.f.split('→')[0].split('(')[0].trim()) : '') + '</option>';
+      });
+      html += '</optgroup>';
+    });
+    sel.innerHTML = html;
+  }
+
+  /* ---------- Humanizer-zh 离线规则引擎 ---------- */
+  /* p = 正则源(无 flags)；r = 替换串 */
+  var HM_TIERS = {
+    light: [
+      { p: '此外[，,]?', r: '' },
+      { p: '另外[，,]?', r: '' },
+      { p: '除此之外[，,]?', r: '' },
+      { p: '值得注意的是[，,]?', r: '' },
+      { p: '需要指出的是[，,]?', r: '' },
+      { p: '总而言之[，,]?', r: '说到底，' },
+      { p: '综上所述[，,]?', r: '' },
+      { p: '总的来说[，,]?', r: '' },
+      { p: '在当前[^，。！？]*背景下[，,]?', r: '' },
+      { p: '在当今[^，。！？]*时代[，,]?', r: '' },
+      { p: '在[^，。！？]*的今天[，,]?', r: '' },
+      { p: '随着[^，。！？]*的发展[，,]?', r: '' },
+      { p: '随着[^，。！？]*的不断进步[，,]?', r: '' },
+      { p: '毋庸置疑[，,]?', r: '' },
+      { p: '不仅([^，。！？]*)[，,]?而且([^，。！？]*)', r: '$1，$2' },
+      { p: '首先[，,]?', r: '' },
+      { p: '其次[，,]?', r: '' },
+      { p: '最后[，,]?', r: '' },
+      { p: '—', r: '，' },
+      { p: '——', r: '：' }
+    ],
+    mid: [
+      { p: '至关重要', r: '很关键' },
+      { p: '举足轻重', r: '重要' },
+      { p: '大有裨益', r: '很有帮助' },
+      { p: '旨在', r: '为了' },
+      { p: '致力于', r: '专心做' },
+      { p: '赋能', r: '帮…提升' },
+      { p: '打造', r: '做出' },
+      { p: '构建', r: '建立' },
+      { p: '深度融合', r: '深度结合' },
+      { p: '不可或缺', r: '不能少' },
+      { p: '应运而生[，,]?', r: '' },
+      { p: '焕然一新', r: '变新' },
+      { p: '脱颖而出', r: '更突出' },
+      { p: '尽显', r: '显出' },
+      { p: '宛如', r: '像' },
+      { p: '犹如', r: '像' },
+      { p: '谱写', r: '写' },
+      { p: '筑牢', r: '打好' },
+      { p: '保驾护航', r: '保护' },
+      { p: '可以说[，,]?', r: '' },
+      { p: '从某种角度来说[，,]?', r: '' },
+      { p: '显而易见[，,]?', r: '显然，' }
+    ],
+    strong: [
+      { p: '一系列', r: '一些' },
+      { p: '诸多', r: '很多' },
+      { p: '众多', r: '很多' },
+      { p: '进一步', r: '更' },
+      { p: '有效地?', r: '' },
+      { p: '高效地?', r: '' },
+      { p: '充分地?', r: '' },
+      { p: '起到了[^，。！？]*的作用', r: '' },
+      { p: '具有重要的[^，。！？]*意义', r: '有意义' },
+      { p: '为[^，。！？]*提供了便利', r: '方便' }
+    ]
+  };
+
+  function humanize(text, level) {
+    var ruleset = {
+      light: HM_TIERS.light.slice(),
+      mid: HM_TIERS.light.concat(HM_TIERS.mid),
+      strong: HM_TIERS.light.concat(HM_TIERS.mid, HM_TIERS.strong)
+    };
+    var rules = (ruleset[level] || ruleset.mid).slice();
+    // 收集命中位置用于高亮（去掉重叠）
+    var marks = [];
+    rules.forEach(function (r) {
+      var re = new RegExp(r.p, 'g');
+      var m;
+      while ((m = re.exec(text)) !== null) {
+        if (m[0].length === 0) { re.lastIndex++; continue; }
+        marks.push({ i: m.index, len: m[0].length });
+        if (marks.length > 800) break;
+      }
+    });
+    marks.sort(function (a, b) { return a.i - b.i; });
+    var cleanMarks = [], last = 0;
+    marks.forEach(function (m) {
+      if (m.i < last) return;
+      cleanMarks.push(m); last = m.i + m.len;
+    });
+    // 生成清理后文本
+    var cleaned = text;
+    rules.forEach(function (r) { cleaned = cleaned.replace(new RegExp(r.p, 'g'), r.r); });
+    // 高亮原文
+    var hi = '', pos = 0;
+    cleanMarks.forEach(function (m) {
+      hi += esc(text.slice(pos, m.i));
+      hi += '<mark class="hl P2">' + esc(text.slice(m.i, m.i + m.len)) + '</mark>';
+      pos = m.i + m.len;
+    });
+    hi += esc(text.slice(pos));
+    return { cleaned: cleaned, highlighted: hi, count: cleanMarks.length };
+  }
+
+  /* ---------- 提示词构建 ---------- */
+  function buildCopywriterPrompt(text, params) {
+    var system = '你是一位资深的中文营销文案专家，擅长把平淡陈述改写成有说服力、有"人味"、能驱动转化的社媒文案。\n'
+      + '要求：\n'
+      + '1. 保留原文核心信息、品牌、价格、卖点，不虚构事实。\n'
+      + '2. 用口语化、有画面感的语言，像真实用户在安利，而不是官方通稿。\n'
+      + '3. 强化一个核心卖点，加入具体场景/情绪/结果，避免空话。\n'
+      + '4. 节奏以短句为主，多用"你""咱们"拉近距离。\n'
+      + '5. 严格遵守广告法：不出现"最/第一/国家级"等绝对化用语，不夸大功效，不承诺疗效。\n'
+      + '6. 输出可直接用于【' + params.type + '】，语气【' + params.tone + '】。';
+    var user = '核心卖点参考：' + (params.sell || '（无，按原文提炼）') + '\n\n请改写以下文案：\n' + text;
+    return { system: system, user: user };
+  }
+
+  function buildCopgptPrompt(text, formulaName, params) {
+    var fw = FORMULA_MAP[formulaName] || '（经典文案公式，请按其公认结构重写）';
+    var system = '你是一位精通经典文案公式的撰稿人。请严格按【' + formulaName + '】公式结构重写用户文案。\n'
+      + '公式框架：' + fw + '\n'
+      + '要求：\n'
+      + '1. 完全遵循该公式的分段结构与逻辑顺序。\n'
+      + '2. 保留原文核心事实与卖点，不虚构。\n'
+      + '3. 口语自然、有说服力，遵守广告法（无绝对化/疗效宣称）。\n'
+      + '4. 字数控制在 ' + (params.max && params.max > 0 ? params.max + ' 字' : '合理范围') + ' 以内。\n'
+      + '5. 输出类型：' + params.out + '。';
+    var user = '原文：\n' + text;
+    return { system: system, user: user };
+  }
+
+  /* ---------- LLM 调用 ---------- */
+  function callLLM(system, user, cb) {
+    var cfg = loadLLM();
+    if (!cfg.key) { cb({ needKey: true }, null); return; }
+    var url = (cfg.base || '').replace(/\/+$/, '') + '/chat/completions';
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
+      body: JSON.stringify({
+        model: cfg.model || 'deepseek-chat',
+        messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+        temperature: 0.7
+      })
+    }).then(function (r) {
+      return r.json().then(function (d) { return { status: r.status, data: d }; });
+    }).then(function (res) {
+      if (res.status !== 200 || !res.data.choices || !res.data.choices.length) {
+        cb(res.data && (res.data.error && (res.data.error.message || res.data.error)) || ('HTTP ' + res.status), null);
+        return;
+      }
+      cb(null, res.data.choices[0].message.content);
+    }).catch(function (err) {
+      cb('网络/跨域错误：' + (err && err.message ? err.message : err) + '\n（可复制提示词到 AI 工具使用）', null);
+    });
+  }
+
+  /* ---------- 状态 ---------- */
+  var currentMode = 'humanizer';
+  var currentRewritten = '';
+  var currentPrompt = '';
+
+  /* ---------- 渲染对照 ---------- */
+  function renderCompare(original, rewritten, metaChips, note, opts) {
+    opts = opts || {};
+    var html = '';
+    if (metaChips && metaChips.length) {
+      html += '<div class="results-head" style="margin-bottom:14px;padding:12px 16px">'
+        + metaChips.map(function (c) { return '<span class="chip ' + (c.cls || '') + '">' + esc(c.t) + '</span>'; }).join(' ') + '</div>';
+    }
+    html += '<div class="rw-compare">';
+    html += '<div class="rw-col"><div class="rw-col-head"><span>原文</span><span class="rw-tag">输入</span></div>'
+      + '<div class="rw-col-body' + (opts.markOriginal ? ' marked' : '') + '">' + (opts.markOriginal ? original : esc(original)) + '</div></div>';
+    html += '<div class="rw-col"><div class="rw-col-head"><span>改写结果</span><span class="rw-tag after">输出</span></div>'
+      + '<div class="rw-col-body">' + esc(rewritten) + '</div></div>';
+    html += '</div>';
+    if (note) html += '<div class="rw-note">' + note + '</div>';
+    $('rwResult').className = '';
+    $('rwResult').innerHTML = html;
+    currentRewritten = rewritten;
+    $('rwCopyBtn').disabled = false;
+  }
+
+  function renderPromptOnly(promptText, metaChips, note) {
+    var html = '';
+    if (metaChips && metaChips.length) {
+      html += '<div class="results-head" style="margin-bottom:14px;padding:12px 16px">'
+        + metaChips.map(function (c) { return '<span class="chip ' + (c.cls || '') + '">' + esc(c.t) + '</span>'; }).join(' ') + '</div>';
+    }
+    html += '<div class="rw-note">' + (note || '') + '</div>';
+    html += '<div class="rw-prompt">' + esc(promptText) + '</div>';
+    $('rwResult').className = '';
+    $('rwResult').innerHTML = html;
+    currentPrompt = promptText;
+    $('rwCopyBtn').disabled = true;
+    $('rwCopyPromptBtn').style.display = '';
+    $('rwCopyPromptBtn').disabled = false;
+  }
+
+  /* ---------- 主流程 ---------- */
+  function run() {
+    var text = $('rwInput').value.trim();
+    if (!text) { showToast('请先输入原文'); return; }
+    if (currentMode === 'humanizer') return runHumanizer(text);
+    return runLLMMode(text);
+  }
+
+  function runHumanizer(text) {
+    var level = ($('rwHmLevel').querySelector('.on') || {}).dataset
+      ? ($('rwHmLevel').querySelector('.on')).dataset.v : 'mid';
+    var tone = $('rwHmTone').value;
+    var lang = $('rwHmLang').value;
+    var res = humanize(text, level);
+    var chips = [
+      { t: 'Humanizer-zh', cls: 'cyan' },
+      { t: '强度：' + ({ light: '轻', mid: '中', strong: '强' }[level]), cls: '' },
+      { t: '语气：' + tone, cls: '' },
+      { t: '替换 ' + res.count + ' 处', cls: res.count ? 'ok' : 'mid' }
+    ];
+    var note = res.count === 0
+      ? '未检出明显 AI 腔表达，文案已较自然。'
+      : '已识别并替换 <b>' + res.count + '</b> 处中文 AI 惯用表达（高亮部分）。如仍偏书面，可调高「去 AI 强度」或改用「串联模式」再做一轮。';
+    renderCompare(res.highlighted, res.cleaned, chips, note, { markOriginal: true });
+    currentPrompt = '';
+    $('rwCopyPromptBtn').style.display = 'none';
+    $('rwCopyPromptBtn').disabled = true;
+  }
+
+  function runLLMMode(text) {
+    var prompt, metaChips, note;
+    if (currentMode === 'copywriter') {
+      var cw = {
+        type: $('rwCwType').value,
+        tone: $('rwCwTone').value,
+        sell: $('rwCwSell').value.trim()
+      };
+      prompt = buildCopywriterPrompt(text, cw);
+      metaChips = [{ t: 'ai-copywriter', cls: 'cyan' }, { t: '类型：' + cw.type, cls: '' }, { t: '语气：' + cw.tone, cls: '' }];
+    } else {
+      var fn = $('rwCgFormula').value;
+      var cg = {
+        max: parseInt($('rwCgMax').value, 10) || 0,
+        out: $('rwCgOut').value
+      };
+      prompt = buildCopgptPrompt(text, fn, cg);
+      metaChips = [{ t: 'CopyGPT', cls: 'cyan' }, { t: '公式：' + fn, cls: '' }, { t: '输出：' + cg.out, cls: '' }];
+    }
+
+    var modeLabel = currentMode === 'copywriter' ? 'ai-copywriter' : 'CopyGPT';
+    var chain = $('rwChain').checked;
+
+    callLLM(prompt.system, prompt.user, function (err, out) {
+      if (err && typeof err === 'object' && err.needKey) {
+        var kc = metaChips.concat([{ t: '未配置 LLM', cls: 'mid' }]);
+        var kn = '未检测到 LLM API Key。<b>' + modeLabel + '</b> 需要大模型生成改写结果。已为你生成完整提示词，复制后粘贴到任意 AI 工具即可获得改写。'
+          + (chain ? '<br>串联模式需先完成主改写，暂未执行。' : '');
+        renderPromptOnly(prompt.system + '\n\n------\n\n' + prompt.user, kc, kn);
+        return;
+      }
+      if (err) {
+        showToast('改写失败，已生成提示词可手动使用');
+        renderPromptOnly(prompt.system + '\n\n------\n\n' + prompt.user, metaChips.concat([{ t: '调用失败', cls: 'bad' }]),
+          'LLM 调用出错：<b>' + esc(err) + '</b><br>已生成提示词，可复制到 AI 工具使用。');
+        return;
+      }
+      // 成功得到 LLM 结果（非字符串时按失败处理，避免崩溃）
+      if (typeof out !== 'string' || !out.trim()) {
+        renderPromptOnly(prompt.system + '\n\n------\n\n' + prompt.user, metaChips.concat([{ t: '返回异常', cls: 'bad' }]),
+          'LLM 返回内容为空或格式异常，已生成提示词，可复制到 AI 工具使用。');
+        return;
+      }
+      var primaryOut = out;
+      if (chain) {
+        var h = humanize(stripCodeFence(primaryOut), 'mid');
+        var chainNote = '已串联 <b>Humanizer-zh</b> 人味化，去除 ' + h.count + ' 处 AI 腔表达。';
+        renderCompare(esc(text), h.cleaned, metaChips.concat([{ t: '串联 Humanizer', cls: 'ok' }]), chainNote, {});
+      } else {
+        renderCompare(esc(text), stripCodeFence(primaryOut), metaChips, '改写完成。如需更自然，可开启「串联模式」再过一遍 Humanizer-zh。', {});
+      }
+      currentPrompt = '';
+      $('rwCopyPromptBtn').style.display = 'none';
+      $('rwCopyPromptBtn').disabled = true;
+    });
+  }
+
+  function stripCodeFence(s) {
+    if (!s) return s;
+    return s.replace(/^```(?:json|markdown|text)?\s*/i, '').replace(/```$/i, '').trim();
+  }
+
+  /* ---------- 模式切换 ---------- */
+  function switchMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.rw-params').forEach(function (el) {
+      el.style.display = (el.dataset.mode === mode) ? '' : 'none';
+    });
+  }
+
+  /* ---------- 示例 ---------- */
+  var DEMO = '此外，我们的深层护理套餐至关重要，不仅能让你的发质柔顺，而且能深层修护受损毛鳞片。'
+    + '随着人们生活水平的不断提高，毋庸置疑，这家店在众多竞品中脱颖而出。'
+    + '总而言之，欢迎前来体验，享受焕然一新的改变。';
+
+  /* ---------- 初始化 ---------- */
+  function init() {
+    populateFormulas();
+    fillLLMSettings();
+
+    $('rwMode').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b || !b.dataset.v) return;
+      $('rwMode').querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); });
+      b.classList.add('on');
+      switchMode(b.dataset.v);
+    });
+
+    $('rwHmLevel').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      this.querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); });
+      b.classList.add('on');
+    });
+
+    $('rwLlmProvider').addEventListener('change', onProviderChange);
+    $('rwLlmSave').addEventListener('click', function () {
+      var cfg = {
+        provider: $('rwLlmProvider').value,
+        key: $('rwLlmKey').value.trim(),
+        base: $('rwLlmBase').value.trim(),
+        model: $('rwLlmModel').value.trim()
+      };
+      saveLLM(cfg);
+      $('rwLlmStatus').innerHTML = cfg.key ? '<span class="chip ok">已保存</span>' : '<span class="chip mid">已保存（未填 Key）</span>';
+      showToast('LLM 设置已保存');
+    });
+
+    $('rwRun').addEventListener('click', run);
+    $('rwDemo').addEventListener('click', function () {
+      $('rwInput').value = DEMO;
+      if (currentMode !== 'humanizer') {
+        $('rwMode').querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); });
+        $('rwMode').querySelector('button[data-v="humanizer"]').classList.add('on');
+        switchMode('humanizer');
+      }
+      showToast('示例已载入，点击开始改写');
+    });
+
+    $('rwCopyBtn').addEventListener('click', function () {
+      if (currentRewritten) copyText(currentRewritten, '改写结果已复制');
+    });
+    $('rwCopyPromptBtn').addEventListener('click', function () {
+      if (currentPrompt) copyText(currentPrompt, '提示词已复制');
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else { init(); }
+})();
+
+
+/* ==================== js/data-analysis.js ==================== */
+/**
+ * 足浴·SPA 品类 — 抖音来客后台数据分析
+ * 数据来源：用户后台截图（2026-08-09）
+ * 用途：指导投流定向、套餐定价、达人合作、视频内容策略
+ */
+(function () {
+  'use strict';
+
+  var DS = window.DS = window.DS || {};
+
+  DS.spaAnalysis = {
+    /* ============================================================
+     * 一、潜在用户画像（截图1）
+     * ============================================================ */
+    audience: {
+      title: '潜在用户画像',
+      groups: [
+        { name: 'GenZ（18-23岁）', pct: '20%', note: '第一主力，悦己消费+社交需求' },
+        { name: '新锐白领（24-30岁）', pct: '19%', note: '核心客群，通勤放松+形象管理' },
+        { name: '都市蓝领（31-40岁）', pct: '13%', note: '稳定客群，健康保养刚需' },
+        { name: '都市银发', pct: '6%', note: '低占比但高客单，中老年养生' },
+        { name: '资深中产', pct: '3%', note: '品质型，愿为服务体验买单' },
+        { name: '城镇青年', pct: '3%', note: '县域市场，价格敏感' },
+        { name: '精致妈妈', pct: '2%', note: '携家/亲子时段引流' },
+        { name: '城镇中老年', pct: '1%', note: '增量空间' }
+      ],
+      gender: [
+        { age: '18-23岁', female: 5, male: 10, note: 'GenZ 女多男少' },
+        { age: '24-30岁', female: 15, male: 16, note: '白领核心层' },
+        { age: '31-40岁', female: 21, male: 22, note: '主力消费年龄段（男>女）' },
+        { age: '41-50岁', female: 5, male: 6, note: '中年保养' },
+        { age: '>50岁', female: 2, male: 3, note: '银发潜力' }
+      ],
+      insight: '八大人群中，GenZ+新锐白领+都市蓝领占 52%，是投流定向的核心三人群。31-40岁人群男女消费额几乎持平（男21万/女22万），说明该品类男客占比远超行业平均，需重点关注男客定向。'
+    },
+
+    /* ============================================================
+     * 二、同品类品牌与价格分析（截图1下部）
+     * ============================================================ */
+    category: {
+      title: '同品类品牌与价格',
+      topBrands: [
+        { name: '郑远元', index: '99.94', note: '修脚品类头部品牌' },
+        { name: '大桶大足道', index: '96.07', note: '足疗连锁' }
+      ],
+      priceDist: [
+        { range: '¥0-49', pct: '10%', note: '引流款，走量' },
+        { range: '¥98-147', pct: '17%', note: '入门款' },
+        { range: '¥98-147', pct: '35%', note: '主销价格带 ⭐' },
+        { range: '¥98-147', pct: '25%', note: '次主力' },
+        { range: '¥196-245', pct: '10%', note: '中端' },
+        { range: '¥294-343', pct: '9%', note: '高端' },
+        { range: '¥294-343', pct: '7%', note: '高端' },
+        { range: '¥392-441', pct: '4%', note: '顶配' },
+        { range: '¥392-441', pct: '5%', note: '顶配' }
+      ],
+      insight: '主销价格带集中在 ¥98-147（占 60%），当前工作台的 mainPrice ¥89 偏低——建议把主力套餐提至 ¥98-128 区间，保留 ¥39.9 引流款。'
+    },
+
+    /* ============================================================
+     * 三、用户搜索与视频偏好（截图1词云 + 截图2）
+     * ============================================================ */
+    interest: {
+      title: '用户搜索词与内容偏好',
+      topSearch: ['按摩', '足浴', 'SPA', '台球', '石锅鱼', '采耳', '头疗', '网吧', 'K歌', '健身房', '洗浴', '理发店', '烧烤', '漂流'],
+      videoCategories: [
+        { name: '休闲娱乐', score: 280, note: '第一内容偏好' },
+        { name: '家居家政', score: 120, note: '家居服务关联' },
+        { name: '运动健身', score: 110, note: '运动恢复/拉伸' },
+        { name: '文旅', score: 100, note: '旅游场景' },
+        { name: '个人护理', score: 98, note: '美容美体' },
+        { name: '宠物', score: 95, note: '陪伴场景' },
+        { name: '美食', score: 92, note: '休闲组合' },
+        { name: '教育培训', score: 70, note: '低关联' },
+        { name: '结婚', score: 65, note: '低关联' },
+        { name: '亲子', score: 60, note: '低关联' }
+      ],
+      insight: '视频内容应走「休闲娱乐」路线（探店、放松、解压），而非医疗养生。搜索词中「按摩/足浴/SPA」与「台球/网吧/K歌」强关联，说明用户多为年轻男性休闲娱乐场景，口播文案应避免过度强调"养生/保健"标签。'
+    },
+
+    /* ============================================================
+     * 四、TOP成交达人（截图2）
+     * ============================================================ */
+    creators: {
+      title: '近15日同品类TOP成交达人',
+      list: [
+        { rank: 1, name: '张子晨', fans: '10.2万', index: '99.93', note: '头部，探店+剧情' },
+        { rank: 2, name: '包子脸', fans: '1.8万', index: '91.41', note: '中腰部，高性价比' },
+        { rank: 3, name: '上海按摩哪家强｜元帅', fans: '1.8万', index: '89.57', note: '垂类账号' },
+        { rank: 4, name: '桃桃逛魔都', fans: '1.8万', index: '88.96', note: '探店种草' },
+        { rank: 5, name: '魔都蜜探', fans: '7.2万', index: '87.41', note: '本地生活探店' }
+      ],
+      insight: '成交指数TOP5达人粉丝量集中在 1.8万-10.2万，均为上海本地生活探店类。合作策略：优先「上海按摩哪家强｜元帅」（垂类最匹配，粉丝量低但成交指数89.57），其次桃桃逛魔都、魔都蜜探（本地流量）。预算分配：1个腰部+2个尾部组合投放，ROI 最稳。'
+    },
+
+    /* ============================================================
+     * 五、投放人群画像（截图3）
+     * ============================================================ */
+    targeting: {
+      title: '投放人群画像（实际消耗）',
+      core: [
+        { dim: '核心人群', value: '新锐白领 55.54% + 资深中产 17.92% + 都市蓝领 13.66%', note: '三类人群占 87%' },
+        { dim: '性别', value: '男性 89.99%', note: '几乎纯男客，与行业认知一致' },
+        { dim: '年龄段', value: '31-40岁 43.33%', note: '消费主力' },
+        { dim: '城市', value: '上海市 77.01% + 扬州市 6.6%', note: '上海为主，扬州次之' }
+      ],
+      groups: [
+        { name: '新锐白领', pct: '55.54%', amount: '¥1,769.78', note: '第一消耗人群' },
+        { name: '资深中产', pct: '17.92%', amount: '-', note: '高客单' },
+        { name: '都市蓝领', pct: '13.66%', amount: '-', note: '稳定' },
+        { name: '都市银发', pct: '3.80%', amount: '-', note: '低量高客单' },
+        { name: 'GenZ', pct: '5.01%', amount: '-', note: '年轻增量' },
+        { name: '精致妈妈', pct: '0.66%', amount: '-', note: '几乎无消耗' },
+        { name: '城镇青年', pct: '0.45%', amount: '-', note: '微量' },
+        { name: '城镇中老年', pct: '0.04%', amount: '-', note: '微量' }
+      ],
+      ageDist: [
+        { age: '18-23岁', amount: '¥低', note: '消耗极少' },
+        { age: '24-30岁', amount: '¥470', note: '次主力' },
+        { age: '31-40岁', amount: '¥880', note: '绝对主力 ⭐' },
+        { age: '41-50岁', amount: '¥350', note: '次主力' },
+        { age: '>50岁', amount: '¥30', note: '微量' }
+      ],
+      regions: [
+        { city: '上海市', amount: '¥1,769.78', pct: '77.01%', note: '主战场' },
+        { city: '浙江省', amount: '¥239.46', pct: '10.42%', note: '次区域' },
+        { city: '江苏省', amount: '¥153.28', pct: '6.67%', note: '次区域' },
+        { city: '陕西省', amount: '¥0.17', pct: '0.01%', note: '微量' },
+        { city: '湖北省', amount: '¥0.01', pct: '0.00%', note: '微量' }
+      ],
+      insight: '实际消耗数据印证了「男客导向」：男性占 89.99%，31-40 岁占 43.33%，上海占 77%。投流策略：地域定向以上海为核心（77%消耗），叠加江浙（17%）扩量；人群包锁定「新锐白领+资深中产+都市蓝领」三类，剔除「精致妈妈/城镇中老年」（<1%消耗）。'
+    },
+
+    /* ============================================================
+     * 六、综合优化建议
+     * ============================================================ */
+    recommendations: [
+      {
+        category: '投流定向',
+        title: '定向人群包调整',
+        detail: '核心包：上海+新锐白领+资深中产+都市蓝领（31-40岁男性为主）。扩量包：江浙地区+都市蓝领+GenZ。剔除：精致妈妈/城镇中老年（消耗<1%）。'
+      },
+      {
+        category: '套餐定价',
+        title: '主力套餐定价上探',
+        detail: '主销价格带 ¥98-147 占 60%，当前 ¥89 偏低。建议：引流款 ¥39.9 保留；主力套餐提至 ¥98-128；新增 ¥198 高端款（匹配资深中产需求）。'
+      },
+      {
+        category: '内容策略',
+        title: '口播文案去"医疗化"',
+        detail: '用户搜索「按摩/足浴/SPA」与「台球/网吧/K歌」强关联，说明是年轻男性休闲娱乐场景。文案避免「治疗/保健/中医」字眼，改走「解压/放松/下班去哪」路线。'
+      },
+      {
+        category: '达人合作',
+        title: '垂类+本地组合投放',
+        detail: '首选「上海按摩哪家强｜元帅」（垂类，89.57指数）；搭配桃桃逛魔都/魔都蜜探（本地流量）。预算比例 4:3:3，跑两周后看 ROI 优化。'
+      },
+      {
+        category: '视频方向',
+        title: '内容标签匹配',
+        detail: '按视频偏好排序：休闲娱乐（280分）> 家居家政（120分）> 运动健身（110分）。口播开头 3 秒可用「下班不知道去哪放松」「打工人周末好去处」切入。'
+      },
+      {
+        category: '品类话术',
+        title: '男客定向话术优化',
+        detail: '针对 89.99% 男性客群：强调「不推销不办卡」「30分钟做完不耽误事」「技师手法标准化」——直击男性「怕被推销+重效率」两大痛点。'
+      }
+    ]
+  };
+
+  /* ============================================================
+   * 渲染函数：将数据分析插入工作台 Tab
+   * ============================================================ */
+  function renderDataTab() {
+    var container = document.getElementById('dataContent');
+    if (!container) return;
+
+    var d = DS.spaAnalysis;
+    var html = '';
+
+    // 标题
+    html += '<div style="margin-bottom:20px">';
+    html += '<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--pri);font-weight:600;margin-bottom:6px">数据分析</div>';
+    html += '<div style="font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.02em">足浴·SPA 品类 — 抖音来客数据洞察</div>';
+    html += '<div style="font-size:12px;color:var(--text-3);margin-top:4px">数据来源：2026-08-09 后台截图 · 指导投流、定价、内容、达人合作</div>';
+    html += '</div>';
+
+    // ---- 一、受众画像 ----
+    html += '<div class="shot" style="margin-bottom:20px"><div class="shot-title">一、潜在用户画像</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-bottom:12px">';
+    d.audience.groups.forEach(function (g) {
+      html += '<div style="padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">';
+      html += '<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px">' + g.name + '</div>';
+      html += '<div style="font-size:18px;font-weight:700;color:var(--pri)">' + g.pct + '</div>';
+      html += '<div style="font-size:11px;color:var(--text-3)">' + g.note + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '<div style="padding:12px;background:#e8f0fe;border-radius:8px;border-left:3px solid var(--pri);font-size:12px;color:var(--text-2);line-height:1.7">' + d.audience.insight + '</div>';
+    html += '</div>';
+
+    // ---- 二、品牌与价格 ----
+    html += '<div class="shot" style="margin-bottom:20px"><div class="shot-title">二、同品类品牌与价格分布</div>';
+    html += '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">';
+    d.category.topBrands.forEach(function (b) {
+      html += '<span style="padding:4px 10px;background:#fff3e0;border-radius:6px;font-size:11px;color:#e65100;font-weight:500">' + b.name + '（成交指数 ' + b.index + '）</span>';
+    });
+    html += '</div>';
+    html += '<div style="display:flex;gap:6px;align-items:flex-end;height:60px;margin-bottom:12px">';
+    var maxPct = 35;
+    d.category.priceDist.forEach(function (p) {
+      var h = Math.round((parseInt(p.pct) / maxPct) * 50);
+      var color = p.pct === '35%' ? 'var(--pri)' : p.pct === '25%' ? 'var(--cyan)' : 'var(--border)';
+      html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">';
+      html += '<div style="font-size:10px;font-weight:600;color:var(--text-2)">' + p.pct + '</div>';
+      html += '<div style="width:100%;height:' + h + 'px;background:' + color + ';border-radius:3px 3px 0 0;min-height:4px"></div>';
+      html += '<div style="font-size:9px;color:var(--text-3);white-space:nowrap">' + p.range + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '<div style="padding:12px;background:#e8f5e9;border-radius:8px;border-left:3px solid #4caf50;font-size:12px;color:var(--text-2);line-height:1.7">' + d.category.insight + '</div>';
+    html += '</div>';
+
+    // ---- 三、搜索与偏好 ----
+    html += '<div class="shot" style="margin-bottom:20px"><div class="shot-title">三、用户搜索词与视频偏好</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">';
+    d.interest.topSearch.forEach(function (w) {
+      html += '<span style="padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-2)">' + w + '</span>';
+    });
+    html += '</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px;margin-bottom:12px">';
+    d.interest.videoCategories.slice(0, 5).forEach(function (v) {
+      html += '<div style="padding:8px 10px;background:var(--bg);border-radius:6px;display:flex;justify-content:space-between;align-items:center">';
+      html += '<span style="font-size:12px;color:var(--text-2)">' + v.name + '</span>';
+      html += '<span style="font-size:13px;font-weight:600;color:var(--pri)">' + v.score + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '<div style="padding:12px;background:#fff8e1;border-radius:8px;border-left:3px solid #ffc107;font-size:12px;color:var(--text-2);line-height:1.7">' + d.interest.insight + '</div>';
+    html += '</div>';
+
+    // ---- 四、达人 ----
+    html += '<div class="shot" style="margin-bottom:20px"><div class="shot-title">四、近15日同品类TOP成交达人</div>';
+    html += '<table class="shots" style="margin-bottom:12px"><thead><tr><th>排名</th><th>达人</th><th>粉丝量</th><th>成交指数</th><th>类型</th></tr></thead><tbody>';
+    d.creators.list.forEach(function (c) {
+      html += '<tr><td style="font-weight:600;color:var(--pri)">#' + c.rank + '</td><td>' + c.name + '</td><td>' + c.fans + '</td><td style="font-weight:600">' + c.index + '</td><td style="font-size:11px;color:var(--text-3)">' + c.note + '</td></tr>';
+    });
+    html += '</tbody></table>';
+    html += '<div style="padding:12px;background:#f3e5f5;border-radius:8px;border-left:3px solid #9c27b0;font-size:12px;color:var(--text-2);line-height:1.7">' + d.creators.insight + '</div>';
+    html += '</div>';
+
+    // ---- 五、投放人群 ----
+    html += '<div class="shot" style="margin-bottom:20px"><div class="shot-title">五、投放人群画像（实际消耗）</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-bottom:12px">';
+    d.targeting.core.forEach(function (t) {
+      html += '<div style="padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">';
+      html += '<div style="font-size:11px;color:var(--text-3);margin-bottom:4px">' + t.dim + '</div>';
+      html += '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px">' + t.value + '</div>';
+      html += '<div style="font-size:11px;color:var(--pri)">' + t.note + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    // 消耗表
+    html += '<table class="shots" style="margin-bottom:12px"><thead><tr><th>城市</th><th>消耗金额</th><th>占比</th></tr></thead><tbody>';
+    d.targeting.regions.forEach(function (r) {
+      html += '<tr><td>' + r.city + '</td><td style="font-weight:600">' + r.amount + '</td><td>' + r.pct + '</td></tr>';
+    });
+    html += '</tbody></table>';
+    html += '<div style="padding:12px;background:#e8f0fe;border-radius:8px;border-left:3px solid var(--pri);font-size:12px;color:var(--text-2);line-height:1.7">' + d.targeting.insight + '</div>';
+    html += '</div>';
+
+    // ---- 六、优化建议 ----
+    html += '<div class="shot"><div class="shot-title">六、综合优化建议</div>';
+    d.recommendations.forEach(function (r, i) {
+      html += '<div style="padding:12px;margin-bottom:8px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+      html += '<span style="padding:2px 8px;background:var(--pri);color:#fff;border-radius:4px;font-size:10px;font-weight:600">' + r.category + '</span>';
+      html += '<span style="font-size:13px;font-weight:600;color:var(--text)">' + (i + 1) + '. ' + r.title + '</span>';
+      html += '</div>';
+      html += '<div style="font-size:12px;color:var(--text-2);line-height:1.7">' + r.detail + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  /* 初始化 */
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderDataTab);
+  } else {
+    renderDataTab();
+  }
+})();
+
+
+/* ==================== js/plan-generator.js ==================== */
+/**
+ * 运营计划生成器 — 数据分析板块专用模块
+ * ------------------------------------------------------------
+ * 功能：上传图片（抖音来客后台截图 / 经营日报）+ 文档（CSV/TXT/Excel 导出）
+ *       → 自动分析 → 生成结构化「未来运营计划」（含投流预算分配）
+ * 架构：
+ *   1) LLM 视觉分析（OpenAI 兼容 API，可配置 Key）—— 优先
+ *   2) 规则引擎降级（无 Key 时基于内置数据 + 用户参数自动生成）—— 保底
+ * 隔离性：本模块自包含 IIFE，仅操作 #planGen 容器，不影响其他板块。
+ */
+(function () {
+  'use strict';
+
+  /* ---------------- 常量 ---------------- */
+  var STORE_KEY = 'dycs_plan_llm';
+  var DEFAULT_API = 'https://api.deepseek.com/v1/chat/completions';
+
+  var STAGES = [
+    { key: 's1', name: '第一阶段 · 冷启动蓄水', days: '第 1-14 天', tag: '测款蓄水' },
+    { key: 's2', name: '第二阶段 · 放量起量', days: '第 15-45 天', tag: '放量爬坡' },
+    { key: 's3', name: '第三阶段 · 优化收割', days: '第 46-90 天', tag: '优化收割' }
+  ];
+
+  /* ---------------- 状态 ---------------- */
+  var attachedFile = null; // 当前待分析文件 {name, type, dataUrl, text}
+
+  /* ---------------- 工具函数 ---------------- */
+  function esc(s) {
+    var d = document.createElement('div');
+    d.textContent = String(s == null ? '' : s);
+    return d.innerHTML;
+  }
+
+  function toast(msg) {
+    var t = document.getElementById('toast');
+    if (t) { t.textContent = msg; t.className = 'toast show'; clearTimeout(t._tm); t._tm = setTimeout(function () { t.className = 'toast'; }, 2600); }
+    else { alert(msg); }
+  }
+
+  function loadLLM() {
+    try {
+      var cfg = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+      return { key: cfg.key || '', base: cfg.base || DEFAULT_API, model: cfg.model || 'deepseek-chat' };
+    } catch (e) { return { key: '', base: DEFAULT_API, model: 'deepseek-chat' }; }
+  }
+
+  /* ---------------- 降级规则引擎（无 Key 保底） ---------------- */
+  function buildPlanFromParams(p) {
+    // 基于内置真实数据 + 用户输入的参数生成结构化计划
+    var budget = Number(p.budget) || 30000;
+    var targetGmv = Number(p.targetGmv) || 500000;
+    var stores = Number(p.stores) || 5;
+
+    var alloc = [
+      { ch: '本地推（门店引流）', pct: 0.35, amt: Math.round(budget * 0.35), desc: '3-5km 围栏 + 男客定向，拉新到店' },
+      { ch: '团购推广（核销转化）', pct: 0.30, amt: Math.round(budget * 0.30), desc: '主推 ¥98-128 主力款，冲核销率' },
+      { ch: '达人探店（种草）', pct: 0.20, amt: Math.round(budget * 0.20), desc: '元帅/桃桃/魔都蜜探 4:3:3 组合' },
+      { ch: '品牌信息流（曝光）', pct: 0.10, amt: Math.round(budget * 0.10), desc: '休闲娱乐标签人群，扩大声量' },
+      { ch: '私域承接（到店转化）', pct: 0.05, amt: Math.round(budget * 0.05), desc: '到店核销后会员复购运营' }
+    ];
+
+    var roiTarget = (targetGmv / budget).toFixed(2);
+    var cpa = Math.max(1, Math.round(budget * 0.30 / Math.max(1, Math.round(targetGmv / 120))));
+
+    return {
+      overview: {
+        title: '足浴·SPA 门店未来 90 天运营计划',
+        goal: '目标月 GMV ¥' + targetGmv.toLocaleString() + '，90 天核销率提升至 45%+，ROI 稳定 1:' + roiTarget,
+        cycle: '执行周期：90 天 · 覆盖 ' + stores + ' 家门店',
+        basis: '数据依据：男客 89.99% / 31-40 岁 43.33% / 主销价带 ¥98-147 占 60% / 上海 77%'
+      },
+      stages: [
+        { name: STAGES[0].name, days: STAGES[0].days, tag: STAGES[0].tag,
+          actions: ['上线 ¥39.9 引流款 + ¥98 主力款双套餐，锁定男客 25-45 岁定向',
+            '首批合作元帅（89.57 指数）+ 桃桃逛魔都，产出 9-15 条探店视频',
+            '本地推 3-5km 围栏投放，日预算按 35% 总预算 ÷ 30 天控制',
+            '建立达人资源库与素材库，跑通「门头→环境→手法→价签」标准片型'],
+          kpi: '核销率 ≥ 20% · 到店成本 ≤ ¥60/人 · 视频完播率 ≥ 18%' },
+        { name: STAGES[1].name, days: STAGES[1].days, tag: STAGES[1].tag,
+          actions: ['根据首周数据放大赢家素材：ROI>1:4 的素材提量 30%',
+            '团购推广主投 ¥98-128 主力款，客单上探 15%',
+            '拓展魔都蜜探等腰部达人，预算 4:3:3 复投',
+            '开启老客 Lookalike 扩量，叠加江浙同城 17% 人群'],
+          kpi: '月 GMV 达成 70% 目标 · ROI ≥ 1:5 · 新客占比 ≥ 40%' },
+        { name: STAGES[2].name, days: STAGES[2].days, tag: STAGES[2].tag,
+          actions: ['数据复盘：CPA/ROI/核销率三表对齐，砍掉低效素材',
+            '私域承接：到店核销即引导会员入群（合规口径），提升复购',
+            '高端款 ¥198 上线，承接资深中产 17.92% 客群',
+            '沉淀 SOP：达人筛选清单 + 素材模板 + 定向包，复制到新店'],
+          kpi: '月 GMV 达成 100% 目标 · ROI ≥ 1:6 · 复购率 ≥ 25%' }
+      ],
+      budget: {
+        total: budget,
+        rows: alloc,
+        note: '分配依据：本地推承担拉新、团购推广承担转化、达人承担种草信任、信息流扩大声量，比例随数据周复盘调整。'
+      },
+      channel: [
+        { ch: '抖音本地推', grp: '新锐白领 55.54% + 都市蓝领 13.66%', age: '31-40 岁为主', geo: '门店 3-5km 围栏', note: '第一消耗渠道，占预算 35%' },
+        { ch: '抖音团购推广', grp: '品类兴趣 + 团购高潜人群', age: '25-45 岁', geo: '上海 77% + 江浙 17%', note: '主力转化渠道，占预算 30%' },
+        { ch: '达人探店', grp: '休闲娱乐标签人群', age: '18-40 岁', geo: '同城', note: '信任背书渠道，占预算 20%' },
+        { ch: '品牌信息流', grp: 'Lookalike 老客扩量', age: '22-50 岁', geo: '上海 + 江浙', note: '声量渠道，占预算 10%' }
+      ],
+      effect: [
+        { name: '月 GMV 目标', val: '¥' + targetGmv.toLocaleString(), note: '分 3 阶段爬坡：30% → 70% → 100%' },
+        { name: '预估 ROI', val: '1:' + roiTarget, note: '基准线 1:4，优质素材可到 1:6' },
+        { name: '核销率目标', val: '45%+', note: '行业均值约 35%，男客效率型消费更易核销' },
+        { name: '客单价', val: '¥98-128', note: '主力款上探后客单提升约 15%' }
+      ],
+      risks: [
+        { lv: 'P0', txt: '合规红线：任何「疏通经络/排毒/治疗」等医疗功效词 → 素材直接返工，不计交付' },
+        { lv: 'P0', txt: '价格不一致：视频口播价与抖音来客后台套餐价不一致 → 判 P1 违规，需全量改稿' },
+        { lv: 'P1', txt: '定向过宽：精致妈妈/城镇中老年消耗 >2% 即无效流量，需收紧人群包' },
+        { lv: 'P1', txt: '素材疲劳：单素材投放超 14 天 ROI 下滑，需按「9-15 条/波次」持续上新' },
+        { lv: 'P2', txt: '达人风险：达人自带功效承诺口播需剪掉；授权文件须齐备' }
+      ]
+    };
+  }
+
+  /* ---------------- LLM 视觉分析（优先） ---------------- */
+  function callVision(payload, cb) {
+    var cfg = loadLLM();
+    if (!cfg.key) { cb({ needKey: true }, null); return; }  // needKey 走错误通道
+    if (typeof fetch !== 'function') { cb({ needKey: true }, null); return; } // 无 fetch 环境降级
+    var model = cfg.model || 'deepseek-chat';
+
+    var sys = '你是资深本地生活运营总监（抖音来客/美业SPA方向）。用户上传经营数据图片或文档，请分析并输出 JSON（不要 markdown 代码块），结构严格如下：'
+      + '{"overview":{"title","goal","cycle","basis"},"stages":[{"name","days","tag","actions":[3-4条],"kpi"}x3],'
+      + '"budget":{"total":数值,"rows":[{"ch","pct","amt","desc"}],"note"},"channel":[{"ch","grp","age","geo","note"}x4],'
+      + '"effect":[{"name","val","note"}x4],"risks":[{"lv","txt"}x5]}'
+      + '。要求：投流预算分配必须覆盖本地推/团购推广/达人/信息流/私域；分3阶段(冷启动/放量/优化)；数据引用用户上传内容中的真实数值，缺失时用行业经验值并标注"预估"。';
+
+    var msgs = [{ role: 'system', content: sys }];
+    if (attachedFile && attachedFile.isImage) {
+      msgs.push({ role: 'user', content: [
+        { type: 'text', text: '请分析这张经营数据图片（后台截图/日报），提取关键数据并生成未来运营计划：' },
+        { type: 'image_url', image_url: { url: attachedFile.dataUrl } }
+      ]});
+    } else if (attachedFile && attachedFile.text) {
+      msgs.push({ role: 'user', content: '请分析这份经营数据文档并生成未来运营计划：\n' + attachedFile.text.slice(0, 6000) });
+    } else {
+      msgs.push({ role: 'user', content: '请基于以下经营参数生成未来运营计划：月预算 ' + payload.budget + ' 元，目标月GMV ' + payload.targetGmv + ' 元，门店数 ' + payload.stores + '，品类：足浴SPA。' });
+    }
+
+    try {
+      fetch(cfg.base, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
+        body: JSON.stringify({ model: model, messages: msgs, temperature: 0.4, max_tokens: 3000 })
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        var txt = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+        if (!txt) { cb({ needKey: true, raw: d }, null); return; }
+        txt = txt.replace(/^```(json)?/m, '').replace(/```$/m, '').trim();
+        var j = JSON.parse(txt);
+        cb(null, j);
+      }).catch(function (e) { cb({ err: e.message }, null); });
+    } catch (e) { cb({ err: e.message }, null); }
+  }
+
+  /* ---------------- 渲染：上传区 ---------------- */
+  function render() {
+    var el = document.getElementById('planGen');
+    if (!el) return;
+
+    var cfg = loadLLM();
+    var html = '';
+    html += '<div style="margin:20px 0 6px;padding-top:18px;border-top:1px solid var(--border)">';
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">';
+    html += '<span style="font-size:15px">🚀</span>';
+    html += '<span style="font-size:14px;font-weight:700;color:var(--text)">运营计划生成器</span>';
+    html += '<span style="font-size:10px;color:var(--text-3);border:1px solid var(--border);border-radius:4px;padding:1px 6px">上传数据 → 自动生成未来 90 天计划（含投流预算）</span>';
+    html += '</div>';
+    html += '<div style="font-size:11.5px;color:var(--text-3);margin-bottom:12px">支持上传：后台截图（PNG/JPG）、经营文档（CSV/TXT/Excel 导出）。有 Key 走视觉 AI 分析，无 Key 自动用内置数据 + 参数生成。</div>';
+
+    // 上传区
+    html += '<div id="planDrop" style="border:1.5px dashed var(--border);border-radius:10px;padding:22px 16px;text-align:center;cursor:pointer;background:var(--bg);transition:border-color .2s">';
+    html += '<div style="font-size:22px;margin-bottom:6px">📤</div>';
+    html += '<div style="font-size:12.5px;color:var(--text-2)">点击或拖拽上传 <b>经营数据图片 / 文档</b></div>';
+    html += '<div style="font-size:11px;color:var(--text-3);margin-top:4px" id="planFileInfo">未选择文件</div>';
+    html += '</div>';
+
+    // 参数区
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:12px 0">';
+    html += '<div><label style="font-size:11px;color:var(--text-3)">月投放预算（元）</label><input id="planBudget" type="number" value="30000" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:#fff;font-size:12.5px;margin-top:3px"></div>';
+    html += '<div><label style="font-size:11px;color:var(--text-3)">目标月 GMV（元）</label><input id="planGmv" type="number" value="500000" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:#fff;font-size:12.5px;margin-top:3px"></div>';
+    html += '<div><label style="font-size:11px;color:var(--text-3)">门店数</label><input id="planStores" type="number" value="5" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:#fff;font-size:12.5px;margin-top:3px"></div>';
+    html += '</div>';
+
+    // LLM 配置（折叠）
+    html += '<details style="margin-bottom:12px">';
+    html += '<summary style="font-size:11.5px;color:var(--text-3);cursor:pointer">⚙️ LLM 视觉分析配置（可选，填了更精准；不填自动用内置数据）</summary>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:10px">';
+    html += '<div><label style="font-size:11px;color:var(--text-3)">API Key</label><input id="planKey" type="password" value="' + esc(cfg.key) + '" placeholder="sk-..." style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px;margin-top:3px"></div>';
+    html += '<div><label style="font-size:11px;color:var(--text-3)">API Base</label><input id="planBase" type="text" value="' + esc(cfg.base) + '" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px;margin-top:3px"></div>';
+    html += '<div><label style="font-size:11px;color:var(--text-3)">模型</label><input id="planModel" type="text" value="' + esc(cfg.model) + '" placeholder="deepseek-chat" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px;margin-top:3px"></div>';
+    html += '</div></details>';
+
+    html += '<button id="planRun" style="width:100%;padding:11px;border:0;border-radius:9px;background:var(--pri);color:#fff;font-size:13.5px;font-weight:600;cursor:pointer">开始生成运营计划</button>';
+    html += '<div style="font-size:11px;color:var(--text-3);margin-top:8px" id="planStatus"></div>';
+    html += '<div id="planResult" style="margin-top:14px"></div>';
+    html += '</div>';
+
+    el.innerHTML = html;
+
+    /* ------- 事件绑定 ------- */
+    var drop = document.getElementById('planDrop');
+    var fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*,.csv,.txt,.md,.json';
+    fileInput.style.display = 'none';
+    el.appendChild(fileInput);
+
+    drop.addEventListener('click', function () { fileInput.click(); });
+    drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.style.borderColor = 'var(--pri)'; });
+    drop.addEventListener('dragleave', function () { drop.style.borderColor = 'var(--border)'; });
+    drop.addEventListener('drop', function (e) {
+      e.preventDefault(); drop.style.borderColor = 'var(--border)';
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', function () { if (this.files.length) handleFile(this.files[0]); });
+
+    function handleFile(f) {
+      var info = document.getElementById('planFileInfo');
+      if (!f) return;
+      var isImg = /^image\//.test(f.type) || /\.(png|jpe?g|webp|gif)$/i.test(f.name);
+      attachedFile = { name: f.name, type: f.type, isImage: isImg };
+      var r = new FileReader();
+      if (isImg) {
+        r.onload = function (ev) { attachedFile.dataUrl = ev.target.result; info.textContent = '✅ ' + f.name + '（图片，' + Math.round(f.size / 1024) + 'KB）'; };
+        r.readAsDataURL(f);
+      } else {
+        r.onload = function (ev) { attachedFile.text = String(ev.target.result).slice(0, 8000); info.textContent = '✅ ' + f.name + '（文档，' + Math.round(f.size / 1024) + 'KB）'; };
+        r.readAsText(f);
+      }
+    }
+
+    document.getElementById('planRun').addEventListener('click', run);
+  }
+
+  /* ---------------- 生成 ---------------- */
+  function run() {
+    var status = document.getElementById('planStatus');
+    var res = document.getElementById('planResult');
+    var budget = document.getElementById('planBudget').value;
+    var gmv = document.getElementById('planGmv').value;
+    var stores = document.getElementById('planStores').value;
+
+    // 保存 LLM 配置
+    var cfg = loadLLM();
+    var k = document.getElementById('planKey').value.trim();
+    var b = document.getElementById('planBase').value.trim();
+    var m = document.getElementById('planModel').value.trim();
+    if (k) { localStorage.setItem(STORE_KEY, JSON.stringify({ key: k, base: b || DEFAULT_API, model: m || 'deepseek-chat' })); cfg = { key: k, base: b || DEFAULT_API, model: m || 'deepseek-chat' }; }
+
+    if (!budget || !gmv || !stores) { toast('请填写预算 / GMV / 门店数'); return; }
+    var params = { budget: budget, targetGmv: gmv, stores: stores };
+
+    status.textContent = '⏳ 正在分析数据并生成计划…';
+    res.innerHTML = '';
+
+    var payload = { budget: budget, targetGmv: gmv, stores: stores };
+    callVision(payload, function (err, plan) {
+      if (err && err.needKey) {
+        status.textContent = '未配置 API Key，已用内置数据 + 您的参数生成（如需 AI 精准识图，请填 Key）';
+        plan = buildPlanFromParams(params);
+      } else if (err) {
+        status.textContent = 'AI 调用失败（' + (err.err || '未知') + '），已降级为规则引擎生成';
+        plan = buildPlanFromParams(params);
+      }
+      renderResult(plan);
+      status.textContent = plan.overview && plan.overview.title ? '✅ 计划已生成' : '✅ 已生成';
+    });
+  }
+
+  /* ---------------- 渲染结果 ---------------- */
+  function renderResult(plan) {
+    var res = document.getElementById('planResult');
+    if (!plan || typeof plan !== 'object') { res.innerHTML = '<div style="padding:16px;color:var(--danger);font-size:12.5px">生成失败，请重试</div>'; return; }
+    plan.overview = plan.overview || {};
+    plan.stages = plan.stages || [];
+    plan.budget = plan.budget || {};
+    plan.budget.rows = plan.budget.rows || [];
+    plan.channel = plan.channel || [];
+    plan.effect = plan.effect || [];
+    plan.risks = plan.risks || [];
+
+    var h = '';
+    h += '<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden">';
+
+    /* 1. 概览 */
+    h += '<div style="background:var(--pri);color:#fff;padding:14px 16px">';
+    h += '<div style="font-size:15px;font-weight:700">' + esc(plan.overview.title || '未来运营计划') + '</div>';
+    h += '<div style="font-size:12px;opacity:.9;margin-top:3px">' + esc(plan.overview.goal || '') + '</div>';
+    h += '<div style="font-size:11px;opacity:.75;margin-top:3px">' + esc(plan.overview.cycle || '') + ' · ' + esc(plan.overview.basis || '') + '</div>';
+    h += '</div>';
+
+    h += '<div style="padding:16px">';
+
+    /* 2. 分阶段执行 */
+    h += '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">📅 分阶段执行建议</div>';
+    (plan.stages || []).forEach(function (s, i) {
+      h += '<div style="padding:12px;margin-bottom:10px;border:1px solid var(--border);border-radius:9px;background:var(--bg)">';
+      h += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">';
+      h += '<span style="background:var(--pri);color:#fff;font-size:10px;font-weight:700;border-radius:4px;padding:2px 8px">阶段 ' + (i + 1) + '</span>';
+      h += '<span style="font-size:13px;font-weight:600;color:var(--text)">' + esc(s.name) + '</span>';
+      h += '<span style="font-size:11px;color:var(--text-3)">' + esc(s.days || '') + '</span>';
+      if (s.tag) h += '<span style="font-size:10px;color:var(--pri);border:1px solid var(--pri);border-radius:4px;padding:1px 6px">' + esc(s.tag) + '</span>';
+      h += '</div>';
+      h += '<ul style="margin:0;padding:0 0 0 16px">';
+      (s.actions || []).forEach(function (a) { h += '<li style="font-size:12px;color:var(--text-2);line-height:1.8">' + esc(a) + '</li>'; });
+      h += '</ul>';
+      if (s.kpi) h += '<div style="font-size:11.5px;color:#2e7d32;margin-top:6px">🎯 ' + esc(s.kpi) + '</div>';
+      h += '</div>';
+    });
+
+    /* 3. 投流预算分配 */
+    h += '<div style="font-size:13px;font-weight:700;color:var(--text);margin:16px 0 10px">💰 投流预算分配（月预算 ¥' + ((plan.budget && plan.budget.total) || 0).toLocaleString() + '）</div>';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px">';
+    h += '<tr style="background:var(--bg);color:var(--text-3);font-size:11px"><th style="text-align:left;padding:6px 8px;border:1px solid var(--border)">渠道</th><th style="padding:6px 8px;border:1px solid var(--border)">占比</th><th style="padding:6px 8px;border:1px solid var(--border)">金额</th><th style="text-align:left;padding:6px 8px;border:1px solid var(--border)">用途</th></tr>';
+    (plan.budget && plan.budget.rows || []).forEach(function (r) {
+      h += '<tr><td style="padding:6px 8px;border:1px solid var(--border)">' + esc(r.ch) + '</td>';
+      h += '<td style="padding:6px 8px;border:1px solid var(--border);text-align:center;color:var(--pri);font-weight:600">' + Math.round((r.pct || 0) * 100) + '%</td>';
+      h += '<td style="padding:6px 8px;border:1px solid var(--border);text-align:center">¥' + (r.amt || 0).toLocaleString() + '</td>';
+      h += '<td style="padding:6px 8px;border:1px solid var(--border);color:var(--text-2)">' + esc(r.desc) + '</td></tr>';
+    });
+    h += '</table>';
+    if (plan.budget && plan.budget.note) h += '<div style="font-size:11px;color:var(--text-3);margin-bottom:8px">' + esc(plan.budget.note) + '</div>';
+
+    /* 4. 渠道与人群 */
+    h += '<div style="font-size:13px;font-weight:700;color:var(--text);margin:16px 0 10px">🎯 投放渠道与目标人群</div>';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px">';
+    h += '<tr style="background:var(--bg);color:var(--text-3);font-size:11px"><th style="text-align:left;padding:6px 8px;border:1px solid var(--border)">渠道</th><th style="text-align:left;padding:6px 8px;border:1px solid var(--border)">人群包</th><th style="text-align:left;padding:6px 8px;border:1px solid var(--border)">年龄</th><th style="text-align:left;padding:6px 8px;border:1px solid var(--border)">地域</th></tr>';
+    (plan.channel || []).forEach(function (c) {
+      h += '<tr><td style="padding:6px 8px;border:1px solid var(--border);font-weight:600">' + esc(c.ch) + '</td>';
+      h += '<td style="padding:6px 8px;border:1px solid var(--border)">' + esc(c.grp) + '</td>';
+      h += '<td style="padding:6px 8px;border:1px solid var(--border)">' + esc(c.age) + '</td>';
+      h += '<td style="padding:6px 8px;border:1px solid var(--border)">' + esc(c.geo) + '</td></tr>';
+    });
+    h += '</table>';
+
+    /* 5. 预期效果 */
+    h += '<div style="font-size:13px;font-weight:700;color:var(--text);margin:16px 0 10px">📈 预期效果评估</div>';
+    h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:8px">';
+    (plan.effect || []).forEach(function (e) {
+      h += '<div style="padding:10px;border:1px solid var(--border);border-radius:9px;background:var(--bg)">';
+      h += '<div style="font-size:11px;color:var(--text-3)">' + esc(e.name) + '</div>';
+      h += '<div style="font-size:15px;font-weight:700;color:var(--pri);margin:2px 0">' + esc(e.val) + '</div>';
+      h += '<div style="font-size:10.5px;color:var(--text-3)">' + esc(e.note) + '</div>';
+      h += '</div>';
+    });
+    h += '</div>';
+
+    /* 6. 风险提示 */
+    h += '<div style="font-size:13px;font-weight:700;color:var(--text);margin:16px 0 10px">⚠️ 风险提示</div>';
+    (plan.risks || []).forEach(function (r) {
+      var color = r.lv === 'P0' ? 'var(--danger)' : r.lv === 'P1' ? '#e65100' : '#c9a227';
+      h += '<div style="display:flex;gap:8px;padding:8px 10px;margin-bottom:6px;border:1px solid var(--border);border-radius:7px;background:var(--bg)">';
+      h += '<span style="flex:none;background:' + color + ';color:#fff;font-size:10px;font-weight:700;border-radius:4px;padding:1px 7px;height:fit-content">' + esc(r.lv) + '</span>';
+      h += '<span style="font-size:12px;color:var(--text-2);line-height:1.6">' + esc(r.txt) + '</span></div>';
+    });
+
+    /* 复制按钮 */
+    h += '<div style="margin-top:14px;display:flex;gap:8px">';
+    h += '<button id="planCopy" style="flex:1;padding:9px;border:1px solid var(--pri);border-radius:8px;background:transparent;color:var(--pri);font-size:12.5px;font-weight:600;cursor:pointer">复制计划文本</button>';
+    h += '</div>';
+
+    h += '</div></div>';
+    res.innerHTML = h;
+
+    var cp = document.getElementById('planCopy');
+    if (cp) cp.addEventListener('click', function () { copyPlan(plan); });
+  }
+
+  function copyPlan(plan) {
+    var lines = [];
+    lines.push('【' + plan.overview.title + '】');
+    lines.push(plan.overview.goal + ' / ' + plan.overview.cycle);
+    lines.push('');
+    (plan.stages || []).forEach(function (s, i) {
+      lines.push('阶段' + (i + 1) + ' ' + s.name + '（' + s.days + '）');
+      (s.actions || []).forEach(function (a) { lines.push('  - ' + a); });
+      if (s.kpi) lines.push('  KPI: ' + s.kpi);
+      lines.push('');
+    });
+    lines.push('【投流预算分配】');
+    (plan.budget && plan.budget.rows || []).forEach(function (r) {
+      lines.push('  ' + r.ch + ' ' + Math.round((r.pct || 0) * 100) + '% ¥' + (r.amt || 0).toLocaleString());
+    });
+    lines.push('');
+    lines.push('【预期效果】');
+    (plan.effect || []).forEach(function (e) { lines.push('  ' + e.name + ': ' + e.val); });
+    lines.push('');
+    lines.push('【风险提示】');
+    (plan.risks || []).forEach(function (r) { lines.push('  [' + r.lv + '] ' + r.txt); });
+
+    var txt = lines.join('\n');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(function () { toast('已复制到剪贴板'); }, function () { fallbackCopy(txt); });
+    } else { fallbackCopy(txt); }
+  }
+
+  function fallbackCopy(txt) {
+    var ta = document.createElement('textarea');
+    ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast('已复制到剪贴板'); } catch (e) { toast('复制失败，请手动选择文本'); }
+    document.body.removeChild(ta);
+  }
+
+  /* ---------------- 初始化 ---------------- */
+  function init() {
+    render();
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else { init(); }
 })();
 
 </script>
