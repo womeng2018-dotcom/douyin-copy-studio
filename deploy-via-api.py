@@ -36,9 +36,9 @@ def api(method, path, payload=None, expect=200):
         print(f"  [HTTP {e.code}] {method} {path}: {e.read().decode()[:300]}")
         raise SystemExit(1)
 
-CHANGED = ["index.html", "css/app.css", "js/app.js", "js/data-compliance.js",
-           "js/extract-tab.js", "build-single.js", "standalone.html", "README.md"]
-NEW_FILES = ["deploy-via-api.py"]  # 远程不存在的新文件
+CHANGED = ["index.html", "js/rewrite-tab.js", "js/plan-generator.js", "js/extract-tab.js",
+           "build-single.js", "standalone.html", "README.md"]
+NEW_FILES = ["js/guard.js"]  # 远程不存在的新文件
 
 # 1. 当前 main 引用与完整 tree
 _, ref = api("GET", f"/repos/{REPO}/git/ref/heads/{BRANCH}")
@@ -79,15 +79,13 @@ _, new_tree = api("POST", f"/repos/{REPO}/git/trees",
 print(f"新 tree: {new_tree['sha'][:10]}")
 
 # 4. 创建 commit
-MSG = ("fix: 修复多项功能问题并优化视频提取部署引导\n\n"
-       "- 修复提取 Tab showToast 未定义导致的点击报错\n"
-       "- 修复 CSS 花括号错位导致桌面端文案生成单列、移动端页签溢出\n"
-       "- 修复方言口播风格 chip 显示 undefined\n"
-       "- 新增 --text-3/--border CSS 变量，修复数据分析板块样式\n"
-       "- 修复 favicon 404\n"
-       "- 视频提取 Tab：新增本地/Render 云端部署三步引导、连接测试、更清晰错误提示\n"
-       "- 红线词库补充 SPA 高频翻车词（疏通经络/改善睡眠/补肾/壮阳等）及替换词\n"
-       "- 同步更新 standalone.html 单文件版与 README")
+MSG = ("feat: 防滥用安全机制（用量限流/输入上限/图片压缩）+ 修复 LLM 400 报错\n\n"
+       "- 新增 js/guard.js 用量守卫：文案改写 ≤60次/小时、≤200次/天；\n"
+       "  运营计划/视频提取 ≤30次/小时、≤100次/天，超限立即拦截并提示等待时间\n"
+       "- 改写原文 ≤20000 字、运营文档 ≤8000 字上限，防止超大输入打爆上下文\n"
+       "- 修复 400 报错：LLM 请求补 max_tokens:2048；图片上传前自动压缩至 ≤1280px\n"
+       "- LLM 错误友好化：Key 无效/余额不足/限流/上下文超长等返回中文提示\n"
+       "- 改写设置新增「清除 Key」按钮与用量显示；README 增加安全说明")
 _, commit = api("POST", f"/repos/{REPO}/git/commits",
                 {"message": MSG, "tree": new_tree["sha"], "parents": [parent]})
 print(f"新 commit: {commit['sha']}")

@@ -340,6 +340,8 @@ mark.hl.P2{background:#d8e0ec;color:#4a5c78}
 .rw-prompt{background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px;font-size:12px;line-height:1.8;white-space:pre-wrap;font-family:var(--font-mono);color:var(--text-2);max-height:440px;overflow:auto;word-break:break-word}
 .rw-note{font-size:12px;color:var(--text-2);background:var(--beige);border:1px solid var(--line);border-radius:7px;padding:10px 14px;margin-top:12px;line-height:1.7}
 .rw-note b{color:var(--pri-dark)}
+.rw-cursor{display:inline-block;margin-left:2px;color:var(--pri);animation:rw-blink 1s steps(1) infinite}
+@keyframes rw-blink{50%{opacity:0}}
 
 @media (max-width:900px){
   .rw-grid{grid-template-columns:1fr}
@@ -700,6 +702,24 @@ mark.hl.P2{background:#d8e0ec;color:#4a5c78}
                 <option value="标题+正文">标题 + 正文</option>
               </select></div>
           </div>
+        </div>
+
+        <!-- 上下文（ai-copywriter / CopyGPT 共用，让改写更贴合投放场景） -->
+        <div class="rw-params" data-mode="copywriter,copgpt" style="display:none">
+          <div class="grid2">
+            <div class="field"><label>目标受众</label>
+              <input id="rwCtxAud" placeholder="如：25-40 岁上班族，肩颈酸痛"></div>
+            <div class="field"><label>转化目标</label>
+              <select id="rwCtxGoal">
+                <option value="团购下单">团购下单</option>
+                <option value="到店核销">到店核销</option>
+                <option value="留资咨询">留资咨询</option>
+                <option value="品牌种草">品牌种草</option>
+              </select></div>
+          </div>
+          <div class="field"><label>品牌 / 门店名</label>
+            <input id="rwCtxBrand" placeholder="如：某某美发 · 100 家连锁（可留空）"></div>
+          <p class="hint">填得越具体，改写越贴合投放场景；改写完成后会自动跑一遍红线扫描，风险词直接高亮。</p>
         </div>
 
         <button class="btn-main" id="rwRun">开始改写</button>
@@ -3052,65 +3072,148 @@ if (typeof window.showToast !== 'function') {
 
   /* ---------- 提示词构建 ---------- */
   function buildCopywriterPrompt(text, params) {
-    var system = '你是一位资深的中文营销文案专家，擅长把平淡陈述改写成有说服力、有"人味"、能驱动转化的社媒文案。\n'
-      + '要求：\n'
-      + '1. 保留原文核心信息、品牌、价格、卖点，不虚构事实。\n'
-      + '2. 用口语化、有画面感的语言，像真实用户在安利，而不是官方通稿。\n'
-      + '3. 强化一个核心卖点，加入具体场景/情绪/结果，避免空话。\n'
-      + '4. 节奏以短句为主，多用"你""咱们"拉近距离。\n'
-      + '5. 严格遵守广告法：不出现"最/第一/国家级"等绝对化用语，不夸大功效，不承诺疗效。\n'
-      + '6. 输出可直接用于【' + params.type + '】，语气【' + params.tone + '】。';
-    var user = '核心卖点参考：' + (params.sell || '（无，按原文提炼）') + '\n\n请改写以下文案：\n' + text;
+    var system = [
+      '你是一位资深的本地生活投流文案专家，专精抖音来客/巨量本地推的口播与图文文案。',
+      '你的任务：把用户给出的平淡文案，改写成有画面感、有"人味"、能直接驱动转化的社媒文案。',
+      '',
+      '请严格按以下步骤在内部完成，最后只输出最终改写文案（不要输出步骤、不要解释、不要"以下是我为您…"之类的套话）：',
+      '第1步【拆解】提炼原文的核心信息：卖点、价格、人群、情绪基调。',
+      '第2步【改写】按下方"范例"的水准，重写成口语化、短句、有场景/情绪/结果的文案，多用"你/咱们"，像真实用户在安利而不是官方通稿。',
+      '第3步【自查】逐条核对：① 是否保留了价格/品牌/卖点等事实、不虚构 ② 是否出现"最/第一/国家级/全网最低"等绝对化用语 ③ 是否承诺疗效/功效/保证结果。',
+      '第4步【精修】把仍偏书面或 AI 腔的句子改顺、收紧节奏，最终输出精修后的文案。',
+      '',
+      '硬性红线：',
+      '- 严格遵守广告法：不用绝对化用语，不夸大功效，不承诺疗效/收益。',
+      '- 保留原文核心事实（价格、套餐、品牌），不虚构、不添加原文没有的承诺。',
+      '- 只输出改写后的文案，不加序号标题、不加"原文/改写"标签。'
+    ].join('\n');
+
+    if (params.aud) system += '\n\n【目标受众】' + params.aud;
+    if (params.goal) system += '\n【转化目标】' + params.goal;
+    if (params.brand) system += '\n【品牌/门店】' + params.brand;
+    system += '\n【文案类型】' + params.type + '\n【语气】' + params.tone;
+
+    system += '\n\n【范例 1 · 短视频口播】\n'
+      + '原文：本店新推出的深层护理套餐能够有效改善发质，价格实惠，欢迎广大顾客前来体验。\n'
+      + '改写：头发一吹就毛躁、打结梳不开？来试一次深层护理，洗头+护理+吹干一条龙，做完用手一捋，顺得自己都怀疑。团购 9.9，就在你家附近那家店，手慢就没了。\n'
+      + '【范例 2 · 小红书图文】\n'
+      + '原文：这款面膜补水效果很好，成分温和，适合各种肤质，值得购买。\n'
+      + '改写：干皮姐妹给我冲！这个面膜我回购三次了，敷完脸像喝饱水，第二天上妆不卡粉。成分温和，敏感肌也能用，学生党闭眼入。';
+
+    var user = '【核心卖点/关键词】' + (params.sell || '（无，按原文提炼）') + '\n\n请改写以下文案：\n' + text;
     return { system: system, user: user };
   }
 
   function buildCopgptPrompt(text, formulaName, params) {
     var fw = FORMULA_MAP[formulaName] || '（经典文案公式，请按其公认结构重写）';
-    var system = '你是一位精通经典文案公式的撰稿人。请严格按【' + formulaName + '】公式结构重写用户文案。\n'
-      + '公式框架：' + fw + '\n'
-      + '要求：\n'
-      + '1. 完全遵循该公式的分段结构与逻辑顺序。\n'
-      + '2. 保留原文核心事实与卖点，不虚构。\n'
-      + '3. 口语自然、有说服力，遵守广告法（无绝对化/疗效宣称）。\n'
-      + '4. 字数控制在 ' + (params.max && params.max > 0 ? params.max + ' 字' : '合理范围') + ' 以内。\n'
-      + '5. 输出类型：' + params.out + '。';
+    var system = [
+      '你是一位精通经典文案公式的资深撰稿人，能把平淡文案按指定公式重写成有说服力的营销文案。',
+      '本次使用公式：' + formulaName,
+      '公式结构：' + fw,
+      '',
+      '请严格按以下步骤在内部完成，最后只输出最终文案（不要输出步骤、不要复述公式、不要"以下是我为您…"）：',
+      '第1步【拆解】提炼原文卖点与目标人群。',
+      '第2步【套公式】严格按【' + formulaName + '】的分段结构与逻辑顺序展开，每一段对应公式的一个环节。',
+      '第3步【自查】① 保留原文核心事实、不虚构 ② 无绝对化用语/疗效宣称 ③ 字数不超过 ' + (params.max && params.max > 0 ? params.max + ' 字' : '合理范围') + '。',
+      '第4步【精修】口语化、短句、有说服力，最终输出成品。'
+    ].join('\n');
+
+    if (params.aud) system += '\n\n【目标受众】' + params.aud;
+    if (params.goal) system += '\n【转化目标】' + params.goal;
+    if (params.brand) system += '\n【品牌/门店】' + params.brand;
+    system += '\n【输出类型】' + params.out;
+
+    system += '\n\n【范例 · PAS 公式】\n'
+      + '原文：本店推出肩颈按摩套餐，技师专业，价格优惠，欢迎体验。\n'
+      + '改写：\n'
+      + 'P·问题：天天对着电脑，肩颈硬得像块石头，转头都咔咔响？\n'
+      + 'A·激化：拖久了头晕、手麻、睡不好，这不是累，是身体在报警。\n'
+      + 'S·解决：来本店 45 分钟肩颈按摩，老师傅手法到位，按完整个人都松了。团购 79，就在公司楼下。';
+
     var user = '原文：\n' + text;
     return { system: system, user: user };
   }
 
-  /* ---------- LLM 调用 ---------- */
-  function callLLM(system, user, cb) {
+  /* ---------- LLM 流式调用（体验对齐 DeepSeek：边生成边渲染） ---------- */
+  /* onDelta(delta, full)：每收到一段新内容回调；onDone(err, full)：完成回调（err 为对象时可能含 needKey / aborted） */
+  function streamLLM(system, user, onDelta, onDone) {
     var cfg = loadLLM();
-    if (!cfg.key) { cb({ needKey: true }, null); return; }
+    if (!cfg.key) { onDone({ needKey: true }, null); return null; }
     DSGuard.consume('rewrite');
     var url = (cfg.base || '').replace(/\/+$/, '') + '/chat/completions';
+    var controller = new AbortController();
+    var full = '';
+    var finished = false;
+
+    function finish(err, text) {
+      if (finished) return;
+      finished = true;
+      onDone(err, text);
+    }
+
     fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
       body: JSON.stringify({
         model: cfg.model || 'deepseek-chat',
         messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-        temperature: 0.7,
-        max_tokens: 2048
-      })
-    }).then(function (r) {
-      return r.json().then(function (d) { return { status: r.status, data: d }; });
-    }).then(function (res) {
-      if (res.status !== 200 || !res.data.choices || !res.data.choices.length) {
-        /* 优先展示友好中文错误（余额/Key/限流/超长等），再退回原始错误 */
-        cb(DSGuard.llmErrorMsg(res), null);
-        return;
+        temperature: 0.6,
+        top_p: 0.9,
+        max_tokens: 2048,
+        stream: true
+      }),
+      signal: controller.signal
+    }).then(function (resp) {
+      if (resp.status !== 200) {
+        return resp.json().then(function (d) { finish(DSGuard.llmErrorMsg({ status: resp.status, data: d }), full); })
+          .catch(function () { finish(DSGuard.llmErrorMsg({ status: resp.status, data: {} }), full); });
       }
-      cb(null, res.data.choices[0].message.content);
+      /* 非流式降级（少数代理不支持 SSE） */
+      if (!resp.body || !resp.body.getReader) {
+        return resp.json().then(function (d) {
+          var out = d && d.choices && d.choices[0] && d.choices[0].message ? d.choices[0].message.content : null;
+          finish(null, out);
+        }).catch(function (e) { finish('返回解析失败：' + (e && e.message ? e.message : e), full); });
+      }
+      var reader = resp.body.getReader();
+      var decoder = new TextDecoder('utf-8');
+      var buf = '';
+      function pump() {
+        return reader.read().then(function (r) {
+          if (r.done) { finish(null, full); return; }
+          buf += decoder.decode(r.value, { stream: true });
+          var lines = buf.split('\n');
+          buf = lines.pop();
+          for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim();
+            if (line.indexOf('data:') !== 0) continue;
+            var data = line.slice(5).trim();
+            if (data === '[DONE]') { finish(null, full); return; }
+            var j;
+            try { j = JSON.parse(data); } catch (e) { continue; }
+            var d = j.choices && j.choices[0] && j.choices[0].delta;
+            if (d && d.content) { full += d.content; onDelta(d.content, full); }
+          }
+          return pump();
+        }).catch(function (err) {
+          if (err && err.name === 'AbortError') { finish({ aborted: true }, full); return; }
+          finish('网络/流式错误：' + (err && err.message ? err.message : err), full);
+        });
+      }
+      return pump();
     }).catch(function (err) {
-      cb('网络/跨域错误：' + (err && err.message ? err.message : err) + '\n（可复制提示词到 AI 工具使用）', null);
+      if (err && err.name === 'AbortError') { finish({ aborted: true }, full); return; }
+      finish('网络/跨域错误：' + (err && err.message ? err.message : err) + '\n（可复制提示词到 AI 工具使用）', full);
     });
+
+    return controller;
   }
 
   /* ---------- 状态 ---------- */
   var currentMode = 'humanizer';
   var currentRewritten = '';
   var currentPrompt = '';
+  var currentAbort = null; /* 当前流式请求的 AbortController */
 
   /* ---------- 渲染对照 ---------- */
   function renderCompare(original, rewritten, metaChips, note, opts) {
@@ -3147,6 +3250,83 @@ if (typeof window.showToast !== 'function') {
     $('rwCopyBtn').disabled = true;
     $('rwCopyPromptBtn').style.display = '';
     $('rwCopyPromptBtn').disabled = false;
+  }
+
+  /* ---------- 流式渲染 ---------- */
+  function renderStreamStart(original, metaChips) {
+    var html = '';
+    if (metaChips && metaChips.length) {
+      html += '<div class="results-head" style="margin-bottom:14px;padding:12px 16px">'
+        + metaChips.map(function (c) { return '<span class="chip ' + (c.cls || '') + '">' + esc(c.t) + '</span>'; }).join(' ') + '</div>';
+    }
+    html += '<div class="rw-compare">'
+      + '<div class="rw-col"><div class="rw-col-head"><span>原文</span><span class="rw-tag">输入</span></div>'
+      + '<div class="rw-col-body">' + esc(original) + '</div></div>'
+      + '<div class="rw-col"><div class="rw-col-head"><span>改写结果</span><span class="rw-tag after">生成中…</span></div>'
+      + '<div class="rw-col-body" id="rwStreamOut"><span class="rw-cursor">▍</span></div></div>'
+      + '</div>';
+    $('rwResult').className = '';
+    $('rwResult').innerHTML = html;
+    currentRewritten = '';
+    $('rwCopyBtn').disabled = true;
+    $('rwCopyPromptBtn').style.display = 'none';
+  }
+
+  function streamAppend(full) {
+    var el = $('rwStreamOut');
+    if (!el) return;
+    el.innerHTML = esc(full) + '<span class="rw-cursor">▍</span>';
+  }
+
+  /* ---------- 合规总结（复用本项目红线扫描引擎） ---------- */
+  function complianceSummary(text) {
+    if (!window.DS || !DS.scan) return { chips: [], note: '', hits: [] };
+    var res = DS.scan(text);
+    var chips = [];
+    if (res.pass && !res.hits.length) {
+      chips.push({ t: '合规通过', cls: 'ok' });
+      return { chips: chips, note: '', hits: [] };
+    }
+    if (res.p0) chips.push({ t: 'P0×' + res.p0, cls: 'bad' });
+    if (res.p1) chips.push({ t: 'P1×' + res.p1, cls: 'mid' });
+    if (res.p2) chips.push({ t: 'P2×' + res.p2, cls: '' });
+    var uniq = DS.uniqueHits(res.hits);
+    var note = '<b>检出 ' + res.hits.length + ' 处风险词</b>（已高亮）：'
+      + uniq.slice(0, 6).map(function (h) {
+        return '<b>' + esc(h.word) + '</b>（' + h.level + (h.fix ? '→' + esc(h.fix) : '→建议删除') + '）';
+      }).join('、')
+      + (uniq.length > 6 ? ' 等' : '')
+      + '。正式投放前请按建议修改。';
+    return { chips: chips, note: note, hits: res.hits };
+  }
+
+  /* 最终渲染 LLM 结果（含合规高亮） */
+  function renderLLMResult(original, text, metaChips, extraNote) {
+    var cleaned = stripCodeFence(text);
+    var comp = complianceSummary(cleaned);
+    var chips = metaChips.concat(comp.chips);
+    var body = comp.hits.length ? DS.highlight(cleaned, comp.hits) : esc(cleaned);
+
+    var html = '';
+    html += '<div class="results-head" style="margin-bottom:14px;padding:12px 16px">'
+      + chips.map(function (c) { return '<span class="chip ' + (c.cls || '') + '">' + esc(c.t) + '</span>'; }).join(' ') + '</div>';
+    html += '<div class="rw-compare">'
+      + '<div class="rw-col"><div class="rw-col-head"><span>原文</span><span class="rw-tag">输入</span></div>'
+      + '<div class="rw-col-body">' + esc(original) + '</div></div>'
+      + '<div class="rw-col"><div class="rw-col-head"><span>改写结果</span><span class="rw-tag after">输出</span></div>'
+      + '<div class="rw-col-body">' + body + '</div></div>'
+      + '</div>';
+    var note = '';
+    if (extraNote) note += extraNote + '<br>';
+    if (comp.note) note += comp.note;
+    if (note) html += '<div class="rw-note">' + note + '</div>';
+
+    $('rwResult').className = '';
+    $('rwResult').innerHTML = html;
+    currentRewritten = cleaned;
+    $('rwCopyBtn').disabled = false;
+    $('rwCopyPromptBtn').style.display = 'none';
+    $('rwCopyPromptBtn').disabled = true;
   }
 
   /* ---------- 主流程 ---------- */
@@ -3195,12 +3375,18 @@ if (typeof window.showToast !== 'function') {
   }
 
   function runLLMMode(text) {
-    var prompt, metaChips, note;
+    var ctx = {
+      aud: $('rwCtxAud') ? $('rwCtxAud').value.trim() : '',
+      goal: $('rwCtxGoal') ? $('rwCtxGoal').value : '',
+      brand: $('rwCtxBrand') ? $('rwCtxBrand').value.trim() : ''
+    };
+    var prompt, metaChips;
     if (currentMode === 'copywriter') {
       var cw = {
         type: $('rwCwType').value,
         tone: $('rwCwTone').value,
-        sell: $('rwCwSell').value.trim()
+        sell: $('rwCwSell').value.trim(),
+        aud: ctx.aud, goal: ctx.goal, brand: ctx.brand
       };
       prompt = buildCopywriterPrompt(text, cw);
       metaChips = [{ t: 'ai-copywriter', cls: 'cyan' }, { t: '类型：' + cw.type, cls: '' }, { t: '语气：' + cw.tone, cls: '' }];
@@ -3208,7 +3394,8 @@ if (typeof window.showToast !== 'function') {
       var fn = $('rwCgFormula').value;
       var cg = {
         max: parseInt($('rwCgMax').value, 10) || 0,
-        out: $('rwCgOut').value
+        out: $('rwCgOut').value,
+        aud: ctx.aud, goal: ctx.goal, brand: ctx.brand
       };
       prompt = buildCopgptPrompt(text, fn, cg);
       metaChips = [{ t: 'CopyGPT', cls: 'cyan' }, { t: '公式：' + fn, cls: '' }, { t: '输出：' + cg.out, cls: '' }];
@@ -3217,7 +3404,16 @@ if (typeof window.showToast !== 'function') {
     var modeLabel = currentMode === 'copywriter' ? 'ai-copywriter' : 'CopyGPT';
     var chain = $('rwChain').checked;
 
-    callLLM(prompt.system, prompt.user, function (err, out) {
+    /* 中断上一次未完成的流式请求，避免结果串台 */
+    if (currentAbort) { try { currentAbort.abort(); } catch (e) {} currentAbort = null; }
+
+    renderStreamStart(text, metaChips);
+
+    currentAbort = streamLLM(prompt.system, prompt.user, function (delta, full) {
+      streamAppend(full);
+    }, function (err, out) {
+      currentAbort = null;
+      refreshUsageLine();
       if (err && typeof err === 'object' && err.needKey) {
         var kc = metaChips.concat([{ t: '未配置 LLM', cls: 'mid' }]);
         var kn = '未检测到 LLM API Key。<b>' + modeLabel + '</b> 需要大模型生成改写结果。已为你生成完整提示词，复制后粘贴到任意 AI 工具即可获得改写。'
@@ -3225,29 +3421,34 @@ if (typeof window.showToast !== 'function') {
         renderPromptOnly(prompt.system + '\n\n------\n\n' + prompt.user, kc, kn);
         return;
       }
+      if (err && typeof err === 'object' && err.aborted) return; /* 被新请求打断，静默忽略 */
       if (err) {
-        showToast('改写失败，已生成提示词可手动使用');
-        renderPromptOnly(prompt.system + '\n\n------\n\n' + prompt.user, metaChips.concat([{ t: '调用失败', cls: 'bad' }]),
-          'LLM 调用出错：<b>' + esc(err) + '</b><br>已生成提示词，可复制到 AI 工具使用。');
+        /* 已有部分输出则保留，并附中断说明；否则退回提示词模式 */
+        var partial = (typeof out === 'string' && out.trim()) ? out : '';
+        if (partial) {
+          renderLLMResult(text, partial, metaChips.concat([{ t: '生成中断', cls: 'mid' }]),
+            '生成中断：<b>' + esc(err) + '</b><br>以下为已生成的部分内容，可复制后继续手动完善。');
+        } else {
+          showToast('改写失败，已生成提示词可手动使用');
+          renderPromptOnly(prompt.system + '\n\n------\n\n' + prompt.user, metaChips.concat([{ t: '调用失败', cls: 'bad' }]),
+            'LLM 调用出错：<b>' + esc(err) + '</b><br>已生成提示词，可复制到 AI 工具使用。');
+        }
         return;
       }
-      // 成功得到 LLM 结果（非字符串时按失败处理，避免崩溃）
+      /* 成功得到 LLM 结果（非字符串时按失败处理，避免崩溃） */
       if (typeof out !== 'string' || !out.trim()) {
         renderPromptOnly(prompt.system + '\n\n------\n\n' + prompt.user, metaChips.concat([{ t: '返回异常', cls: 'bad' }]),
           'LLM 返回内容为空或格式异常，已生成提示词，可复制到 AI 工具使用。');
         return;
       }
-      var primaryOut = out;
+      var primaryOut = stripCodeFence(out);
       if (chain) {
-        var h = humanize(stripCodeFence(primaryOut), 'mid');
+        var h = humanize(primaryOut, 'mid');
         var chainNote = '已串联 <b>Humanizer-zh</b> 人味化，去除 ' + h.count + ' 处 AI 腔表达。';
-        renderCompare(esc(text), h.cleaned, metaChips.concat([{ t: '串联 Humanizer', cls: 'ok' }]), chainNote, {});
+        renderLLMResult(text, h.cleaned, metaChips.concat([{ t: '串联 Humanizer', cls: 'ok' }]), chainNote);
       } else {
-        renderCompare(esc(text), stripCodeFence(primaryOut), metaChips, '改写完成。如需更自然，可开启「串联模式」再过一遍 Humanizer-zh。', {});
+        renderLLMResult(text, primaryOut, metaChips, '');
       }
-      currentPrompt = '';
-      $('rwCopyPromptBtn').style.display = 'none';
-      $('rwCopyPromptBtn').disabled = true;
     });
   }
 
@@ -3259,8 +3460,10 @@ if (typeof window.showToast !== 'function') {
   /* ---------- 模式切换 ---------- */
   function switchMode(mode) {
     currentMode = mode;
+    if (currentAbort) { try { currentAbort.abort(); } catch (e) {} currentAbort = null; }
     document.querySelectorAll('.rw-params').forEach(function (el) {
-      el.style.display = (el.dataset.mode === mode) ? '' : 'none';
+      var modes = (el.dataset.mode || '').split(',');
+      el.style.display = (modes.indexOf(mode) >= 0) ? '' : 'none';
     });
   }
 

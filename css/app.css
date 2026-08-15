@@ -328,6 +328,8 @@ mark.hl.P2{background:#d8e0ec;color:#4a5c78}
 .rw-prompt{background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px;font-size:12px;line-height:1.8;white-space:pre-wrap;font-family:var(--font-mono);color:var(--text-2);max-height:440px;overflow:auto;word-break:break-word}
 .rw-note{font-size:12px;color:var(--text-2);background:var(--beige);border:1px solid var(--line);border-radius:7px;padding:10px 14px;margin-top:12px;line-height:1.7}
 .rw-note b{color:var(--pri-dark)}
+.rw-cursor{display:inline-block;margin-left:2px;color:var(--pri);animation:rw-blink 1s steps(1) infinite}
+@keyframes rw-blink{50%{opacity:0}}
 
 @media (max-width:900px){
   .rw-grid{grid-template-columns:1fr}

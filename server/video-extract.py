@@ -455,8 +455,35 @@ def layer5_itn(text):
 
 
 # Layer 6+7: LLM 两轮纠偏
+# 单次 LLM 输入的文本上限：防止长视频 ASR 文本把模型上下文打爆（400: token 超限）
+# 中文约 1 字符 ≈ 1.3 token，12000 字 ≈ 1.6 万 token，远低于 262144 上下文的一半
+MAX_LLM_INPUT_CHARS = 12000
+
+
+def _split_llm_input(text, limit=MAX_LLM_INPUT_CHARS):
+    """超长文本按 limit 切分（尽量在句末断开），返回多段；不丢内容"""
+    if not text or len(text) <= limit:
+        return [text] if text else []
+    segs = []
+    rest = text
+    while len(rest) > limit:
+        cut = rest[:limit]
+        # 尽量在最近的句号/感叹号/问号/换行处断开
+        idx = max(cut.rfind("。"), cut.rfind("！"), cut.rfind("？"), cut.rfind("\n"), cut.rfind("."))
+        idx = idx if idx > limit * 0.5 else -1
+        if idx == -1:
+            idx = limit
+        else:
+            idx += 1
+        segs.append(rest[:idx])
+        rest = rest[idx:]
+    if rest:
+        segs.append(rest)
+    return segs
+
+
 def layer6_llm_round1(text, brand_name=None, area_name=None, api_key=None, api_base=None, llm_model=None):
-    """第一轮：语句流畅度、标点修正、口语化清理"""
+    """第一轮：语句流畅度、标点修正、口语化清理（超长文本自动分段，避免 token 超限）"""
     if not api_key:
         return text
 
@@ -471,27 +498,30 @@ def layer6_llm_round1(text, brand_name=None, area_name=None, api_key=None, api_b
     if area_name:
         context += f"商圈/区域：{area_name}。"
 
-    prompt = (
-        "你是一位短视频文案编辑。请对以下 ASR 识别的口语化文案进行第一轮修正：\n"
-        "1. 修正明显的错别字（尤其是地名、品牌名、专业术语）\n"
-        "2. 补充缺失的标点符号，使语句通顺\n"
-        "3. 删除无意义的口头禅、语气词（如「呃」「嗯」「那个」）\n"
-        "4. 保留原文的语气和风格，不要过度书面化\n"
-        "5. 只输出修正后的文案，不要任何解释\n\n"
-        f"上下文信息：{context}\n\n"
-        f"待修正文案：\n{text}"
-    )
-
-    try:
-        resp = client.chat.completions.create(
-            model=model_name,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            max_tokens=2048,
+    segments = _split_llm_input(text)
+    results = []
+    for seg in segments:
+        prompt = (
+            "你是一位短视频文案编辑。请对以下 ASR 识别的口语化文案进行第一轮修正：\n"
+            "1. 修正明显的错别字（尤其是地名、品牌名、专业术语）\n"
+            "2. 补充缺失的标点符号，使语句通顺\n"
+            "3. 删除无意义的口头禅、语气词（如「呃」「嗯」「那个」）\n"
+            "4. 保留原文的语气和风格，不要过度书面化\n"
+            "5. 只输出修正后的文案，不要任何解释\n\n"
+            f"上下文信息：{context}\n\n"
+            f"待修正文案：\n{seg}"
         )
-        return resp.choices[0].message.content.strip()
-    except Exception:
-        return text
+        try:
+            resp = client.chat.completions.create(
+                model=model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=2048,
+            )
+            results.append(resp.choices[0].message.content.strip())
+        except Exception:
+            results.append(seg)  # 单段失败保留原样，不中断整体
+    return "".join(results)
 
 
 def layer7_llm_round2(text, brand_name=None, api_key=None, api_base=None, llm_model=None):

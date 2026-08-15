@@ -366,6 +366,24 @@
           </div>
         </div>
 
+        <!-- 上下文（ai-copywriter / CopyGPT 共用，让改写更贴合投放场景） -->
+        <div class="rw-params" data-mode="copywriter,copgpt" style="display:none">
+          <div class="grid2">
+            <div class="field"><label>目标受众</label>
+              <input id="rwCtxAud" placeholder="如：25-40 岁上班族，肩颈酸痛"></div>
+            <div class="field"><label>转化目标</label>
+              <select id="rwCtxGoal">
+                <option value="团购下单">团购下单</option>
+                <option value="到店核销">到店核销</option>
+                <option value="留资咨询">留资咨询</option>
+                <option value="品牌种草">品牌种草</option>
+              </select></div>
+          </div>
+          <div class="field"><label>品牌 / 门店名</label>
+            <input id="rwCtxBrand" placeholder="如：某某美发 · 100 家连锁（可留空）"></div>
+          <p class="hint">填得越具体，改写越贴合投放场景；改写完成后会自动跑一遍红线扫描，风险词直接高亮。</p>
+        </div>
+
         <button class="btn-main" id="rwRun">开始改写</button>
         <button class="btn-ghost" id="rwDemo">载入示例</button>
 
