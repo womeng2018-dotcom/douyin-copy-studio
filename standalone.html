@@ -722,11 +722,13 @@ mark.hl.P2{background:#d8e0ec;color:#4a5c78}
               <div class="field"><label>Base URL</label><input id="rwLlmBase" placeholder="https://api.deepseek.com/v1"></div>
               <div class="field"><label>模型</label><input id="rwLlmModel" placeholder="deepseek-chat"></div>
             </div>
-            <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+            <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
               <button class="btn-sm" id="rwLlmSave">保存</button>
+              <button class="btn-sm" id="rwLlmClear" title="从本机删除已保存的 API Key">清除 Key</button>
               <span class="hint" id="rwLlmStatus"></span>
             </div>
-            <p class="hint" style="margin-top:8px">密钥仅保存在本机浏览器（localStorage），不会上传。未配置时，ai-copywriter / CopyGPT 会生成可直接复制到 AI 工具的提示词。</p>
+            <p class="hint" id="rwLlmUsage" style="margin-top:6px"></p>
+            <p class="hint" style="margin-top:8px">密钥仅保存在本机浏览器（localStorage），不会上传。<b>请勿把 Key 发给他人</b>；站点已内置用量保护：改写每小时最多 60 次、每日最多 200 次，超限自动停止（清缓存/无痕可绕过，正式防护需部署后端）。未配置时，ai-copywriter / CopyGPT 会生成可直接复制到 AI 工具的提示词。</p>
           </div>
         </details>
       </div>
@@ -782,6 +784,210 @@ mark.hl.P2{background:#d8e0ec;color:#4a5c78}
 <div class="toast" id="toast"></div>
 
 <script>
+/* ==================== js/guard.js ==================== */
+/* ============================================================
+ * 防滥用安全守卫（用量限流 / 输入上限 / 图片压缩 / 错误解析）
+ * ------------------------------------------------------------
+ * 纯前端实现，按浏览器本地记录用量：
+ *   - 每个功能动作有「窗口期最大次数」与「每日上限」
+ *   - 超限立即拦截（check 返回 ok:false + 等待秒数），前端直接停止使用
+ *   - 输入长度上限：防止一次性塞入超大文本把 API 上下文打爆（400 报错）
+ *   - 图片上传前压缩：降低 token 消耗，防止超大截图超限
+ *
+ * 说明：本机制阻止同一浏览器内的过量使用；清缓存/无痕可绕过。
+ * 若要按「人/IP」强制限制，需要后端服务（如部署 video-extract 服务后
+ * 在其上做 per-IP 限流），本模块已预留对应接口。
+ * ============================================================ */
+window.DSGuard = (function () {
+  'use strict';
+
+  var STORE_KEY = 'dycs_guard_usage_v1';
+
+  /* 各动作限流规则：windowMs 窗口内最多 max 次；每日最多 dayMax 次 */
+  var RULES = {
+    rewrite: { windowMs: 60 * 60 * 1000, max: 60, dayMax: 200, label: '文案改写' },
+    plan:    { windowMs: 60 * 60 * 1000, max: 30, dayMax: 100, label: '运营计划' },
+    extract: { windowMs: 60 * 60 * 1000, max: 30, dayMax: 100, label: '视频提取' }
+  };
+
+  /* 输入长度上限（字符）：超过直接拦截 */
+  var TEXT_LIMITS = { rewrite: 20000, plan: 8000 };
+
+  /* 图片上传压缩参数 */
+  var IMG_MAX_DIM = 1280;   // 最大边长（px）
+  var IMG_QUALITY = 0.8;    // JPEG 质量
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch (e) { return {}; }
+  }
+  function save(o) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(o)); } catch (e) { /* 超出配额忽略 */ }
+  }
+  function pruneDay(arr, now) {
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(function (t) { return typeof t === 'number' && now - t < 24 * 60 * 60 * 1000; });
+  }
+
+  /* 检查某动作当前是否可用 */
+  function check(action) {
+    var now = Date.now();
+    var o = load();
+    var r = RULES[action];
+    if (!r) return { ok: true };
+    var hourArr = pruneDay(o[action + '_h'], now);
+    var dayArr = pruneDay(o[action + '_d'], now);
+    var hourUsed = hourArr.filter(function (t) { return now - t < r.windowMs; }).length;
+    var dayUsed = dayArr.length;
+    if (dayUsed >= r.dayMax) {
+      var next = new Date(now);
+      next.setHours(24, 0, 0, 0);
+      return {
+        ok: false, daily: true,
+        wait: Math.max(1, Math.ceil((next.getTime() - now) / 1000)),
+        used: hourUsed, max: r.max, dayUsed: dayUsed, dayMax: r.dayMax
+      };
+    }
+    if (hourUsed >= r.max) {
+      var oldest = hourArr[hourArr.length - r.max];
+      return {
+        ok: false, daily: false,
+        wait: Math.max(1, Math.ceil((r.windowMs - (now - oldest)) / 1000)),
+        used: hourUsed, max: r.max, dayUsed: dayUsed, dayMax: r.dayMax
+      };
+    }
+    return { ok: true, used: hourUsed, max: r.max, dayUsed: dayUsed, dayMax: r.dayMax };
+  }
+
+  /* 记录一次使用；返回更新后的用量 */
+  function consume(action) {
+    var now = Date.now();
+    var o = load();
+    var r = RULES[action];
+    var h = pruneDay(o[action + '_h'], now);
+    var d = pruneDay(o[action + '_d'], now);
+    h.push(now);
+    d.push(now);
+    o[action + '_h'] = h;
+    o[action + '_d'] = d;
+    save(o);
+    return {
+      hourUsed: h.filter(function (t) { return now - t < r.windowMs; }).length,
+      dayUsed: d.length
+    };
+  }
+
+  /* 当前用量统计 */
+  function usage(action) {
+    var now = Date.now();
+    var o = load();
+    var r = RULES[action] || { windowMs: 0, max: 0, dayMax: 0 };
+    var h = pruneDay(o[action + '_h'], now);
+    var d = pruneDay(o[action + '_d'], now);
+    return {
+      hourUsed: h.filter(function (t) { return now - t < r.windowMs; }).length,
+      hourMax: r.max,
+      dayUsed: d.length,
+      dayMax: r.dayMax,
+      label: r.label || action
+    };
+  }
+
+  /* 限流拦截的提示文案 */
+  function blockMessage(lim) {
+    if (!lim || lim.ok) return '';
+    if (lim.daily) {
+      return '⛔ ' + (RULES[lim._a] || {}).label + '：今日用量已达上限（' + lim.dayUsed + '/' + lim.dayMax + ' 次），请明天再试';
+    }
+    var mins = Math.max(1, Math.ceil(lim.wait / 60));
+    return '⛔ ' + (RULES[lim._a] || {}).label + '：使用过于频繁（' + lim.used + '/' + lim.max + ' 次/小时），已临时停止，请 ' + mins + ' 分钟后重试';
+  }
+
+  /* 文本长度校验（超限拦截，不截断） */
+  function checkTextLength(action, text) {
+    var limit = TEXT_LIMITS[action];
+    if (!limit) return { ok: true };
+    var n = (text || '').length;
+    if (n > limit) {
+      return {
+        ok: false,
+        msg: '输入过长：' + n + ' 字（上限 ' + limit + ' 字）。请分段处理，避免超出模型上下文限制。'
+      };
+    }
+    return { ok: true, len: n };
+  }
+
+  /* 图片压缩：返回压缩后的 dataURL（Promise）；失败时 reject */
+  function shrinkImage(file, maxDim, quality) {
+    maxDim = maxDim || IMG_MAX_DIM;
+    quality = quality == null ? IMG_QUALITY : quality;
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      var url = URL.createObjectURL(file);
+      img.onload = function () {
+        try {
+          var w = img.width, h = img.height;
+          var scale = Math.min(1, maxDim / Math.max(w, h));
+          var cw = Math.max(1, Math.round(w * scale));
+          var ch = Math.max(1, Math.round(h * scale));
+          var canvas = document.createElement('canvas');
+          canvas.width = cw;
+          canvas.height = ch;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, cw, ch);
+          URL.revokeObjectURL(url);
+          resolve({ dataUrl: canvas.toDataURL('image/jpeg', quality), w: cw, h: ch });
+        } catch (e) {
+          URL.revokeObjectURL(url);
+          reject(e);
+        }
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('图片解码失败')); };
+      img.src = url;
+    });
+  }
+
+  /* LLM API 错误 → 友好中文提示 */
+  function llmErrorMsg(res) {
+    res = res || {};
+    var data = res.data || {};
+    var err = data.error || {};
+    var msg = String(err.message || err.msg || (res.status ? 'HTTP ' + res.status : '未知错误'));
+    var code = String(err.code || '');
+    var status = res.status;
+    if (status === 401 || status === 403 || /authentication|invalid.*api|invalid.*key|api.?key/i.test(code + ' ' + msg)) {
+      return 'API Key 无效或已过期，请检查 LLM 设置中的 Key。';
+    }
+    if (status === 402 || /insufficient_quota|quota|balance|余额|计费|充值/i.test(msg)) {
+      return '账户余额不足（配额耗尽）。请到对应平台充值，或更换 API Key。';
+    }
+    if (status === 429 || /rate.?limit|too many requests|请求过于频繁/i.test(msg)) {
+      return '接口限流（请求过于频繁）。请稍等一会儿再试。';
+    }
+    if (status === 400 && /token|context|length|input|maximum context/i.test(msg)) {
+      return '输入内容过长，超出模型上下文限制（400）。请缩短原文或分段处理。';
+    }
+    if (status === 400 && /json|parse|format/i.test(msg)) {
+      return '模型返回格式异常（400）。已自动降级为提示词模式。';
+    }
+    if (status === 404 || /not.?found|endpoint|模型不存在/i.test(msg)) {
+      return '接口地址或模型名不存在（404）。请检查 API Base 与模型名。';
+    }
+    return msg;
+  }
+
+  return {
+    RULES: RULES,
+    check: function (a) { var r = check(a); r._a = a; return r; },
+    consume: consume,
+    usage: usage,
+    blockMessage: blockMessage,
+    checkTextLength: checkTextLength,
+    shrinkImage: shrinkImage,
+    llmErrorMsg: llmErrorMsg
+  };
+})();
+
+
 /* ==================== js/data.js ==================== */
 /* 抖音来客投流文案工作台 · 数据层
  * 依据《抖音来客投流素材需求说明书 V1.0》构建
@@ -2292,6 +2498,13 @@ if (typeof window.showToast !== 'function') {
     var apiBase = document.getElementById('extractApiBase').value.trim() || 'https://token.sensenova.cn/v1';
     var llmModel = document.getElementById('extractLlmModel').value.trim() || 'deepseek-v4-flash';
 
+    /* 防滥用：用量限流（超限立即停止） */
+    var lim = DSGuard.check('extract');
+    if (!lim.ok) {
+      showToast(DSGuard.blockMessage(lim));
+      return;
+    }
+
     if (mode === 'url' && !url) {
       showToast('请输入视频链接');
       return;
@@ -2300,6 +2513,7 @@ if (typeof window.showToast !== 'function') {
       showToast('请选择本地文件');
       return;
     }
+    DSGuard.consume('extract');
 
     /* 重置 */
     extractOutput.innerHTML = '<div class="empty-state"><div class="empty-icon" style="font-size:24px">⏳</div><p>正在提取中……</p><span id="extractProgress">准备中</span></div>';
@@ -2612,6 +2826,15 @@ if (typeof window.showToast !== 'function') {
     if (cfg.model) $('rwLlmModel').value = cfg.model;
     if (cfg.key) $('rwLlmStatus').innerHTML = '<span class="chip ok">已配置</span>';
     else $('rwLlmStatus').innerHTML = '<span class="chip mid">未填 Key（可免费获取商汤/智谱 Key）</span>';
+    refreshUsageLine();
+  }
+
+  function refreshUsageLine() {
+    var el = $('rwLlmUsage');
+    if (!el) return;
+    if (!window.DSGuard) { el.textContent = ''; return; }
+    var u = DSGuard.usage('rewrite');
+    el.textContent = '本机用量保护：今日 ' + u.dayUsed + '/' + u.dayMax + ' 次 · 本小时 ' + u.hourUsed + '/' + u.hourMax + ' 次（超限自动停止）';
   }
   function onProviderChange() {
     var p = $('rwLlmProvider').value;
@@ -2859,6 +3082,7 @@ if (typeof window.showToast !== 'function') {
   function callLLM(system, user, cb) {
     var cfg = loadLLM();
     if (!cfg.key) { cb({ needKey: true }, null); return; }
+    DSGuard.consume('rewrite');
     var url = (cfg.base || '').replace(/\/+$/, '') + '/chat/completions';
     fetch(url, {
       method: 'POST',
@@ -2866,13 +3090,15 @@ if (typeof window.showToast !== 'function') {
       body: JSON.stringify({
         model: cfg.model || 'deepseek-chat',
         messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-        temperature: 0.7
+        temperature: 0.7,
+        max_tokens: 2048
       })
     }).then(function (r) {
       return r.json().then(function (d) { return { status: r.status, data: d }; });
     }).then(function (res) {
       if (res.status !== 200 || !res.data.choices || !res.data.choices.length) {
-        cb(res.data && (res.data.error && (res.data.error.message || res.data.error)) || ('HTTP ' + res.status), null);
+        /* 优先展示友好中文错误（余额/Key/限流/超长等），再退回原始错误 */
+        cb(DSGuard.llmErrorMsg(res), null);
         return;
       }
       cb(null, res.data.choices[0].message.content);
@@ -2928,6 +3154,22 @@ if (typeof window.showToast !== 'function') {
     var text = $('rwInput').value.trim();
     if (!text) { showToast('请先输入原文'); return; }
     if (currentMode === 'humanizer') return runHumanizer(text);
+
+    /* 防滥用：输入长度上限（防止把上下文打爆 → 400） */
+    var lenChk = DSGuard.checkTextLength('rewrite', text);
+    if (!lenChk.ok) {
+      showToast(lenChk.msg);
+      renderPromptOnly('', [{ t: '输入超限', cls: 'bad' }], '<b>' + esc(lenChk.msg) + '</b><br>请把原文拆成多段，逐段改写。');
+      return;
+    }
+    /* 防滥用：用量限流（超限立即停止） */
+    var lim = DSGuard.check('rewrite');
+    if (!lim.ok) {
+      showToast(DSGuard.blockMessage(lim));
+      renderPromptOnly('', [{ t: '已限流', cls: 'bad' }],
+        '<b>' + esc(DSGuard.blockMessage(lim)) + '</b><br>本机用量保护：每小时最多 ' + lim.max + ' 次，每日最多 ' + lim.dayMax + ' 次。');
+      return;
+    }
     return runLLMMode(text);
   }
 
@@ -3056,6 +3298,14 @@ if (typeof window.showToast !== 'function') {
       saveLLM(cfg);
       $('rwLlmStatus').innerHTML = cfg.key ? '<span class="chip ok">已保存</span>' : '<span class="chip mid">已保存（未填 Key）</span>';
       showToast('LLM 设置已保存');
+    });
+    var clearBtn = $('rwLlmClear');
+    if (clearBtn) clearBtn.addEventListener('click', function () {
+      saveLLM({ provider: 'sensenova', key: '', base: '', model: '' });
+      $('rwLlmKey').value = '';
+      $('rwLlmStatus').innerHTML = '<span class="chip mid">已清除本机 Key</span>';
+      refreshUsageLine();
+      showToast('已从本机清除 API Key');
     });
 
     $('rwRun').addEventListener('click', run);
@@ -3865,6 +4115,12 @@ if (typeof window.showToast !== 'function') {
     var cfg = loadLLM();
     if (!cfg.key) { cb({ needKey: true }, null); return; }  // needKey 走错误通道
     if (typeof fetch !== 'function') { cb({ needKey: true }, null); return; } // 无 fetch 环境降级
+
+    /* 防滥用：用量限流（超限立即停止） */
+    var lim = DSGuard.check('plan');
+    if (!lim.ok) { cb({ limit: lim }, null); return; }
+    DSGuard.consume('plan');
+
     var model = cfg.model || 'deepseek-chat';
 
     var sys = '你是资深本地生活运营总监（抖音来客/美业SPA方向）。用户上传经营数据图片或文档，请分析并输出 JSON（不要 markdown 代码块），结构严格如下：'
@@ -3891,12 +4147,18 @@ if (typeof window.showToast !== 'function') {
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
         body: JSON.stringify({ model: model, messages: msgs, temperature: 0.4, max_tokens: 3000 })
       }).then(function (r) { return r.json(); }).then(function (d) {
+        if (d && d.error) {
+          cb({ err: DSGuard.llmErrorMsg({ status: d.error.code ? 400 : 500, data: d }) }, null);
+          return;
+        }
         var txt = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
-        if (!txt) { cb({ needKey: true, raw: d }, null); return; }
+        if (!txt) { cb({ err: '模型未返回内容' }, null); return; }
         txt = txt.replace(/^```(json)?/m, '').replace(/```$/m, '').trim();
         var j = JSON.parse(txt);
         cb(null, j);
-      }).catch(function (e) { cb({ err: e.message }, null); });
+      }).catch(function (e) {
+        cb({ err: e.message }, null);
+      });
     } catch (e) { cb({ err: e.message }, null); }
   }
 
@@ -3936,7 +4198,12 @@ if (typeof window.showToast !== 'function') {
     html += '<div><label style="font-size:11px;color:var(--text-3)">API Key</label><input id="planKey" type="password" value="' + esc(cfg.key) + '" placeholder="sk-..." style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px;margin-top:3px"></div>';
     html += '<div><label style="font-size:11px;color:var(--text-3)">API Base</label><input id="planBase" type="text" value="' + esc(cfg.base) + '" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px;margin-top:3px"></div>';
     html += '<div><label style="font-size:11px;color:var(--text-3)">模型</label><input id="planModel" type="text" value="' + esc(cfg.model) + '" placeholder="deepseek-chat" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px;margin-top:3px"></div>';
-    html += '</div></details>';
+    html += '</div>';
+    if (window.DSGuard) {
+      var pu = DSGuard.usage('plan');
+      html += '<div style="font-size:10.5px;color:var(--text-3);margin-top:6px">本机用量保护：今日 ' + pu.dayUsed + '/' + pu.dayMax + ' 次 · 本小时 ' + pu.hourUsed + '/' + pu.hourMax + ' 次（超限自动停止）</div>';
+    }
+    html += '</details>';
 
     html += '<button id="planRun" style="width:100%;padding:11px;border:0;border-radius:9px;background:var(--pri);color:#fff;font-size:13.5px;font-weight:600;cursor:pointer">开始生成运营计划</button>';
     html += '<div style="font-size:11px;color:var(--text-3);margin-top:8px" id="planStatus"></div>';
@@ -3967,13 +4234,20 @@ if (typeof window.showToast !== 'function') {
       if (!f) return;
       var isImg = /^image\//.test(f.type) || /\.(png|jpe?g|webp|gif)$/i.test(f.name);
       attachedFile = { name: f.name, type: f.type, isImage: isImg };
-      var r = new FileReader();
       if (isImg) {
-        r.onload = function (ev) { attachedFile.dataUrl = ev.target.result; info.textContent = '✅ ' + f.name + '（图片，' + Math.round(f.size / 1024) + 'KB）'; };
-        r.readAsDataURL(f);
+        /* 上传前压缩：控制 token 消耗，防止超大截图超出上下文（400） */
+        info.textContent = '⏳ 正在压缩图片…';
+        DSGuard.shrinkImage(f).then(function (r) {
+          attachedFile.dataUrl = r.dataUrl;
+          info.textContent = '✅ ' + f.name + '（图片，已压缩至 ' + r.w + '×' + r.h + '，' + Math.round(r.dataUrl.length / 1024) + 'KB）';
+        }).catch(function () {
+          info.textContent = '❌ 图片处理失败，请换一张';
+          attachedFile = null;
+        });
       } else {
-        r.onload = function (ev) { attachedFile.text = String(ev.target.result).slice(0, 8000); info.textContent = '✅ ' + f.name + '（文档，' + Math.round(f.size / 1024) + 'KB）'; };
-        r.readAsText(f);
+        var rd = new FileReader();
+        rd.onload = function (ev) { attachedFile.text = String(ev.target.result).slice(0, 8000); info.textContent = '✅ ' + f.name + '（文档，' + Math.round(f.size / 1024) + 'KB）'; };
+        rd.readAsText(f);
       }
     }
 
@@ -4003,6 +4277,13 @@ if (typeof window.showToast !== 'function') {
 
     var payload = { budget: budget, targetGmv: gmv, stores: stores };
     callVision(payload, function (err, plan) {
+      if (err && err.limit) {
+        /* 用量超限：立即停止，不降级生成 */
+        status.textContent = DSGuard.blockMessage(err.limit);
+        res.innerHTML = '<div style="padding:16px;background:#fdf3f4;border:1px solid var(--danger);border-radius:9px;font-size:12.5px;color:var(--danger)">' +
+          esc(DSGuard.blockMessage(err.limit)) + '<br><span style="font-size:11.5px;color:var(--text-3)">本机用量保护：每小时最多 ' + err.limit.max + ' 次，每日最多 ' + err.limit.dayMax + ' 次。</span></div>';
+        return;
+      }
       if (err && err.needKey) {
         status.textContent = '未配置 API Key，已用内置数据 + 您的参数生成（如需 AI 精准识图，请填 Key）';
         plan = buildPlanFromParams(params);

@@ -386,11 +386,13 @@
               <div class="field"><label>Base URL</label><input id="rwLlmBase" placeholder="https://api.deepseek.com/v1"></div>
               <div class="field"><label>模型</label><input id="rwLlmModel" placeholder="deepseek-chat"></div>
             </div>
-            <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+            <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
               <button class="btn-sm" id="rwLlmSave">保存</button>
+              <button class="btn-sm" id="rwLlmClear" title="从本机删除已保存的 API Key">清除 Key</button>
               <span class="hint" id="rwLlmStatus"></span>
             </div>
-            <p class="hint" style="margin-top:8px">密钥仅保存在本机浏览器（localStorage），不会上传。未配置时，ai-copywriter / CopyGPT 会生成可直接复制到 AI 工具的提示词。</p>
+            <p class="hint" id="rwLlmUsage" style="margin-top:6px"></p>
+            <p class="hint" style="margin-top:8px">密钥仅保存在本机浏览器（localStorage），不会上传。<b>请勿把 Key 发给他人</b>；站点已内置用量保护：改写每小时最多 60 次、每日最多 200 次，超限自动停止（清缓存/无痕可绕过，正式防护需部署后端）。未配置时，ai-copywriter / CopyGPT 会生成可直接复制到 AI 工具的提示词。</p>
           </div>
         </details>
       </div>
@@ -445,6 +447,7 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="js/guard.js"></script>
 <script src="js/data.js"></script>
 <script src="js/data-category.js"></script>
 <script src="js/data-lines.js"></script>

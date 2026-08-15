@@ -53,6 +53,15 @@
     if (cfg.model) $('rwLlmModel').value = cfg.model;
     if (cfg.key) $('rwLlmStatus').innerHTML = '<span class="chip ok">已配置</span>';
     else $('rwLlmStatus').innerHTML = '<span class="chip mid">未填 Key（可免费获取商汤/智谱 Key）</span>';
+    refreshUsageLine();
+  }
+
+  function refreshUsageLine() {
+    var el = $('rwLlmUsage');
+    if (!el) return;
+    if (!window.DSGuard) { el.textContent = ''; return; }
+    var u = DSGuard.usage('rewrite');
+    el.textContent = '本机用量保护：今日 ' + u.dayUsed + '/' + u.dayMax + ' 次 · 本小时 ' + u.hourUsed + '/' + u.hourMax + ' 次（超限自动停止）';
   }
   function onProviderChange() {
     var p = $('rwLlmProvider').value;
@@ -300,6 +309,7 @@
   function callLLM(system, user, cb) {
     var cfg = loadLLM();
     if (!cfg.key) { cb({ needKey: true }, null); return; }
+    DSGuard.consume('rewrite');
     var url = (cfg.base || '').replace(/\/+$/, '') + '/chat/completions';
     fetch(url, {
       method: 'POST',
@@ -307,13 +317,15 @@
       body: JSON.stringify({
         model: cfg.model || 'deepseek-chat',
         messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-        temperature: 0.7
+        temperature: 0.7,
+        max_tokens: 2048
       })
     }).then(function (r) {
       return r.json().then(function (d) { return { status: r.status, data: d }; });
     }).then(function (res) {
       if (res.status !== 200 || !res.data.choices || !res.data.choices.length) {
-        cb(res.data && (res.data.error && (res.data.error.message || res.data.error)) || ('HTTP ' + res.status), null);
+        /* 优先展示友好中文错误（余额/Key/限流/超长等），再退回原始错误 */
+        cb(DSGuard.llmErrorMsg(res), null);
         return;
       }
       cb(null, res.data.choices[0].message.content);
@@ -369,6 +381,22 @@
     var text = $('rwInput').value.trim();
     if (!text) { showToast('请先输入原文'); return; }
     if (currentMode === 'humanizer') return runHumanizer(text);
+
+    /* 防滥用：输入长度上限（防止把上下文打爆 → 400） */
+    var lenChk = DSGuard.checkTextLength('rewrite', text);
+    if (!lenChk.ok) {
+      showToast(lenChk.msg);
+      renderPromptOnly('', [{ t: '输入超限', cls: 'bad' }], '<b>' + esc(lenChk.msg) + '</b><br>请把原文拆成多段，逐段改写。');
+      return;
+    }
+    /* 防滥用：用量限流（超限立即停止） */
+    var lim = DSGuard.check('rewrite');
+    if (!lim.ok) {
+      showToast(DSGuard.blockMessage(lim));
+      renderPromptOnly('', [{ t: '已限流', cls: 'bad' }],
+        '<b>' + esc(DSGuard.blockMessage(lim)) + '</b><br>本机用量保护：每小时最多 ' + lim.max + ' 次，每日最多 ' + lim.dayMax + ' 次。');
+      return;
+    }
     return runLLMMode(text);
   }
 
@@ -497,6 +525,14 @@
       saveLLM(cfg);
       $('rwLlmStatus').innerHTML = cfg.key ? '<span class="chip ok">已保存</span>' : '<span class="chip mid">已保存（未填 Key）</span>';
       showToast('LLM 设置已保存');
+    });
+    var clearBtn = $('rwLlmClear');
+    if (clearBtn) clearBtn.addEventListener('click', function () {
+      saveLLM({ provider: 'sensenova', key: '', base: '', model: '' });
+      $('rwLlmKey').value = '';
+      $('rwLlmStatus').innerHTML = '<span class="chip mid">已清除本机 Key</span>';
+      refreshUsageLine();
+      showToast('已从本机清除 API Key');
     });
 
     $('rwRun').addEventListener('click', run);

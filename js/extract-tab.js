@@ -163,6 +163,13 @@ if (typeof window.showToast !== 'function') {
     var apiBase = document.getElementById('extractApiBase').value.trim() || 'https://token.sensenova.cn/v1';
     var llmModel = document.getElementById('extractLlmModel').value.trim() || 'deepseek-v4-flash';
 
+    /* 防滥用：用量限流（超限立即停止） */
+    var lim = DSGuard.check('extract');
+    if (!lim.ok) {
+      showToast(DSGuard.blockMessage(lim));
+      return;
+    }
+
     if (mode === 'url' && !url) {
       showToast('请输入视频链接');
       return;
@@ -171,6 +178,7 @@ if (typeof window.showToast !== 'function') {
       showToast('请选择本地文件');
       return;
     }
+    DSGuard.consume('extract');
 
     /* 重置 */
     extractOutput.innerHTML = '<div class="empty-state"><div class="empty-icon" style="font-size:24px">⏳</div><p>正在提取中……</p><span id="extractProgress">准备中</span></div>';

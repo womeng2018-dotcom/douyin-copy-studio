@@ -121,6 +121,12 @@
     var cfg = loadLLM();
     if (!cfg.key) { cb({ needKey: true }, null); return; }  // needKey 走错误通道
     if (typeof fetch !== 'function') { cb({ needKey: true }, null); return; } // 无 fetch 环境降级
+
+    /* 防滥用：用量限流（超限立即停止） */
+    var lim = DSGuard.check('plan');
+    if (!lim.ok) { cb({ limit: lim }, null); return; }
+    DSGuard.consume('plan');
+
     var model = cfg.model || 'deepseek-chat';
 
     var sys = '你是资深本地生活运营总监（抖音来客/美业SPA方向）。用户上传经营数据图片或文档，请分析并输出 JSON（不要 markdown 代码块），结构严格如下：'
@@ -147,12 +153,18 @@
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
         body: JSON.stringify({ model: model, messages: msgs, temperature: 0.4, max_tokens: 3000 })
       }).then(function (r) { return r.json(); }).then(function (d) {
+        if (d && d.error) {
+          cb({ err: DSGuard.llmErrorMsg({ status: d.error.code ? 400 : 500, data: d }) }, null);
+          return;
+        }
         var txt = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
-        if (!txt) { cb({ needKey: true, raw: d }, null); return; }
+        if (!txt) { cb({ err: '模型未返回内容' }, null); return; }
         txt = txt.replace(/^```(json)?/m, '').replace(/```$/m, '').trim();
         var j = JSON.parse(txt);
         cb(null, j);
-      }).catch(function (e) { cb({ err: e.message }, null); });
+      }).catch(function (e) {
+        cb({ err: e.message }, null);
+      });
     } catch (e) { cb({ err: e.message }, null); }
   }
 
@@ -192,7 +204,12 @@
     html += '<div><label style="font-size:11px;color:var(--text-3)">API Key</label><input id="planKey" type="password" value="' + esc(cfg.key) + '" placeholder="sk-..." style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px;margin-top:3px"></div>';
     html += '<div><label style="font-size:11px;color:var(--text-3)">API Base</label><input id="planBase" type="text" value="' + esc(cfg.base) + '" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px;margin-top:3px"></div>';
     html += '<div><label style="font-size:11px;color:var(--text-3)">模型</label><input id="planModel" type="text" value="' + esc(cfg.model) + '" placeholder="deepseek-chat" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px;margin-top:3px"></div>';
-    html += '</div></details>';
+    html += '</div>';
+    if (window.DSGuard) {
+      var pu = DSGuard.usage('plan');
+      html += '<div style="font-size:10.5px;color:var(--text-3);margin-top:6px">本机用量保护：今日 ' + pu.dayUsed + '/' + pu.dayMax + ' 次 · 本小时 ' + pu.hourUsed + '/' + pu.hourMax + ' 次（超限自动停止）</div>';
+    }
+    html += '</details>';
 
     html += '<button id="planRun" style="width:100%;padding:11px;border:0;border-radius:9px;background:var(--pri);color:#fff;font-size:13.5px;font-weight:600;cursor:pointer">开始生成运营计划</button>';
     html += '<div style="font-size:11px;color:var(--text-3);margin-top:8px" id="planStatus"></div>';
@@ -223,13 +240,20 @@
       if (!f) return;
       var isImg = /^image\//.test(f.type) || /\.(png|jpe?g|webp|gif)$/i.test(f.name);
       attachedFile = { name: f.name, type: f.type, isImage: isImg };
-      var r = new FileReader();
       if (isImg) {
-        r.onload = function (ev) { attachedFile.dataUrl = ev.target.result; info.textContent = '✅ ' + f.name + '（图片，' + Math.round(f.size / 1024) + 'KB）'; };
-        r.readAsDataURL(f);
+        /* 上传前压缩：控制 token 消耗，防止超大截图超出上下文（400） */
+        info.textContent = '⏳ 正在压缩图片…';
+        DSGuard.shrinkImage(f).then(function (r) {
+          attachedFile.dataUrl = r.dataUrl;
+          info.textContent = '✅ ' + f.name + '（图片，已压缩至 ' + r.w + '×' + r.h + '，' + Math.round(r.dataUrl.length / 1024) + 'KB）';
+        }).catch(function () {
+          info.textContent = '❌ 图片处理失败，请换一张';
+          attachedFile = null;
+        });
       } else {
-        r.onload = function (ev) { attachedFile.text = String(ev.target.result).slice(0, 8000); info.textContent = '✅ ' + f.name + '（文档，' + Math.round(f.size / 1024) + 'KB）'; };
-        r.readAsText(f);
+        var rd = new FileReader();
+        rd.onload = function (ev) { attachedFile.text = String(ev.target.result).slice(0, 8000); info.textContent = '✅ ' + f.name + '（文档，' + Math.round(f.size / 1024) + 'KB）'; };
+        rd.readAsText(f);
       }
     }
 
@@ -259,6 +283,13 @@
 
     var payload = { budget: budget, targetGmv: gmv, stores: stores };
     callVision(payload, function (err, plan) {
+      if (err && err.limit) {
+        /* 用量超限：立即停止，不降级生成 */
+        status.textContent = DSGuard.blockMessage(err.limit);
+        res.innerHTML = '<div style="padding:16px;background:#fdf3f4;border:1px solid var(--danger);border-radius:9px;font-size:12.5px;color:var(--danger)">' +
+          esc(DSGuard.blockMessage(err.limit)) + '<br><span style="font-size:11.5px;color:var(--text-3)">本机用量保护：每小时最多 ' + err.limit.max + ' 次，每日最多 ' + err.limit.dayMax + ' 次。</span></div>';
+        return;
+      }
       if (err && err.needKey) {
         status.textContent = '未配置 API Key，已用内置数据 + 您的参数生成（如需 AI 精准识图，请填 Key）';
         plan = buildPlanFromParams(params);

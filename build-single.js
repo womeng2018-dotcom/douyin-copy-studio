@@ -8,7 +8,7 @@ const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 let html = read('index.html');
 const css = read('css/app.css');
 
-const jsFiles = ['js/data.js', 'js/data-category.js', 'js/data-lines.js',
+const jsFiles = ['js/guard.js', 'js/data.js', 'js/data-category.js', 'js/data-lines.js',
   'js/data-compliance.js', 'js/data-brief.js', 'js/engine.js', 'js/app.js', 'js/extract-tab.js', 'js/rewrite-tab.js',
   'js/data-analysis.js', 'js/plan-generator.js'];
 
