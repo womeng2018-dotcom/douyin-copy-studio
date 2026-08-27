@@ -76,6 +76,8 @@ input,select,textarea{
   font-size:13px;font-family:inherit;color:var(--text);background:#fff;transition:.15s;
 }
 input:focus,select:focus,textarea:focus{outline:0;border-color:var(--pri);box-shadow:0 0 0 3px rgba(107,127,163,.1)}
+input.invalid{border-color:var(--danger);background:#fffafa;box-shadow:0 0 0 3px rgba(176,128,136,.1)}
+.required{font-size:9.5px;color:var(--danger);font-weight:600;margin-left:3px}
 input::placeholder,textarea::placeholder{color:#b0a898}
 textarea{resize:vertical;line-height:1.75}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -293,8 +295,9 @@ mark.hl.P2{background:#d8e0ec;color:#4a5c78}
 @media (max-width:720px){
   .wrap{padding:0 14px}
   .topbar-inner{padding:12px 14px}
-  .tabs{width:100%;overflow-x:auto}
-  .tab{flex:1;padding:7px 10px;font-size:12px}
+  .tabs{width:100%;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:0 0 auto;padding:8px 13px;font-size:12px;scroll-snap-align:center}
   .brand h1{font-size:15px}
   .grid2{grid-template-columns:1fr}
   .card{padding:16px}
@@ -302,6 +305,8 @@ mark.hl.P2{background:#d8e0ec;color:#4a5c78}
   table.shots{font-size:11px}
   table.shots th,table.shots td{padding:6px 7px}
   .script-line{font-size:12.5px}
+  .btn-main{position:sticky;bottom:10px;z-index:12;box-shadow:0 5px 18px rgba(45,58,74,.24);padding:13px 16px}
+  .results{scroll-margin-top:118px}
 }
 
 /* ---------- 文案改写 ---------- */

@@ -118,6 +118,18 @@ console.log('\n===== 6. 品类辨识度抽查 =====');
   console.log(`  ${cat}: ${r.hookType} | ${r.script.replace(/\n/g, ' ')}...`);
 });
 
+/* ========== 7. 可用性与内容安全回归 ========== */
+console.log('\n===== 7. 可用性与内容安全回归 =====');
+const uxCfg = { category: 'hair', duration: 'd30', style: 'oral', goal: 'groupbuy',
+  hookType: 'auto', brand: '测试门店', area: '测试商圈', entryItem: '体验项目', entryPrice: '9.9',
+  mainItem: '主推套餐', mainPrice: '39.9', origPrice: '198' };
+const uxResult = DS.generate(uxCfg, 0);
+check(uxResult.reviewLine === '', '不得生成未经用户提供的顾客评价', 'error');
+check(uxResult.rows.find(r => r.time === '20-27s').line === uxResult.refundLine,
+  '脚本中的保障话术不得重复拼接', 'error');
+check(!uxResult.script.includes(uxResult.refundLine + ' ' + uxResult.refundLine),
+  '保障话术不得连续重复', 'error');
+
 /* ========== 汇总 ========== */
 console.log('\n' + '='.repeat(50));
 console.log(`测试完成：${total} 项，通过 ${pass}，失败 ${fail}`);

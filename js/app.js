@@ -2,6 +2,7 @@
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var lastResults = [];
+  var CFG_KEY = 'dycs_last_config';
 
   /* ---------- Toast ---------- */
   function toast(msg) {
@@ -32,6 +33,7 @@
     document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
     btn.classList.add('active');
     $('tab-' + btn.dataset.tab).classList.add('active');
+    btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     if (btn.dataset.tab === 'history') renderHistory();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
@@ -98,15 +100,73 @@
     };
   }
 
-  /* ---------- 生成 ---------- */
-  $('genBtn').addEventListener('click', function () {
+  function setSeg(id, value) {
+    $(id).querySelectorAll('button').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.v === value);
+    });
+  }
+
+  function saveCfg(cfg) {
+    try {
+      cfg.count = segVal('count');
+      localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+    } catch (e) { /* 浏览器禁用存储时不影响生成 */ }
+  }
+
+  function restoreCfg() {
+    var cfg;
+    try { cfg = JSON.parse(localStorage.getItem(CFG_KEY) || 'null'); } catch (e) { return; }
+    if (!cfg) return;
+    ['category', 'hookType', 'brand', 'area', 'storeCount', 'deadline', 'entryItem', 'entryPrice', 'mainItem', 'mainPrice', 'origPrice', 'gift'].forEach(function (id) {
+      if ($(id) && cfg[id] !== undefined) $(id).value = cfg[id];
+    });
+    ['goal', 'duration', 'style', 'count'].forEach(function (id) { if (cfg[id]) setSeg(id, cfg[id]); });
+    syncCat();
+  }
+
+  function validateCfg(cfg) {
+    var required = [
+      ['brand', cfg.brand, '品牌名'], ['area', cfg.area, '商圈/区域'],
+      ['entryItem', cfg.entryItem, '引流品名称'], ['entryPrice', cfg.entryPrice, '引流价']
+    ];
+    var missing = [];
+    required.forEach(function (x) {
+      $(x[0]).classList.toggle('invalid', !x[1]);
+      $(x[0]).setAttribute('aria-invalid', !x[1] ? 'true' : 'false');
+      if (!x[1]) missing.push(x[2]);
+    });
+    if (cfg.entryPrice && (!/^\d+(\.\d{1,2})?$/.test(cfg.entryPrice) || Number(cfg.entryPrice) <= 0)) {
+      $('entryPrice').classList.add('invalid');
+      toast('引流价请填写有效数字');
+      $('entryPrice').focus();
+      return false;
+    }
+    if (missing.length) {
+      toast('请先填写：' + missing.join('、'));
+      $(required.find(function (x) { return !x[1]; })[0]).focus();
+      return false;
+    }
+    return true;
+  }
+
+  function generateNow() {
     var cfg = readCfg();
+    if (!validateCfg(cfg)) return;
     var n = parseInt(segVal('count'), 10) || 3;
     lastResults = [];
     for (var i = 0; i < n; i++) lastResults.push(DS.generate(cfg, i));
     renderResults(cfg, lastResults);
     saveHistory(cfg, lastResults);
+    saveCfg(cfg);
     toast('已生成 ' + n + ' 条变体');
+    if (window.matchMedia('(max-width: 900px)').matches) {
+      document.querySelector('.results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  /* ---------- 生成 ---------- */
+  $('genBtn').addEventListener('click', function () {
+    generateNow();
   });
 
   $('demoBtn').addEventListener('click', function () {
@@ -121,7 +181,7 @@
     $('mainPrice').value = '39.9';
     $('origPrice').value = '198';
     $('gift').value = '肩颈按摩5分钟';
-    toast('示例已载入，点击生成');
+    generateNow();
   });
 
   function renderResults(cfg, list) {
@@ -183,9 +243,8 @@
       '<div class="kv"><b>标题：</b><span>' + DS.esc(r.title) + '</span></div>' +
       '<div class="kv"><b>话题：</b><span class="topics-line">' + DS.esc(r.topics) + '</span></div>' +
       '<div class="kv"><b>评论区置顶：</b><span>' + DS.esc(r.comment) + '</span></div>' +
-      (r.reviewLine ? '<div class="kv kv-review"><b>顾客评价引用（选插入）：</b><span>' + DS.esc(r.reviewLine) + '</span></div>' : '') +
       '</div>' +
-      (r.certLabels ? '<div class="block block-cert"><div class="block-label">📌 视频自证标签（建议角标/字幕贴出，平台优先分发）</div>' +
+      (r.certLabels ? '<div class="block block-cert"><div class="block-label">📌 拍摄自证标签（建议按实际情况使用）</div>' +
       '<div class="cert-tags">' + r.certLabels.map(function (c) { return '<span class="cert-tag">' + DS.esc(c) + '</span>'; }).join('') + '</div></div>' : '') +
       (r.refundLine ? '<div class="block block-refund"><div class="block-label">🔒 核销与退改保障话术</div><div class="kv"><span>' + DS.esc(r.refundLine) + '</span></div></div>' : '') +
       riskBox + '</div>' +
@@ -380,4 +439,5 @@
   $('clearHistory').addEventListener('click', function () {
     localStorage.removeItem(H_KEY); renderHistory(); toast('历史已清空');
   });
+  restoreCfg();
 })();
