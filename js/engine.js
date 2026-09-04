@@ -121,15 +121,12 @@ DS.generate = function (cfg, variantIndex) {
     if (v.dialectWord && parts.offer) parts.offer = parts.offer + ' ' + v.dialectWord + '～';
   }
 
-  /* 核销保障话术（降低决策门槛，减少到店纠纷） */
-  var refundLine = DS.fill(DS.pick(DS.refundLines, i), v);
-  parts.trust = parts.trust + ' ' + refundLine;
+  /* 保障话术只出现一次，避免脚本重复；具体承诺仍须与后台规则一致 */
+  var refundLine = parts.trust;
 
-  /* 自证标签（2026 平台加分项，优先分发） */
+  /* 自证标签：仅作为拍摄核对建议，不承诺平台流量效果 */
   var certA = DS.pick(DS.certLabels, i);
   var certB = DS.pick(DS.certLabels, (i + 2) % DS.certLabels.length);
-  /* 顾客评价引用（含真实顾客评价的视频到店转化率高 37%） */
-  var reviewLine = DS.fill(DS.pick(DS.reviewLines, i), v);
 
   /* 组装分镜与脚本 */
   var dur = DS.durations[cfg.duration] || DS.durations.d30;
@@ -159,7 +156,7 @@ DS.generate = function (cfg, variantIndex) {
     topics: topics,
     comment: comment,
     certLabels: [certA, certB],
-    reviewLine: reviewLine,
+    reviewLine: '',
     refundLine: refundLine,
     wordCount: script.replace(/[（）\s\-0-9a-zA-Z]/g, '').length,
     risk: DS.scan(script + ' ' + title + ' ' + comment)
