@@ -516,6 +516,53 @@ app.add_middleware(
 
 
 # ============================================================
+# 安全响应头中间件
+# ============================================================
+# 路径感知 CSP：
+#   - index.html / 其它静态资源 走严格策略（script-src 'self'，禁止内联）
+#   - standalone.html 单文件构建含内联脚本，需放行 'unsafe-inline'
+# 统一附加 nosniff / X-Frame-Options / Referrer-Policy / Permissions-Policy，
+# 并将框架默认 Server 头重写为业务标识，避免泄漏 uvicorn 版本。
+_CSP_BASE = (
+    "default-src 'self'; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; "
+    "img-src 'self' data:; "
+    "connect-src 'self'; "
+    "frame-ancestors 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "object-src 'none'"
+)
+_CSP_STRICT = _CSP_BASE + "; script-src 'self'"
+_CSP_INPLACE = _CSP_BASE + "; script-src 'self' 'unsafe-inline'"
+
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "geolocation=(), microphone=(), camera=(), payment=()",
+}
+
+
+@app.middleware("http")
+async def _security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    path = (request.url.path or "").lower()
+    csp = _CSP_INPLACE if "standalone.html" in path else _CSP_STRICT
+    response.headers.setdefault("Content-Security-Policy", csp)
+    for key, value in SECURITY_HEADERS.items():
+        response.headers.setdefault(key, value)
+    # 伪造 Server 头：MutableHeaders 不提供 pop()，使用 del+赋值保证唯一
+    try:
+        del response.headers["Server"]
+    except KeyError:
+        pass
+    response.headers["Server"] = "CopyStudio"
+    return response
+
+
+# ============================================================
 # LLM 代理：流式 / 非流式
 # ============================================================
 def _validate_messages(messages, allow_images=False):
@@ -1047,4 +1094,4 @@ if __name__ == "__main__":
     print(f"[copy-studio] 鉴权: {auth_state}", flush=True)
     print(f"[copy-studio] 远程 URL 提取: {'开启' if _remote_url_allowed() else '关闭'}", flush=True)
     print(f"[copy-studio] CORS 来源: {', '.join(CORS_ORIGINS)}", flush=True)
-    uvicorn.run(app, host=host, port=port, log_level="info")
+    uvicorn.run(app, host=host, port=port, log_level="info", server_header=False)
