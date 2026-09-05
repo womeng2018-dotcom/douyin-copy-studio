@@ -4,17 +4,14 @@
  * 功能：上传图片（抖音来客后台截图 / 经营日报）+ 文档（CSV/TXT/Excel 导出）
  *       → 自动分析 → 生成结构化「未来运营计划」（含投流预算分配）
  * 架构：
- *   1) LLM 视觉分析（OpenAI 兼容 API，可配置 Key）—— 优先
- *   2) 规则引擎降级（无 Key 时基于内置数据 + 用户参数自动生成）—— 保底
+ *   1) 统一后端 LLM 视觉分析（NVIDIA Key 仅存服务端）—— 优先
+ *   2) 规则引擎降级（后端不可用时基于内置数据 + 用户参数自动生成）—— 保底
  * 隔离性：本模块自包含 IIFE，仅操作 #planGen 容器，不影响其他板块。
  */
 (function () {
   'use strict';
 
   /* ---------------- 常量 ---------------- */
-  var STORE_KEY = 'dycs_plan_llm';
-  var DEFAULT_API = 'https://api.deepseek.com/v1/chat/completions';
-
   var STAGES = [
     { key: 's1', name: '第一阶段 · 冷启动蓄水', days: '第 1-14 天', tag: '测款蓄水' },
     { key: 's2', name: '第二阶段 · 放量起量', days: '第 15-45 天', tag: '放量爬坡' },
@@ -35,13 +32,6 @@
     var t = document.getElementById('toast');
     if (t) { t.textContent = msg; t.className = 'toast show'; clearTimeout(t._tm); t._tm = setTimeout(function () { t.className = 'toast'; }, 2600); }
     else { alert(msg); }
-  }
-
-  function loadLLM() {
-    try {
-      var cfg = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
-      return { key: cfg.key || '', base: cfg.base || DEFAULT_API, model: cfg.model || 'deepseek-chat' };
-    } catch (e) { return { key: '', base: DEFAULT_API, model: 'deepseek-chat' }; }
   }
 
   /* ---------------- 降级规则引擎（无 Key 保底） ---------------- */
@@ -116,18 +106,27 @@
     };
   }
 
-  /* ---------------- LLM 视觉分析（优先） ---------------- */
-  function callVision(payload, cb) {
-    var cfg = loadLLM();
-    if (!cfg.key) { cb({ needKey: true }, null); return; }  // needKey 走错误通道
-    if (typeof fetch !== 'function') { cb({ needKey: true }, null); return; } // 无 fetch 环境降级
+  /* ---------------- LLM 视觉分析（仅后端代理） ---------------- */
+  function visionApi() {
+    /* 离线单文件版（file://）不回退到本机服务：服务端已拒绝 Origin: null。 */
+    return (window.DYCSCloud && DYCSCloud.endpoint)
+      ? DYCSCloud.endpoint('/api/llm/vision')
+      : '/api/llm/vision';
+  }
 
+  function backendHeaders() {
+    if (window.DYCSCloud && DYCSCloud.headers) return DYCSCloud.headers();
+    var headers = { 'Content-Type': 'application/json' };
+    var key = localStorage.getItem('dycs_api_key');
+    if (key) headers['X-API-Key'] = key;
+    return headers;
+  }
+
+  function callVision(payload, cb) {
     /* 防滥用：用量限流（超限立即停止） */
     var lim = DSGuard.check('plan');
     if (!lim.ok) { cb({ limit: lim }, null); return; }
     DSGuard.consume('plan');
-
-    var model = cfg.model || 'deepseek-chat';
 
     var sys = '你是资深本地生活运营总监（抖音来客/美业SPA方向）。用户上传经营数据图片或文档，请分析并输出 JSON（不要 markdown 代码块），结构严格如下：'
       + '{"overview":{"title","goal","cycle","basis"},"stages":[{"name","days","tag","actions":[3-4条],"kpi"}x3],'
@@ -147,25 +146,36 @@
       msgs.push({ role: 'user', content: '请基于以下经营参数生成未来运营计划：月预算 ' + payload.budget + ' 元，目标月GMV ' + payload.targetGmv + ' 元，门店数 ' + payload.stores + '，品类：足浴SPA。' });
     }
 
-    try {
-      fetch(cfg.base, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
-        body: JSON.stringify({ model: model, messages: msgs, temperature: 0.4, max_tokens: 3000 })
-      }).then(function (r) { return r.json(); }).then(function (d) {
-        if (d && d.error) {
-          cb({ err: DSGuard.llmErrorMsg({ status: d.error.code ? 400 : 500, data: d }) }, null);
-          return;
-        }
-        var txt = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+    callVisionViaBackend(msgs, cb);
+  }
+
+  function callVisionViaBackend(msgs, cb) {
+    fetch(visionApi(), {
+      method: 'POST',
+      headers: backendHeaders(),
+      body: JSON.stringify({ messages: msgs })
+    }).then(function (r) {
+      /* 后端不可用时不再直连第三方，确保 LLM Key 永不进入浏览器 */
+      if (r.status === 404 || r.status === 405 || r.status === 503) { cb({ err: '后端 LLM 服务不可用' }, null); return; }
+      if (r.status === 401) { cb({ err: '后端鉴权失败（401）：请检查服务端 API_KEYS 与本页「后端访问密钥」' }, null); return; }
+      if (r.status === 429) { cb({ err: '后端限流（429）：使用过于频繁，请稍后再试' }, null); return; }
+      return r.json().then(function (d) {
+        if (!d || !d.ok) { cb({ err: (d && d.error) || '后端调用失败' }, null); return; }
+        var txt = d.content;
         if (!txt) { cb({ err: '模型未返回内容' }, null); return; }
         txt = txt.replace(/^```(json)?/m, '').replace(/```$/m, '').trim();
-        var j = JSON.parse(txt);
-        cb(null, j);
-      }).catch(function (e) {
-        cb({ err: e.message }, null);
+        try { cb(null, JSON.parse(txt)); }
+        catch (e) { cb({ err: '返回解析失败：' + e.message }, null); }
       });
-    } catch (e) { cb({ err: e.message }, null); }
+    }).catch(function (e) { cb({ err: '后端连接失败：' + (e && e.message ? e.message : e) }, null); });
+  }
+
+  function savePlanHistory(plan, params) {
+    if (!window.DYCSCloud || !plan) return;
+    DYCSCloud.save('plan', '运营计划 · ' + (plan.overview && plan.overview.title || '90天计划'), {
+      params: params,
+      plan: plan
+    }).catch(function () { /* 云端不可用不影响当前结果 */ });
   }
 
   /* ---------------- 渲染：上传区 ---------------- */
@@ -173,7 +183,6 @@
     var el = document.getElementById('planGen');
     if (!el) return;
 
-    var cfg = loadLLM();
     var html = '';
     html += '<div style="margin:20px 0 6px;padding-top:18px;border-top:1px solid var(--border)">';
     html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">';
@@ -181,7 +190,7 @@
     html += '<span style="font-size:14px;font-weight:700;color:var(--text)">运营计划生成器</span>';
     html += '<span style="font-size:10px;color:var(--text-3);border:1px solid var(--border);border-radius:4px;padding:1px 6px">上传数据 → 自动生成未来 90 天计划（含投流预算）</span>';
     html += '</div>';
-    html += '<div style="font-size:11.5px;color:var(--text-3);margin-bottom:12px">支持上传：后台截图（PNG/JPG）、经营文档（CSV/TXT/Excel 导出）。有 Key 走视觉 AI 分析，无 Key 自动用内置数据 + 参数生成。</div>';
+    html += '<div style="font-size:11.5px;color:var(--text-3);margin-bottom:12px">支持上传：后台截图（PNG/JPG）、经营文档（CSV/TXT/Excel 导出）。后端可用时走视觉 AI 分析，否则自动用内置数据 + 参数生成。</div>';
 
     // 上传区
     html += '<div id="planDrop" style="border:1.5px dashed var(--border);border-radius:10px;padding:22px 16px;text-align:center;cursor:pointer;background:var(--bg);transition:border-color .2s">';
@@ -197,19 +206,12 @@
     html += '<div><label style="font-size:11px;color:var(--text-3)">门店数</label><input id="planStores" type="number" value="5" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:#fff;font-size:12.5px;margin-top:3px"></div>';
     html += '</div>';
 
-    // LLM 配置（折叠）
-    html += '<details style="margin-bottom:12px">';
-    html += '<summary style="font-size:11.5px;color:var(--text-3);cursor:pointer">⚙️ LLM 视觉分析配置（可选，填了更精准；不填自动用内置数据）</summary>';
-    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:10px">';
-    html += '<div><label style="font-size:11px;color:var(--text-3)">API Key</label><input id="planKey" type="password" value="' + esc(cfg.key) + '" placeholder="sk-..." style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px;margin-top:3px"></div>';
-    html += '<div><label style="font-size:11px;color:var(--text-3)">API Base</label><input id="planBase" type="text" value="' + esc(cfg.base) + '" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px;margin-top:3px"></div>';
-    html += '<div><label style="font-size:11px;color:var(--text-3)">模型</label><input id="planModel" type="text" value="' + esc(cfg.model) + '" placeholder="deepseek-chat" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px;margin-top:3px"></div>';
-    html += '</div>';
+    // LLM 统一由后端托管，密钥不在前端展示或保存
+    html += '<div style="margin:10px 0 12px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);font-size:11px;color:var(--text-3)">LLM 视觉分析由统一后端调用 NVIDIA 模型。后端地址与访问密钥请在「文案改写 → 后端配置」中设置；未连接时自动使用内置规则计划。</div>';
     if (window.DSGuard) {
       var pu = DSGuard.usage('plan');
-      html += '<div style="font-size:10.5px;color:var(--text-3);margin-top:6px">本机用量保护：今日 ' + pu.dayUsed + '/' + pu.dayMax + ' 次 · 本小时 ' + pu.hourUsed + '/' + pu.hourMax + ' 次（超限自动停止）</div>';
+      html += '<div style="font-size:10.5px;color:var(--text-3);margin:6px 0 12px">本机展示用量：今日 ' + pu.dayUsed + '/' + pu.dayMax + ' 次 · 本小时 ' + pu.hourUsed + '/' + pu.hourMax + ' 次；服务端仍会强制限流</div>';
     }
-    html += '</details>';
 
     html += '<button id="planRun" style="width:100%;padding:11px;border:0;border-radius:9px;background:var(--pri);color:#fff;font-size:13.5px;font-weight:600;cursor:pointer">开始生成运营计划</button>';
     html += '<div style="font-size:11px;color:var(--text-3);margin-top:8px" id="planStatus"></div>';
@@ -268,13 +270,6 @@
     var gmv = document.getElementById('planGmv').value;
     var stores = document.getElementById('planStores').value;
 
-    // 保存 LLM 配置
-    var cfg = loadLLM();
-    var k = document.getElementById('planKey').value.trim();
-    var b = document.getElementById('planBase').value.trim();
-    var m = document.getElementById('planModel').value.trim();
-    if (k) { localStorage.setItem(STORE_KEY, JSON.stringify({ key: k, base: b || DEFAULT_API, model: m || 'deepseek-chat' })); cfg = { key: k, base: b || DEFAULT_API, model: m || 'deepseek-chat' }; }
-
     if (!budget || !gmv || !stores) { toast('请填写预算 / GMV / 门店数'); return; }
     var params = { budget: budget, targetGmv: gmv, stores: stores };
 
@@ -291,13 +286,14 @@
         return;
       }
       if (err && err.needKey) {
-        status.textContent = '未配置 API Key，已用内置数据 + 您的参数生成（如需 AI 精准识图，请填 Key）';
+        status.textContent = '后端模型服务未配置，已用内置数据 + 您的参数生成';
         plan = buildPlanFromParams(params);
       } else if (err) {
         status.textContent = 'AI 调用失败（' + (err.err || '未知') + '），已降级为规则引擎生成';
         plan = buildPlanFromParams(params);
       }
       renderResult(plan);
+      savePlanHistory(plan, params);
       status.textContent = plan.overview && plan.overview.title ? '✅ 计划已生成' : '✅ 已生成';
     });
   }

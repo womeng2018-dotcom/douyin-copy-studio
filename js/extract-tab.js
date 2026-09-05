@@ -1,12 +1,14 @@
 /* ===== 视频提取 Tab ===== */
 
 /* 智能默认 API 地址：
-   - 本工具由本地服务同源托管（http://127.0.0.1:8765/）→ 用相对路径 /extract
-   - GitHub Pages（https://...github.io）→ 保持绝对地址，提示需配置云端 HTTPS 或本地访问 */
+   - 本工具由本地服务同源托管（http://127.0.0.1:8765/）→ 用相对路径 /api/extract
+   - 离线单文件版（file://）或 GitHub Pages（https）→ 不再回退到 http://127.0.0.1:8765：
+     服务端已拒绝 Origin: null，且 HTTPS 页面访问 HTTP 本地服务会被浏览器拦截。
+     这两种情况请在页面里显式配置后端根地址，或由本地服务同源托管后再使用。 */
 var EXTRACT_API = localStorage.getItem('extract_api') ||
-  (location.protocol === 'http:' && (location.hostname === '127.0.0.1' || location.hostname === 'localhost')
-    ? location.origin + '/extract'
-    : 'http://127.0.0.1:8765/extract');
+  (window.DYCSCloud && DYCSCloud.root && DYCSCloud.root()
+    ? DYCSCloud.root() + '/api/extract'
+    : '/api/extract');
 
 /* 全局 Toast（提取 Tab 使用；若其他脚本已定义则不覆盖） */
 if (typeof window.showToast !== 'function') {
@@ -45,14 +47,18 @@ if (typeof window.showToast !== 'function') {
         '<summary class="settings-summary">提取服务配置</summary>' +
         '<div class="settings-body">' +
           '<div class="field"><label>API 地址</label>' +
-            '<input id="extractApiUrl" placeholder="http://127.0.0.1:8765/extract 或 https://xxx.onrender.com/extract">' +
+            '<input id="extractApiUrl" placeholder="http://127.0.0.1:8765/api/extract 或 https://你的后端域名/api/extract">' +
+          '</div>' +
+          '<div class="field"><label>后端访问密钥（X-API-Key）</label>' +
+            '<input id="extractAccessKey" type="password" placeholder="服务端配置 API_KEYS/TENANT_KEYS 时填写">' +
           '</div>' +
           '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">' +
             '<button class="btn-sm" id="saveApiUrl">保存</button>' +
             '<button class="btn-sm" id="testApiUrl">测试连接</button>' +
             '<span class="hint" id="apiTestResult"></span>' +
           '</div>' +
-          '<p class="hint" style="margin-top:8px">线上（GitHub Pages）建议用 <b>Render 免费云端服务</b>（见下方引导第 2 步）；本地开发可直接 <code>bash start-local.sh</code> 后访问 <code>http://127.0.0.1:8765</code>（页面与 API 同源，无需配置）。</p>' +
+          '<p class="hint" style="margin-top:8px">离线单文件版（file://）与 GitHub Pages 页面默认不连接任何后端，需在此显式填写后端地址；' +
+          '本地使用推荐直接 <code>bash start-local.sh</code> 后访问 <code>http://127.0.0.1:8765</code>（页面与 API 同源，无需配置）。</p>' +
         '</div>' +
       '</details>' +
     '</div>';
@@ -73,15 +79,14 @@ if (typeof window.showToast !== 'function') {
       '<div class="eg-body">' +
         (reason ? '<div class="eg-note" style="margin:8px 0 2px">' + escapeHtml(reason) + '</div>' : '') +
         '<div class="eg-step"><div class="eg-num">1</div><div class="eg-body-copy">' +
-          '<b>本地使用（最简单，Windows/Mac 均可）</b>：在项目目录运行 <code>bash start-local.sh</code>（或 <code>python server/video-extract.py --serve --port 8765</code>），' +
+          '<b>本地使用（最简单，Windows/Mac 均可）</b>：在项目目录运行 <code>bash start-local.sh</code>（或 <code>.venv/bin/python server/app.py</code>），' +
           '然后用浏览器打开 <b><code>http://127.0.0.1:8765</code></b> —— 页面与提取 API 同源，链接和本地文件都能提取。' +
         '</div></div>' +
         '<div class="eg-step"><div class="eg-num">2</div><div class="eg-body-copy">' +
-          '<b>云端部署（推荐，免费额度）</b>：一键部署到 Render，约 5-10 分钟完成，之后在任何设备上都能用（含手机）。' +
-          '<div class="eg-actions">' +
-            '<a href="https://render.com/deploy?repo=https://github.com/womeng2018-dotcom/douyin-copy-studio" target="_blank" rel="noopener">🚀 一键部署到 Render（免费）</a>' +
-          '</div>' +
-          '<div class="eg-note">部署完成后把服务地址（形如 <code>https://xxx.onrender.com/extract</code>）填入上方「API 地址」并保存，即可在本页使用。</div>' +
+          '<b>自托管部署（按需自建，涉及第三方付费与密钥配置，请自行评估）</b>：仓库内提供 render.yaml 与 Dockerfile 作为参考配置，' +
+          '部署前必须配置 <code>TENANT_KEYS</code>，否则服务会拒绝启动（fail closed）。' +
+          '<div class="eg-note">云端部署下远程 URL 提取默认关闭，仅保留文件上传；且视频提取依赖的 ASR 组件较重，' +
+          '云端实例的可用性未在本项目验证过。</div>' +
         '</div></div>' +
         '<div class="eg-step"><div class="eg-num">3</div><div class="eg-body-copy">' +
           '<b>已有云端/局域网服务</b>：在「提取服务配置」填入 API 地址 → <b>保存</b> → <b>测试连接</b>，显示「服务已连接」即可使用。' +
@@ -100,20 +105,28 @@ if (typeof window.showToast !== 'function') {
   document.addEventListener('click', function (e) {
     if (e.target.id === 'saveApiUrl') {
       var val = document.getElementById('extractApiUrl').value.trim();
+      var accessKeyEl = document.getElementById('extractAccessKey');
+      var accessKey = accessKeyEl ? accessKeyEl.value.trim() : '';
       if (val) {
         localStorage.setItem('extract_api', val);
+        localStorage.setItem('dycs_backend_url', val.replace(/\/+$/, '').replace(/\/(?:api\/)?extract$/i, ''));
+        if (accessKey) localStorage.setItem('dycs_api_key', accessKey);
+        else localStorage.removeItem('dycs_api_key');
         EXTRACT_API = val;
-        showToast('API 地址已保存，正在检测连接…');
+        showToast('后端配置已保存，正在检测连接…');
         checkServer();
       } else {
         showToast('请输入 API 地址');
       }
     } else if (e.target.id === 'testApiUrl') {
       var v = document.getElementById('extractApiUrl').value.trim();
+      var testAccessKeyEl = document.getElementById('extractAccessKey');
+      var testAccessKey = testAccessKeyEl ? testAccessKeyEl.value.trim() : '';
       if (v) {
         EXTRACT_API = v;
         localStorage.setItem('extract_api', v);
       }
+      if (testAccessKey) localStorage.setItem('dycs_api_key', testAccessKey);
       var res = document.getElementById('apiTestResult');
       if (res) res.innerHTML = '<span class="hint">检测中…</span>';
       fetch(EXTRACT_API).then(function (r) {
@@ -159,9 +172,7 @@ if (typeof window.showToast !== 'function') {
     var hotwords = document.getElementById('extractHotwords').value.trim();
     var brand = document.getElementById('extractBrand').value.trim();
     var area = document.getElementById('extractArea').value.trim();
-    var apiKey = document.getElementById('extractApiKey').value.trim();
-    var apiBase = document.getElementById('extractApiBase').value.trim() || 'https://token.sensenova.cn/v1';
-    var llmModel = document.getElementById('extractLlmModel').value.trim() || 'deepseek-v4-flash';
+    /* LLM 凭据由后端管理，前端只携带可选的后端访问密钥。 */
 
     /* 防滥用：用量限流（超限立即停止） */
     var lim = DSGuard.check('extract');
@@ -193,10 +204,7 @@ if (typeof window.showToast !== 'function') {
       hotwords: hotwords || null,
       brand_name: brand || null,
       area_name: area || null,
-      api_key: apiKey || null,
-      api_base: apiBase || null,
-      llm_model: llmModel || null,
-      skip_llm: !apiKey,
+      skip_llm: false,
     };
 
     if (mode === 'url') {
@@ -230,9 +238,12 @@ if (typeof window.showToast !== 'function') {
   }
 
   function sendExtract(payload) {
+    var headers = { 'Content-Type': 'application/json' };
+    var backendKey = localStorage.getItem('dycs_api_key');
+    if (backendKey) headers['X-API-Key'] = backendKey;
     fetch(EXTRACT_API, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify(payload)
     }).then(function (resp) {
       return resp.json().then(function (data) { return { status: resp.status, data: data }; });
@@ -244,6 +255,7 @@ if (typeof window.showToast !== 'function') {
       }
 
       currentExtractResult = result.data;
+      saveExtractHistory(result.data, payload);
       showResult(result.data);
     }).catch(function (err) {
       showError('无法连接到提取服务：' + err.message + '\n\n' +
@@ -273,6 +285,21 @@ if (typeof window.showToast !== 'function') {
       escapeHtml(msg) + '</span></div>';
     extractCopyBtn.disabled = true;
     extractSaveBtn.disabled = true;
+  }
+
+  function saveExtractHistory(data, requestPayload) {
+    if (!window.DYCSCloud || !data) return;
+    var source = requestPayload.url || '本地文件';
+    DYCSCloud.save('extract', '视频提取 · ' + source, {
+      request: {
+        source: source,
+        engine: requestPayload.engine,
+        language: requestPayload.language,
+        brand_name: requestPayload.brand_name,
+        area_name: requestPayload.area_name
+      },
+      result: data
+    }).catch(function () { /* 云端不可用不影响当前结果 */ });
   }
 
   function showResult(data) {
@@ -428,6 +455,8 @@ if (typeof window.showToast !== 'function') {
   /* 同步 API 地址输入框 */
   var apiInput = document.getElementById('extractApiUrl');
   if (apiInput) apiInput.value = EXTRACT_API;
+  var accessKeyInput = document.getElementById('extractAccessKey');
+  if (accessKeyInput) accessKeyInput.value = localStorage.getItem('dycs_api_key') || '';
 
   /* 初始化时检测一次 */
   checkServer();
