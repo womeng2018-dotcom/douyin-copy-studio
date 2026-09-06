@@ -13,3 +13,10 @@ openai-whisper>=20231117
 ctranslate2>=4.5.0
 torch>=2.1.0
 openai>=1.0.0
+
+# ===== 可选：分布式限流（仅当设置 RATE_LIMIT_URL 时启用）=====
+# 多 worker / 多 host 部署需要集中配额时安装：
+#   pip install 'redis>=5.0'
+# 设置环境变量 RATE_LIMIT_URL=redis://...:6379/0 即可启用；
+# 未设置或 redis 模块缺失时自动回退内存后端，启动仅打 WARNING，不影响功能。
+# 不放入默认依赖：单进程开发模式不需要 redis 服务。

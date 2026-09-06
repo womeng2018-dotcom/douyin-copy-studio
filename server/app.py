@@ -252,6 +252,102 @@ RATE_RULES = {
 _limit_lock = threading.Lock()
 _limits = {}  # ident -> {"rewrite": [ts...], "rewrite_day": [ts...], ...}
 
+# ===== 限流后端（默认内存，可选 Redis）=====
+# 默认：单进程有效。多 worker / 多 host 部署时配额按 worker 数叠加 →
+# 通过 RATE_LIMIT_URL=redis://... 切到 Redis 后端，集中配额、跨进程一致。
+# 边界声明见 server/README.md「## 限流」。
+RATE_LIMIT_REDIS_URL = os.environ.get("RATE_LIMIT_URL", "").strip()
+_redis_rate_client = None
+if RATE_LIMIT_REDIS_URL:
+    try:
+        import redis as _redis_lib  # 可选依赖，未安装即忽略
+        _redis_rate_client = _redis_lib.Redis.from_url(
+            RATE_LIMIT_REDIS_URL, decode_responses=True, socket_timeout=2
+        )
+        _redis_rate_client.ping()
+    except Exception as _rate_init_err:
+        import sys as _sys
+        print(
+            f"[copy-studio] Redis 限流后端初始化失败，回退到内存：{_rate_init_err}",
+            file=_sys.stderr,
+            flush=True,
+        )
+        _redis_rate_client = None
+
+# Sliding window via Redis sorted set + Lua 保证原子性；member 带随机后缀防同毫秒碰撞
+_REDIS_SLIDING_LUA = """
+local h = KEYS[1]
+local d = KEYS[2]
+local now = tonumber(ARGV[1])
+local member = ARGV[2]
+local hm = tonumber(ARGV[3])
+local dm = tonumber(ARGV[4])
+redis.call('ZREMRANGEBYSCORE', h, '-inf', now - 3600)
+redis.call('ZREMRANGEBYSCORE', d, '-inf', now - 86400)
+local hc = redis.call('ZCARD', h)
+local dc = redis.call('ZCARD', d)
+if dc >= dm then return {0, 1, dc} end
+if hc >= hm then return {0, 2, hc} end
+redis.call('ZADD', h, now, member)
+redis.call('ZADD', d, now, member)
+redis.call('EXPIRE', h, 3700)
+redis.call('EXPIRE', d, 86500)
+return {1, 0, 0}
+"""
+_redis_sliding_script = None
+if _redis_rate_client is not None:
+    try:
+        _redis_sliding_script = _redis_rate_client.register_script(_REDIS_SLIDING_LUA)
+    except Exception:
+        _redis_sliding_script = None
+
+
+def _check_rate_redis(ident: str, action: str, rule: dict):
+    """Redis 后端的滑动窗口；脚本加载或调用失败时降级为 allow（fail open）。"""
+    if _redis_sliding_script is None:
+        return True, None
+    now = time.time()
+    member = f"{now}:{uuid.uuid4().hex[:8]}"
+    hour_key = f"rl:{ident}:{action}:h"
+    day_key = f"rl:{ident}:{action}:d"
+    try:
+        ok_flag, deny_kind, used = _redis_sliding_script(
+            keys=[hour_key, day_key],
+            args=[now, member, rule["hour"], rule["day"]],
+        )
+    except Exception as _e:
+        import sys as _sys
+        print(f"[copy-studio] Redis 限流调用失败，降级为 allow：{_e}", file=_sys.stderr, flush=True)
+        return True, None
+    if int(ok_flag) == 1:
+        return True, None
+    if int(deny_kind) == 1:
+        return False, {"daily": True, "dayUsed": int(used), "dayMax": rule["day"]}
+    return False, {"daily": False, "hourUsed": int(used), "hourMax": rule["hour"]}
+
+
+def _check_rate(ident: str, action: str):
+    """返回 (ok, detail)；ok=False 时 detail 为拦截原因。内存/Redis 自动派发。"""
+    rule = RATE_RULES.get(action)
+    if not rule:
+        return True, None
+    if _redis_rate_client is not None:
+        return _check_rate_redis(ident, action, rule)
+    now = time.time()
+    with _limit_lock:
+        bucket = _limits.setdefault(ident, {})
+        hour_arr = [t for t in bucket.get(action, []) if now - t < 3600]
+        day_arr = [t for t in bucket.get(action + "_d", []) if now - t < 86400]
+        if len(day_arr) >= rule["day"]:
+            return False, {"daily": True, "dayUsed": len(day_arr), "dayMax": rule["day"]}
+        if len(hour_arr) >= rule["hour"]:
+            return False, {"daily": False, "hourUsed": len(hour_arr), "hourMax": rule["hour"]}
+        hour_arr.append(now)
+        day_arr.append(now)
+        bucket[action] = hour_arr
+        bucket[action + "_d"] = day_arr
+        return True, None
+
 
 def _request_key(request: Request):
     return request.headers.get("X-API-Key") or request.headers.get("x-api-key")

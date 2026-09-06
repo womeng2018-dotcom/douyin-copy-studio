@@ -89,3 +89,58 @@ HTTP 接口不接受服务器本地文件路径；网页上传文件会编码为
 - 不保存 NVIDIA API 密钥、浏览器访问密钥或上传的视频原文件。
 - ASR 模型进程内单例加载；每次任务使用独立临时目录并在完成后清理。
 - 云端部署必须设置 `REQUIRE_AUTH=true` 和 `TENANT_KEYS`，并挂载持久化数据卷。
+
+## 限流（边界声明）
+
+### 当前实现（默认内存后端）
+
+| 维度 | 行为 |
+|---|---|
+| 存储位置 | 进程内 `_limits` dict（`server/app.py`） |
+| 并发保护 | `_limit_lock = threading.Lock()`（同一进程内多线程互斥） |
+| 算法 | 滑动窗口：每个 `(ident, action)` 保留 1 小时 / 1 天两个时间戳列表 |
+| 配额 | 与前端 `guard.js` 一致：`rewrite` 60/h 200/d，`plan` 30/h 100/d，`extract` 30/h 100/d |
+| 持久化 | **无**，进程重启 / 崩溃即清空 |
+
+### 已知边界
+
+| 场景 | 实际配额 | 风险定性 |
+|---|---|---|
+| 单进程 | 严格按 `RATE_RULES` 执行 | 正确 |
+| `uvicorn --workers N` 多 worker | **N × `RATE_RULES`**（每 worker 独立 dict 累加） | 配额放大 N 倍 |
+| 多 host 部署（Render + 其它） | **host 数 × `RATE_RULES`** | 同上 |
+| 进程重启 | `_limits` 清零 → 用户获得满额 | 攻击者如能定时触发重启可放大额度（**需 restart 权限**，普通用户不可达） |
+
+### 何时需要 Redis 后端
+
+满足任一即建议切换：
+
+- `uvicorn --workers > 1`
+- 部署到 ≥ 2 个实例（多 host / 多 Pod）
+- 要求配额在重启后保持
+
+### 启用 Redis 后端（可选）
+
+```bash
+pip install 'redis>=5.0'           # 默认不安装，避免本地开发强依赖
+export RATE_LIMIT_URL='redis://:password@your-redis:6379/0'
+python server/app.py
+```
+
+启动日志会显示 `Redis 限流后端初始化成功`（实现：`server/app.py:_redis_rate_client.ping()` 探活）。
+若 redis 不可达 / 模块未装，仅打 WARNING 自动回退内存，**不会阻断启动**（fail open 取舍：限流是 best-effort 控制，Redis 抖动不应让合法用户掉单）。
+
+### Redis 实现要点
+
+- 滑动窗口用 **Redis Sorted Set + Lua** 保证读 / 写原子性（race-free）
+- Key 设计：`rl:{ident}:{action}:{h|d}`，member 带 `uuid.uuid4().hex[:8]` 后缀防同毫秒碰撞
+- EXPIRE 3700s / 86500s（比窗口略长，防边界抖动丢数据）
+- Lua 脚本通过 `register_script` 缓存，多次调用走 SCRIPT LOAD 一次
+
+### 不建议的折中
+
+| 做法 | 不建议的理由 |
+|---|---|
+| SQLite 存滑动窗口 | 高并发写锁竞争剧烈，会让 `/api/llm/chat` 主路径变慢 |
+| 用 uvicorn `--workers 1` + Redis | 单进程本来就不需要 Redis，多一层依赖 |
+| 把配额配置放数据库 | 静态配置无必要动态化；改 `RATE_RULES` 重启即可 |
