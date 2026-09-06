@@ -80,7 +80,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
+          # 前端零 npm 依赖、无 lockfile，不能设 cache: npm
+          # （setup-node 找不到 package-lock.json 会直接报错退出）
+          cache: ""
 
       - name: 引擎自测
         run: node test-engine.js
