@@ -8,6 +8,15 @@
 set -e
 cd "$(dirname "$0")"
 
+# 自动清理 stale 的 .git/index.lock（被 sandbox / 容器崩溃 / kill -9 中断残留时）
+# 见 scripts/git-safe.sh 的安全策略；只清理 0 字节且 mtime > 5 分钟的 lock
+# shellcheck source=scripts/git-safe.sh
+if [ -f scripts/git-safe.sh ]; then
+  # shellcheck disable=SC1091
+  source scripts/git-safe.sh
+  git_safe_check || true
+fi
+
 PY=""
 for c in python3 python; do
   if command -v "$c" >/dev/null 2>&1; then PY="$c"; break; fi
