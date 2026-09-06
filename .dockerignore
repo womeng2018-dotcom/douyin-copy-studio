@@ -1,0 +1,81 @@
+# Copy Studio 构建上下文排除清单
+#
+# 构建上下文 = 仓库根目录（docker build -f server/Dockerfile .）
+# 本文件决定哪些文件会被发送到 Docker daemon 并可能进入镜像层。
+#
+# 安全红线：任何 *.env 都不得进入构建上下文，防止 LLM 密钥被写入镜像层
+# （镜像层可被 docker history / docker save 还原，等同于泄露）。
+
+# ---------- 密钥（最高优先级）----------
+.env
+*.env
+.env.*
+**/.env
+**/*.env
+!.env.example
+!**/.env.example
+
+# ---------- 版本控制 / CI ----------
+.git/
+.gitignore
+.github/
+.gitattributes
+
+# ---------- 测试 ----------
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+conftest.py
+test_*.py
+
+# ---------- Python 缓存 / 虚拟环境 ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+
+# ---------- Node ----------
+node_modules/
+
+# ---------- 运行时数据（含租户历史与采集数据，禁止打进镜像）----------
+server/.data/
+.data/
+*.db
+*.sqlite
+*.sqlite3
+
+# ---------- 开发 / 部署脚本（镜像内不需要）----------
+start-local.sh
+deploy-render.sh
+deploy-via-api.py
+upload-via-api.sh
+render.yaml
+render-service-payload.json
+docker-compose.yml
+Dockerfile
+server/Dockerfile
+.dockerignore
+server/.dockerignore
+
+# ---------- 文档 / 归档 ----------
+docs/
+*.md
+userscript/
+
+# ---------- 前端构建与压测工具（运行期不需要）----------
+build-single.js
+stress-test.js
+test-engine.js
+export-samples.js
+
+# ---------- 杂项 ----------
+.DS_Store
+Thumbs.db
+*.log
+*.tar.gz
+.idea/
+.vscode/

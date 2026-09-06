@@ -1,18 +1,66 @@
-# ===== 视频提取服务本地开发 =====
-version: '3.8'
+# ===== Copy Studio 统一后端（server/app.py）=====
+#
+# 启动前准备：
+#   1. cp server/.env.example server/.env    # 填入真实 LLM_API_KEY
+#   2. export COPY_STUDIO_ACCESS_KEY='<自选强随机串>'
+#   3. docker compose up --build
+#
+# 安全基线：
+#   - REQUIRE_AUTH=true：未通过 X-API-Key 校验的请求一律拒绝
+#   - 监听 0.0.0.0 属于非回环，启动守卫强制要求已配置访问密钥（fail closed）
+#   - LLM 密钥只经 env_file 注入，不写入镜像层、不出现在 compose 明文
+#   - 数据卷持久化租户历史与采集数据
 
 services:
-  video-extract:
+  copy-studio:
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: server/Dockerfile
+    image: copy-studio:latest
+    container_name: copy-studio
+    restart: unless-stopped
+
     ports:
-      - "8765:8765"
+      # 仅本机访问；如需对外，请在前面加反向代理并启用 TLS
+      - "127.0.0.1:8765:8765"
+
     environment:
-      - PYTHONUNBUFFERED=1
-      - PORT=8765
+      PYTHONUNBUFFERED: "1"
+      PORT: "8765"
+      HOST: "0.0.0.0"
+
+      # ---- 鉴权（fail closed：非回环 + REQUIRE_AUTH 必须有密钥）----
+      REQUIRE_AUTH: "true"
+      TENANT_KEYS: "default:${COPY_STUDIO_ACCESS_KEY:?必须设置 COPY_STUDIO_ACCESS_KEY，例如 export COPY_STUDIO_ACCESS_KEY=$(openssl rand -hex 32)}"
+
+      # ---- 静态资源同源，无需跨域 ----
+      CORS_ORIGINS: ""
+      CORS_ALLOW_NULL: "false"
+
+      # ---- 数据落盘到卷 ----
+      DATA_DIR: "/app/server/.data"
+
+    # LLM_API_KEY / LLM_API_BASE / LLM_MODEL 从 server/.env 注入（不入库）
+    env_file:
+      - path: server/.env
+        required: false
+
+    volumes:
+      - copy-studio-data:/app/server/.data
+
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8765/"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8765/api/health"]
       interval: 30s
       timeout: 5s
+      start_period: 15s
       retries: 3
+
+    # 纵深防御：即使镜像被提权也无法直接改文件系统
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  copy-studio-data:
+    driver: local
