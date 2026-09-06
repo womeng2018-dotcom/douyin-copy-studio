@@ -88,6 +88,8 @@ input,select,textarea{
   font-size:13px;font-family:inherit;color:var(--text);background:#fff;transition:.15s;
 }
 input:focus,select:focus,textarea:focus{outline:0;border-color:var(--pri);box-shadow:0 0 0 3px rgba(107,127,163,.1)}
+input.invalid{border-color:var(--danger);background:#fffafa;box-shadow:0 0 0 3px rgba(176,128,136,.1)}
+.required{font-size:9.5px;color:var(--danger);font-weight:600;margin-left:3px}
 input::placeholder,textarea::placeholder{color:#b0a898}
 textarea{resize:vertical;line-height:1.75}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -305,8 +307,9 @@ mark.hl.P2{background:#d8e0ec;color:#4a5c78}
 @media (max-width:720px){
   .wrap{padding:0 14px}
   .topbar-inner{padding:12px 14px}
-  .tabs{width:100%;overflow-x:auto}
-  .tab{flex:1;padding:7px 10px;font-size:12px}
+  .tabs{width:100%;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:0 0 auto;padding:8px 13px;font-size:12px;scroll-snap-align:center}
   .brand h1{font-size:15px}
   .grid2{grid-template-columns:1fr}
   .card{padding:16px}
@@ -314,6 +317,8 @@ mark.hl.P2{background:#d8e0ec;color:#4a5c78}
   table.shots{font-size:11px}
   table.shots th,table.shots td{padding:6px 7px}
   .script-line{font-size:12.5px}
+  .btn-main{position:sticky;bottom:10px;z-index:12;box-shadow:0 5px 18px rgba(45,58,74,.24);padding:13px 16px}
+  .results{scroll-margin-top:118px}
 }
 
 /* ---------- 文案改写 ---------- */
@@ -347,6 +352,7 @@ mark.hl.P2{background:#d8e0ec;color:#4a5c78}
   .rw-grid{grid-template-columns:1fr}
   .rw-compare{grid-template-columns:1fr}
 }
+
 </style>
 </head>
 <body>
@@ -428,12 +434,12 @@ mark.hl.P2{background:#d8e0ec;color:#4a5c78}
       <h3 class="sub-title">门店与优惠变量</h3>
 
       <div class="grid2">
-        <div class="field"><label>品牌名</label><input id="brand" placeholder="如：星悦造型"></div>
-        <div class="field"><label>商圈/区域</label><input id="area" placeholder="如：静安大悦城"></div>
+        <div class="field"><label>品牌名 <span class="required">必填</span></label><input id="brand" placeholder="如：星悦造型"></div>
+        <div class="field"><label>商圈/区域 <span class="required">必填</span></label><input id="area" placeholder="如：静安大悦城"></div>
         <div class="field"><label>连锁门店数</label><input id="storeCount" placeholder="100"></div>
         <div class="field"><label>限时说明</label><input id="deadline" placeholder="8月10-16日有效"></div>
-        <div class="field"><label>引流品名称</label><input id="entryItem" placeholder="洗剪吹体验"></div>
-        <div class="field"><label>引流价(元)</label><input id="entryPrice" placeholder="9.9"></div>
+        <div class="field"><label>引流品名称 <span class="required">必填</span></label><input id="entryItem" placeholder="洗剪吹体验"></div>
+        <div class="field"><label>引流价(元) <span class="required">必填</span></label><input id="entryPrice" inputmode="decimal" placeholder="9.9"></div>
         <div class="field"><label>主推套餐</label><input id="mainItem" placeholder="护理套餐"></div>
         <div class="field"><label>套餐价(元)</label><input id="mainPrice" placeholder="39.9"></div>
         <div class="field"><label>门市原价(元)</label><input id="origPrice" placeholder="198"></div>
@@ -450,7 +456,7 @@ mark.hl.P2{background:#d8e0ec;color:#4a5c78}
       </div>
 
       <button class="btn-main" id="genBtn">生成投流文案</button>
-      <button class="btn-ghost" id="demoBtn">载入美发示例</button>
+      <button class="btn-ghost" id="demoBtn">一键体验示例</button>
     </aside>
 
     <!-- 右侧结果 -->
@@ -511,10 +517,10 @@ mark.hl.P2{background:#d8e0ec;color:#4a5c78}
 <!-- ============ 历史记录 ============ -->
 <section class="panel" id="tab-history">
   <div class="card">
-    <h2 class="card-title">生成历史</h2>
-    <p class="hint">最近 20 次生成记录保存在本机浏览器，可随时回看或重新导出。</p>
+    <h2 class="card-title">工作历史</h2>
+    <p class="hint">本机保留文案生成记录；连接统一后端后，同步展示文案生成、改写、视频提取、运营计划与采集数据。</p>
     <div id="historyList"></div>
-    <button class="btn-sm" id="clearHistory">清空历史</button>
+    <button class="btn-sm" id="clearHistory">清空全部历史</button>
   </div>
 </section>
 
@@ -576,16 +582,7 @@ mark.hl.P2{background:#d8e0ec;color:#4a5c78}
           <div class="field"><label>商圈/区域</label><input id="extractArea" placeholder="如：静安大悦城"></div>
         </div>
 
-        <div class="field">
-          <label>API Key（可选，用于 LLM 后处理纠偏）</label>
-          <input id="extractApiKey" type="password" placeholder="sk-..." style="font-family:ui-monospace,monospace;font-size:12px">
-        </div>
-
-        <div class="grid2">
-          <div class="field"><label>API Base URL（可选）</label><input id="extractApiBase" placeholder="https://token.sensenova.cn/v1"></div>
-          <div class="field"><label>模型（可选）</label><input id="extractLlmModel" placeholder="deepseek-v4-flash"></div>
-        </div>
-        <p class="hint" style="margin-top:4px">留空默认商汤 SenseNova 免费模型 <code>deepseek-v4-flash</code>（OpenAI 兼容接口）</p>
+        <p class="hint" style="margin-top:4px">LLM 后处理由统一后端调用 NVIDIA 模型，密钥不在此页面输入或保存。后端地址与访问密钥请在「文案改写 → 后端配置」中设置。</p>
 
         <button class="btn-main" id="extractBtn">开始提取</button>
       </div>
@@ -727,28 +724,19 @@ mark.hl.P2{background:#d8e0ec;color:#4a5c78}
 
         <!-- LLM 设置 -->
         <details class="rw-settings">
-          <summary>LLM 改写设置（ai-copywriter / CopyGPT 需配置，Humanizer-zh 离线免配）</summary>
+          <summary>统一后端配置（ai-copywriter / CopyGPT / 云端历史共用）</summary>
           <div class="settings-body">
-            <div class="field"><label>服务商</label>
-              <select id="rwLlmProvider">
-                <option value="sensenova">商汤 SenseNova（免费）</option>
-                <option value="deepseek">DeepSeek</option>
-                <option value="openai">OpenAI</option>
-                <option value="custom">自定义</option>
-              </select></div>
-            <div class="field"><label>API Key</label>
-              <input id="rwLlmKey" type="password" placeholder="sk-..." style="font-family:var(--font-mono);font-size:12px"></div>
             <div class="grid2">
-              <div class="field"><label>Base URL</label><input id="rwLlmBase" placeholder="https://api.deepseek.com/v1"></div>
-              <div class="field"><label>模型</label><input id="rwLlmModel" placeholder="deepseek-chat"></div>
+              <div class="field"><label>后端服务地址（LLM 代理）</label><input id="rwLlmApi" placeholder="/api/llm/chat 或 https://你的后端域名/api/llm/chat"></div>
+              <div class="field"><label>后端访问密钥（X-API-Key）</label><input id="rwLlmApiKey" type="password" placeholder="服务端配置 API_KEYS 时填写"></div>
             </div>
             <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
-              <button class="btn-sm" id="rwLlmSave">保存</button>
-              <button class="btn-sm" id="rwLlmClear" title="从本机删除已保存的 API Key">清除 Key</button>
+              <button class="btn-sm" id="rwLlmSave">保存后端配置</button>
+              <button class="btn-sm" id="rwLlmClear" title="从本机删除后端地址和访问密钥">清除本机配置</button>
               <span class="hint" id="rwLlmStatus"></span>
             </div>
             <p class="hint" id="rwLlmUsage" style="margin-top:6px"></p>
-            <p class="hint" style="margin-top:8px">密钥仅保存在本机浏览器（localStorage），不会上传。<b>请勿把 Key 发给他人</b>；站点已内置用量保护：改写每小时最多 60 次、每日最多 200 次，超限自动停止（清缓存/无痕可绕过，正式防护需部署后端）。未配置时，ai-copywriter / CopyGPT 会生成可直接复制到 AI 工具的提示词。</p>
+            <p class="hint" style="margin-top:8px">NVIDIA LLM Key 与模型只在服务端环境变量中配置，浏览器不会保存或发送 LLM Key。文案改写、运营计划、云端历史和采集数据都通过该后端处理。</p>
           </div>
         </details>
       </div>
@@ -1801,15 +1789,12 @@ DS.generate = function (cfg, variantIndex) {
     if (v.dialectWord && parts.offer) parts.offer = parts.offer + ' ' + v.dialectWord + '～';
   }
 
-  /* 核销保障话术（降低决策门槛，减少到店纠纷） */
-  var refundLine = DS.fill(DS.pick(DS.refundLines, i), v);
-  parts.trust = parts.trust + ' ' + refundLine;
+  /* 保障话术只出现一次，避免脚本重复；具体承诺仍须与后台规则一致 */
+  var refundLine = parts.trust;
 
-  /* 自证标签（2026 平台加分项，优先分发） */
+  /* 自证标签：仅作为拍摄核对建议，不承诺平台流量效果 */
   var certA = DS.pick(DS.certLabels, i);
   var certB = DS.pick(DS.certLabels, (i + 2) % DS.certLabels.length);
-  /* 顾客评价引用（含真实顾客评价的视频到店转化率高 37%） */
-  var reviewLine = DS.fill(DS.pick(DS.reviewLines, i), v);
 
   /* 组装分镜与脚本 */
   var dur = DS.durations[cfg.duration] || DS.durations.d30;
@@ -1839,7 +1824,7 @@ DS.generate = function (cfg, variantIndex) {
     topics: topics,
     comment: comment,
     certLabels: [certA, certB],
-    reviewLine: reviewLine,
+    reviewLine: '',
     refundLine: refundLine,
     wordCount: script.replace(/[（）\s\-0-9a-zA-Z]/g, '').length,
     risk: DS.scan(script + ' ' + title + ' ' + comment)
@@ -1971,6 +1956,7 @@ DS.advise = function (text) {
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var lastResults = [];
+  var CFG_KEY = 'dycs_last_config';
 
   /* ---------- Toast ---------- */
   function toast(msg) {
@@ -2001,6 +1987,7 @@ DS.advise = function (text) {
     document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
     btn.classList.add('active');
     $('tab-' + btn.dataset.tab).classList.add('active');
+    btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     if (btn.dataset.tab === 'history') renderHistory();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
@@ -2067,15 +2054,73 @@ DS.advise = function (text) {
     };
   }
 
-  /* ---------- 生成 ---------- */
-  $('genBtn').addEventListener('click', function () {
+  function setSeg(id, value) {
+    $(id).querySelectorAll('button').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.v === value);
+    });
+  }
+
+  function saveCfg(cfg) {
+    try {
+      cfg.count = segVal('count');
+      localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+    } catch (e) { /* 浏览器禁用存储时不影响生成 */ }
+  }
+
+  function restoreCfg() {
+    var cfg;
+    try { cfg = JSON.parse(localStorage.getItem(CFG_KEY) || 'null'); } catch (e) { return; }
+    if (!cfg) return;
+    ['category', 'hookType', 'brand', 'area', 'storeCount', 'deadline', 'entryItem', 'entryPrice', 'mainItem', 'mainPrice', 'origPrice', 'gift'].forEach(function (id) {
+      if ($(id) && cfg[id] !== undefined) $(id).value = cfg[id];
+    });
+    ['goal', 'duration', 'style', 'count'].forEach(function (id) { if (cfg[id]) setSeg(id, cfg[id]); });
+    syncCat();
+  }
+
+  function validateCfg(cfg) {
+    var required = [
+      ['brand', cfg.brand, '品牌名'], ['area', cfg.area, '商圈/区域'],
+      ['entryItem', cfg.entryItem, '引流品名称'], ['entryPrice', cfg.entryPrice, '引流价']
+    ];
+    var missing = [];
+    required.forEach(function (x) {
+      $(x[0]).classList.toggle('invalid', !x[1]);
+      $(x[0]).setAttribute('aria-invalid', !x[1] ? 'true' : 'false');
+      if (!x[1]) missing.push(x[2]);
+    });
+    if (cfg.entryPrice && (!/^\d+(\.\d{1,2})?$/.test(cfg.entryPrice) || Number(cfg.entryPrice) <= 0)) {
+      $('entryPrice').classList.add('invalid');
+      toast('引流价请填写有效数字');
+      $('entryPrice').focus();
+      return false;
+    }
+    if (missing.length) {
+      toast('请先填写：' + missing.join('、'));
+      $(required.find(function (x) { return !x[1]; })[0]).focus();
+      return false;
+    }
+    return true;
+  }
+
+  function generateNow() {
     var cfg = readCfg();
+    if (!validateCfg(cfg)) return;
     var n = parseInt(segVal('count'), 10) || 3;
     lastResults = [];
     for (var i = 0; i < n; i++) lastResults.push(DS.generate(cfg, i));
     renderResults(cfg, lastResults);
     saveHistory(cfg, lastResults);
+    saveCfg(cfg);
     toast('已生成 ' + n + ' 条变体');
+    if (window.matchMedia('(max-width: 900px)').matches) {
+      document.querySelector('.results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  /* ---------- 生成 ---------- */
+  $('genBtn').addEventListener('click', function () {
+    generateNow();
   });
 
   $('demoBtn').addEventListener('click', function () {
@@ -2090,7 +2135,7 @@ DS.advise = function (text) {
     $('mainPrice').value = '39.9';
     $('origPrice').value = '198';
     $('gift').value = '肩颈按摩5分钟';
-    toast('示例已载入，点击生成');
+    generateNow();
   });
 
   function renderResults(cfg, list) {
@@ -2152,9 +2197,8 @@ DS.advise = function (text) {
       '<div class="kv"><b>标题：</b><span>' + DS.esc(r.title) + '</span></div>' +
       '<div class="kv"><b>话题：</b><span class="topics-line">' + DS.esc(r.topics) + '</span></div>' +
       '<div class="kv"><b>评论区置顶：</b><span>' + DS.esc(r.comment) + '</span></div>' +
-      (r.reviewLine ? '<div class="kv kv-review"><b>顾客评价引用（选插入）：</b><span>' + DS.esc(r.reviewLine) + '</span></div>' : '') +
       '</div>' +
-      (r.certLabels ? '<div class="block block-cert"><div class="block-label">📌 视频自证标签（建议角标/字幕贴出，平台优先分发）</div>' +
+      (r.certLabels ? '<div class="block block-cert"><div class="block-label">📌 拍摄自证标签（建议按实际情况使用）</div>' +
       '<div class="cert-tags">' + r.certLabels.map(function (c) { return '<span class="cert-tag">' + DS.esc(c) + '</span>'; }).join('') + '</div></div>' : '') +
       (r.refundLine ? '<div class="block block-refund"><div class="block-label">🔒 核销与退改保障话术</div><div class="kv"><span>' + DS.esc(r.refundLine) + '</span></div></div>' : '') +
       riskBox + '</div>' +
@@ -2349,6 +2393,7 @@ DS.advise = function (text) {
   $('clearHistory').addEventListener('click', function () {
     localStorage.removeItem(H_KEY); renderHistory(); toast('历史已清空');
   });
+  restoreCfg();
 })();
 
 
@@ -2356,12 +2401,14 @@ DS.advise = function (text) {
 /* ===== 视频提取 Tab ===== */
 
 /* 智能默认 API 地址：
-   - 本工具由本地服务同源托管（http://127.0.0.1:8765/）→ 用相对路径 /extract
-   - GitHub Pages（https://...github.io）→ 保持绝对地址，提示需配置云端 HTTPS 或本地访问 */
+   - 本工具由本地服务同源托管（http://127.0.0.1:8765/）→ 用相对路径 /api/extract
+   - 离线单文件版（file://）或 GitHub Pages（https）→ 不再回退到 http://127.0.0.1:8765：
+     服务端已拒绝 Origin: null，且 HTTPS 页面访问 HTTP 本地服务会被浏览器拦截。
+     这两种情况请在页面里显式配置后端根地址，或由本地服务同源托管后再使用。 */
 var EXTRACT_API = localStorage.getItem('extract_api') ||
-  (location.protocol === 'http:' && (location.hostname === '127.0.0.1' || location.hostname === 'localhost')
-    ? location.origin + '/extract'
-    : 'http://127.0.0.1:8765/extract');
+  (window.DYCSCloud && DYCSCloud.root && DYCSCloud.root()
+    ? DYCSCloud.root() + '/api/extract'
+    : '/api/extract');
 
 /* 全局 Toast（提取 Tab 使用；若其他脚本已定义则不覆盖） */
 if (typeof window.showToast !== 'function') {
@@ -2400,14 +2447,18 @@ if (typeof window.showToast !== 'function') {
         '<summary class="settings-summary">提取服务配置</summary>' +
         '<div class="settings-body">' +
           '<div class="field"><label>API 地址</label>' +
-            '<input id="extractApiUrl" placeholder="http://127.0.0.1:8765/extract 或 https://xxx.onrender.com/extract">' +
+            '<input id="extractApiUrl" placeholder="http://127.0.0.1:8765/api/extract 或 https://你的后端域名/api/extract">' +
+          '</div>' +
+          '<div class="field"><label>后端访问密钥（X-API-Key）</label>' +
+            '<input id="extractAccessKey" type="password" placeholder="服务端配置 API_KEYS/TENANT_KEYS 时填写">' +
           '</div>' +
           '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">' +
             '<button class="btn-sm" id="saveApiUrl">保存</button>' +
             '<button class="btn-sm" id="testApiUrl">测试连接</button>' +
             '<span class="hint" id="apiTestResult"></span>' +
           '</div>' +
-          '<p class="hint" style="margin-top:8px">线上（GitHub Pages）建议用 <b>Render 免费云端服务</b>（见下方引导第 2 步）；本地开发可直接 <code>bash start-local.sh</code> 后访问 <code>http://127.0.0.1:8765</code>（页面与 API 同源，无需配置）。</p>' +
+          '<p class="hint" style="margin-top:8px">离线单文件版（file://）与 GitHub Pages 页面默认不连接任何后端，需在此显式填写后端地址；' +
+          '本地使用推荐直接 <code>bash start-local.sh</code> 后访问 <code>http://127.0.0.1:8765</code>（页面与 API 同源，无需配置）。</p>' +
         '</div>' +
       '</details>' +
     '</div>';
@@ -2428,15 +2479,14 @@ if (typeof window.showToast !== 'function') {
       '<div class="eg-body">' +
         (reason ? '<div class="eg-note" style="margin:8px 0 2px">' + escapeHtml(reason) + '</div>' : '') +
         '<div class="eg-step"><div class="eg-num">1</div><div class="eg-body-copy">' +
-          '<b>本地使用（最简单，Windows/Mac 均可）</b>：在项目目录运行 <code>bash start-local.sh</code>（或 <code>python server/video-extract.py --serve --port 8765</code>），' +
+          '<b>本地使用（最简单，Windows/Mac 均可）</b>：在项目目录运行 <code>bash start-local.sh</code>（或 <code>.venv/bin/python server/app.py</code>），' +
           '然后用浏览器打开 <b><code>http://127.0.0.1:8765</code></b> —— 页面与提取 API 同源，链接和本地文件都能提取。' +
         '</div></div>' +
         '<div class="eg-step"><div class="eg-num">2</div><div class="eg-body-copy">' +
-          '<b>云端部署（推荐，免费额度）</b>：一键部署到 Render，约 5-10 分钟完成，之后在任何设备上都能用（含手机）。' +
-          '<div class="eg-actions">' +
-            '<a href="https://render.com/deploy?repo=https://github.com/womeng2018-dotcom/douyin-copy-studio" target="_blank" rel="noopener">🚀 一键部署到 Render（免费）</a>' +
-          '</div>' +
-          '<div class="eg-note">部署完成后把服务地址（形如 <code>https://xxx.onrender.com/extract</code>）填入上方「API 地址」并保存，即可在本页使用。</div>' +
+          '<b>自托管部署（按需自建，涉及第三方付费与密钥配置，请自行评估）</b>：仓库内提供 render.yaml 与 Dockerfile 作为参考配置，' +
+          '部署前必须配置 <code>TENANT_KEYS</code>，否则服务会拒绝启动（fail closed）。' +
+          '<div class="eg-note">云端部署下远程 URL 提取默认关闭，仅保留文件上传；且视频提取依赖的 ASR 组件较重，' +
+          '云端实例的可用性未在本项目验证过。</div>' +
         '</div></div>' +
         '<div class="eg-step"><div class="eg-num">3</div><div class="eg-body-copy">' +
           '<b>已有云端/局域网服务</b>：在「提取服务配置」填入 API 地址 → <b>保存</b> → <b>测试连接</b>，显示「服务已连接」即可使用。' +
@@ -2455,20 +2505,28 @@ if (typeof window.showToast !== 'function') {
   document.addEventListener('click', function (e) {
     if (e.target.id === 'saveApiUrl') {
       var val = document.getElementById('extractApiUrl').value.trim();
+      var accessKeyEl = document.getElementById('extractAccessKey');
+      var accessKey = accessKeyEl ? accessKeyEl.value.trim() : '';
       if (val) {
         localStorage.setItem('extract_api', val);
+        localStorage.setItem('dycs_backend_url', val.replace(/\/+$/, '').replace(/\/(?:api\/)?extract$/i, ''));
+        if (accessKey) localStorage.setItem('dycs_api_key', accessKey);
+        else localStorage.removeItem('dycs_api_key');
         EXTRACT_API = val;
-        showToast('API 地址已保存，正在检测连接…');
+        showToast('后端配置已保存，正在检测连接…');
         checkServer();
       } else {
         showToast('请输入 API 地址');
       }
     } else if (e.target.id === 'testApiUrl') {
       var v = document.getElementById('extractApiUrl').value.trim();
+      var testAccessKeyEl = document.getElementById('extractAccessKey');
+      var testAccessKey = testAccessKeyEl ? testAccessKeyEl.value.trim() : '';
       if (v) {
         EXTRACT_API = v;
         localStorage.setItem('extract_api', v);
       }
+      if (testAccessKey) localStorage.setItem('dycs_api_key', testAccessKey);
       var res = document.getElementById('apiTestResult');
       if (res) res.innerHTML = '<span class="hint">检测中…</span>';
       fetch(EXTRACT_API).then(function (r) {
@@ -2514,9 +2572,7 @@ if (typeof window.showToast !== 'function') {
     var hotwords = document.getElementById('extractHotwords').value.trim();
     var brand = document.getElementById('extractBrand').value.trim();
     var area = document.getElementById('extractArea').value.trim();
-    var apiKey = document.getElementById('extractApiKey').value.trim();
-    var apiBase = document.getElementById('extractApiBase').value.trim() || 'https://token.sensenova.cn/v1';
-    var llmModel = document.getElementById('extractLlmModel').value.trim() || 'deepseek-v4-flash';
+    /* LLM 凭据由后端管理，前端只携带可选的后端访问密钥。 */
 
     /* 防滥用：用量限流（超限立即停止） */
     var lim = DSGuard.check('extract');
@@ -2548,10 +2604,7 @@ if (typeof window.showToast !== 'function') {
       hotwords: hotwords || null,
       brand_name: brand || null,
       area_name: area || null,
-      api_key: apiKey || null,
-      api_base: apiBase || null,
-      llm_model: llmModel || null,
-      skip_llm: !apiKey,
+      skip_llm: false,
     };
 
     if (mode === 'url') {
@@ -2585,9 +2638,12 @@ if (typeof window.showToast !== 'function') {
   }
 
   function sendExtract(payload) {
+    var headers = { 'Content-Type': 'application/json' };
+    var backendKey = localStorage.getItem('dycs_api_key');
+    if (backendKey) headers['X-API-Key'] = backendKey;
     fetch(EXTRACT_API, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify(payload)
     }).then(function (resp) {
       return resp.json().then(function (data) { return { status: resp.status, data: data }; });
@@ -2599,6 +2655,7 @@ if (typeof window.showToast !== 'function') {
       }
 
       currentExtractResult = result.data;
+      saveExtractHistory(result.data, payload);
       showResult(result.data);
     }).catch(function (err) {
       showError('无法连接到提取服务：' + err.message + '\n\n' +
@@ -2628,6 +2685,21 @@ if (typeof window.showToast !== 'function') {
       escapeHtml(msg) + '</span></div>';
     extractCopyBtn.disabled = true;
     extractSaveBtn.disabled = true;
+  }
+
+  function saveExtractHistory(data, requestPayload) {
+    if (!window.DYCSCloud || !data) return;
+    var source = requestPayload.url || '本地文件';
+    DYCSCloud.save('extract', '视频提取 · ' + source, {
+      request: {
+        source: source,
+        engine: requestPayload.engine,
+        language: requestPayload.language,
+        brand_name: requestPayload.brand_name,
+        area_name: requestPayload.area_name
+      },
+      result: data
+    }).catch(function () { /* 云端不可用不影响当前结果 */ });
   }
 
   function showResult(data) {
@@ -2783,6 +2855,8 @@ if (typeof window.showToast !== 'function') {
   /* 同步 API 地址输入框 */
   var apiInput = document.getElementById('extractApiUrl');
   if (apiInput) apiInput.value = EXTRACT_API;
+  var accessKeyInput = document.getElementById('extractAccessKey');
+  if (accessKeyInput) accessKeyInput.value = localStorage.getItem('dycs_api_key') || '';
 
   /* 初始化时检测一次 */
   checkServer();
@@ -2825,27 +2899,45 @@ if (typeof window.showToast !== 'function') {
     document.body.removeChild(ta);
   }
 
-  /* ---------- LLM 设置 ---------- */
-  var LLM_KEY = 'dycs_rw_llm';
-  var PRESETS = {
-    sensenova: { base: 'https://token.sensenova.cn/v1', model: 'deepseek-v4-flash', free: true },
-    deepseek: { base: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
-    openai: { base: 'https://api.openai.com/v1', model: 'gpt-4o-mini' }
-  };
-  function loadLLM() {
-    try { return JSON.parse(localStorage.getItem(LLM_KEY) || '{}'); } catch (e) { return {}; }
+  /* ---------- 后端代理设置 ---------- */
+  function backendRootFrom(value) {
+    var v = String(value || '').trim().replace(/\/+$/, '');
+    if (!v) return '';
+    return v.replace(/\/api\/llm\/(?:chat|vision)$/i, '').replace(/\/(?:api\/)?extract$/i, '');
   }
-  function saveLLM(cfg) { localStorage.setItem(LLM_KEY, JSON.stringify(cfg)); }
+
+  function normalizeChatApi(value) {
+    var v = String(value || '').trim().replace(/\/+$/, '');
+    if (!v) return '';
+    if (!/\/api\/llm\/chat$/i.test(v)) v += '/api/llm/chat';
+    return v;
+  }
+
+  function isOfflineSingleFile() {
+    return location.protocol === 'file:';
+  }
+
+  function defaultChatApi() {
+    var saved = localStorage.getItem('dycs_llm_api');
+    if (saved) return normalizeChatApi(saved);
+    if (window.DYCSCloud && DYCSCloud.root && DYCSCloud.root()) return DYCSCloud.root() + '/api/llm/chat';
+    /* 离线单文件版（file://）不再自动访问本机后端：
+       服务端已拒绝 Origin: null，自动调用只会产生必然失败的请求。
+       需要完整能力请运行 start-local.sh 并访问 http://127.0.0.1:8765。 */
+    return '/api/llm/chat';
+  }
 
   function fillLLMSettings() {
-    var cfg = loadLLM();
-    var prov = $('rwLlmProvider');
-    if (cfg.provider) prov.value = cfg.provider;
-    $('rwLlmKey').value = cfg.key || '';
-    if (cfg.base) $('rwLlmBase').value = cfg.base;
-    if (cfg.model) $('rwLlmModel').value = cfg.model;
-    if (cfg.key) $('rwLlmStatus').innerHTML = '<span class="chip ok">已配置</span>';
-    else $('rwLlmStatus').innerHTML = '<span class="chip mid">未填 Key（可免费获取商汤/智谱 Key）</span>';
+    if ($('rwLlmApi')) $('rwLlmApi').value = localStorage.getItem('dycs_llm_api') || defaultChatApi();
+    if ($('rwLlmApiKey')) $('rwLlmApiKey').value = localStorage.getItem('dycs_api_key') || '';
+    var configured = !!(localStorage.getItem('dycs_llm_api') || (location.protocol === 'http:' && (location.hostname === '127.0.0.1' || location.hostname === 'localhost')));
+    if (isOfflineSingleFile() && !localStorage.getItem('dycs_llm_api')) {
+      $('rwLlmStatus').innerHTML = '<span class="chip mid">离线单文件版未连接后端</span>';
+    } else {
+      $('rwLlmStatus').innerHTML = configured
+        ? '<span class="chip ok">后端代理可配置</span>'
+        : '<span class="chip mid">请配置后端地址</span>';
+    }
     refreshUsageLine();
   }
 
@@ -2854,14 +2946,7 @@ if (typeof window.showToast !== 'function') {
     if (!el) return;
     if (!window.DSGuard) { el.textContent = ''; return; }
     var u = DSGuard.usage('rewrite');
-    el.textContent = '本机用量保护：今日 ' + u.dayUsed + '/' + u.dayMax + ' 次 · 本小时 ' + u.hourUsed + '/' + u.hourMax + ' 次（超限自动停止）';
-  }
-  function onProviderChange() {
-    var p = $('rwLlmProvider').value;
-    if (PRESETS[p]) {
-      $('rwLlmBase').value = PRESETS[p].base;
-      $('rwLlmModel').value = PRESETS[p].model;
-    }
+    el.textContent = '本机展示用量：今日 ' + u.dayUsed + '/' + u.dayMax + ' 次 · 本小时 ' + u.hourUsed + '/' + u.hourMax + ' 次；服务端仍会强制限流';
   }
 
   /* ---------- 232 文案公式库 ---------- */
@@ -3134,45 +3219,52 @@ if (typeof window.showToast !== 'function') {
     return { system: system, user: user };
   }
 
-  /* ---------- LLM 流式调用（体验对齐 DeepSeek：边生成边渲染） ---------- */
-  /* onDelta(delta, full)：每收到一段新内容回调；onDone(err, full)：完成回调（err 为对象时可能含 needKey / aborted） */
+  /* ---------- LLM 流式调用（仅后端代理） ---------- */
+  /* onDelta(delta, full)：每收到一段新内容回调；onDone(err, full)：完成回调 */
+
+  /* 后端代理地址：localStorage 可覆盖；默认同源 /api/llm/chat。
+     离线单文件版（file://）不回退到本机服务——服务端已拒绝 Origin: null，
+     回退只会产生必然失败的请求。 */
+  var LLM_CHAT_API = (function () {
+    var saved = localStorage.getItem('dycs_llm_api');
+    if (saved) return saved;
+    return '/api/llm/chat';
+  })();
+
   function streamLLM(system, user, onDelta, onDone) {
-    var cfg = loadLLM();
-    if (!cfg.key) { onDone({ needKey: true }, null); return null; }
     DSGuard.consume('rewrite');
-    var url = (cfg.base || '').replace(/\/+$/, '') + '/chat/completions';
+    return streamLLMViaBackend(system, user, onDelta, onDone);
+  }
+
+  function streamLLMViaBackend(system, user, onDelta, onDone) {
     var controller = new AbortController();
     var full = '';
     var finished = false;
+    function finish(err, text) { if (finished) return; finished = true; onDone(err, text); }
 
-    function finish(err, text) {
-      if (finished) return;
-      finished = true;
-      onDone(err, text);
-    }
-
-    fetch(url, {
+    fetch(defaultChatApi(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
-      body: JSON.stringify({
-        model: cfg.model || 'deepseek-chat',
-        messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-        temperature: 0.6,
-        top_p: 0.9,
-        max_tokens: 2048,
-        stream: true
-      }),
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': localStorage.getItem('dycs_api_key') || ''
+      },
+      body: JSON.stringify({ system: system, user: user, stream: true, temperature: 0.6, max_tokens: 2048 }),
       signal: controller.signal
     }).then(function (resp) {
+      /* 后端不可用时不再直连第三方，确保 LLM Key 永不进入浏览器 */
+      if (resp.status === 404 || resp.status === 405 || resp.status === 503) {
+        finish({ needKey: true, backend: true }, full); return;
+      }
+      if (resp.status === 401) { finish('后端鉴权失败（401）：请检查服务端 API_KEYS 与本页「后端访问密钥」是否一致', full); return; }
+      if (resp.status === 429) { finish('后端限流（429）：使用过于频繁，请稍后再试', full); return; }
       if (resp.status !== 200) {
-        return resp.json().then(function (d) { finish(DSGuard.llmErrorMsg({ status: resp.status, data: d }), full); })
-          .catch(function () { finish(DSGuard.llmErrorMsg({ status: resp.status, data: {} }), full); });
+        return resp.json().then(function (d) { finish((d && d.error) || ('HTTP ' + resp.status), full); })
+          .catch(function () { finish('后端返回 HTTP ' + resp.status, full); });
       }
       /* 非流式降级（少数代理不支持 SSE） */
       if (!resp.body || !resp.body.getReader) {
         return resp.json().then(function (d) {
-          var out = d && d.choices && d.choices[0] && d.choices[0].message ? d.choices[0].message.content : null;
-          finish(null, out);
+          finish(null, d && d.content ? d.content : null);
         }).catch(function (e) { finish('返回解析失败：' + (e && e.message ? e.message : e), full); });
       }
       var reader = resp.body.getReader();
@@ -3191,23 +3283,29 @@ if (typeof window.showToast !== 'function') {
             if (data === '[DONE]') { finish(null, full); return; }
             var j;
             try { j = JSON.parse(data); } catch (e) { continue; }
+            if (j.error) {
+              finish((j.error && j.error.message) || '上游模型调用失败', full);
+              try { reader.cancel(); } catch (cancelErr) {}
+              return;
+            }
             var d = j.choices && j.choices[0] && j.choices[0].delta;
             if (d && d.content) { full += d.content; onDelta(d.content, full); }
           }
           return pump();
         }).catch(function (err) {
           if (err && err.name === 'AbortError') { finish({ aborted: true }, full); return; }
-          finish('网络/流式错误：' + (err && err.message ? err.message : err), full);
+          finish('流式错误：' + (err && err.message ? err.message : err), full);
         });
       }
       return pump();
     }).catch(function (err) {
       if (err && err.name === 'AbortError') { finish({ aborted: true }, full); return; }
-      finish('网络/跨域错误：' + (err && err.message ? err.message : err) + '\n（可复制提示词到 AI 工具使用）', full);
+      finish({ needKey: true, backend: true, network: true }, full);
     });
 
     return controller;
   }
+
 
   /* ---------- 状态 ---------- */
   var currentMode = 'humanizer';
@@ -3374,6 +3472,15 @@ if (typeof window.showToast !== 'function') {
     $('rwCopyPromptBtn').disabled = true;
   }
 
+  function saveRewriteHistory(original, rewritten) {
+    if (!window.DYCSCloud || !rewritten) return;
+    DYCSCloud.save('rewrite', '文案改写 · ' + currentMode, {
+      mode: currentMode,
+      original: original,
+      rewritten: rewritten
+    }).catch(function () { /* 云端不可用不影响当前结果 */ });
+  }
+
   function runLLMMode(text) {
     var ctx = {
       aud: $('rwCtxAud') ? $('rwCtxAud').value.trim() : '',
@@ -3416,7 +3523,10 @@ if (typeof window.showToast !== 'function') {
       refreshUsageLine();
       if (err && typeof err === 'object' && err.needKey) {
         var kc = metaChips.concat([{ t: '未配置 LLM', cls: 'mid' }]);
-        var kn = '未检测到 LLM API Key。<b>' + modeLabel + '</b> 需要大模型生成改写结果。已为你生成完整提示词，复制后粘贴到任意 AI 工具即可获得改写。'
+        var kn = err.backend
+          ? '后端 LLM 服务当前不可用。<b>' + modeLabel + '</b> 需要后端配置的模型生成改写结果，请检查后端地址和服务状态。'
+          : '后端未配置模型服务。<b>' + modeLabel + '</b> 需要后端模型生成改写结果。'
+          + '已为你生成完整提示词，复制后可在其他 AI 工具中使用。'
           + (chain ? '<br>串联模式需先完成主改写，暂未执行。' : '');
         renderPromptOnly(prompt.system + '\n\n------\n\n' + prompt.user, kc, kn);
         return;
@@ -3446,8 +3556,10 @@ if (typeof window.showToast !== 'function') {
         var h = humanize(primaryOut, 'mid');
         var chainNote = '已串联 <b>Humanizer-zh</b> 人味化，去除 ' + h.count + ' 处 AI 腔表达。';
         renderLLMResult(text, h.cleaned, metaChips.concat([{ t: '串联 Humanizer', cls: 'ok' }]), chainNote);
+        saveRewriteHistory(text, h.cleaned);
       } else {
         renderLLMResult(text, primaryOut, metaChips, '');
+        saveRewriteHistory(text, primaryOut);
       }
     });
   }
@@ -3490,26 +3602,43 @@ if (typeof window.showToast !== 'function') {
       b.classList.add('on');
     });
 
-    $('rwLlmProvider').addEventListener('change', onProviderChange);
     $('rwLlmSave').addEventListener('click', function () {
-      var cfg = {
-        provider: $('rwLlmProvider').value,
-        key: $('rwLlmKey').value.trim(),
-        base: $('rwLlmBase').value.trim(),
-        model: $('rwLlmModel').value.trim()
-      };
-      saveLLM(cfg);
-      $('rwLlmStatus').innerHTML = cfg.key ? '<span class="chip ok">已保存</span>' : '<span class="chip mid">已保存（未填 Key）</span>';
-      showToast('LLM 设置已保存');
+      var api = $('rwLlmApi') ? normalizeChatApi($('rwLlmApi').value) : '';
+      var apiKey = $('rwLlmApiKey') ? $('rwLlmApiKey').value.trim() : '';
+      if (api) {
+        var root = backendRootFrom(api);
+        localStorage.setItem('dycs_llm_api', api);
+        localStorage.setItem('dycs_backend_url', root);
+        localStorage.setItem('extract_api', root + '/api/extract');
+        LLM_CHAT_API = api;
+        if (typeof window.EXTRACT_API !== 'undefined') window.EXTRACT_API = root + '/api/extract';
+      } else {
+        localStorage.removeItem('dycs_llm_api');
+        localStorage.removeItem('dycs_backend_url');
+        LLM_CHAT_API = defaultChatApi();
+      }
+      if (apiKey) localStorage.setItem('dycs_api_key', apiKey);
+      else localStorage.removeItem('dycs_api_key');
+      $('rwLlmStatus').innerHTML = api ? '<span class="chip ok">后端配置已保存</span>' : '<span class="chip mid">未配置后端地址</span>';
+      showToast('后端配置已保存');
     });
     var clearBtn = $('rwLlmClear');
     if (clearBtn) clearBtn.addEventListener('click', function () {
-      saveLLM({ provider: 'sensenova', key: '', base: '', model: '' });
-      $('rwLlmKey').value = '';
-      $('rwLlmStatus').innerHTML = '<span class="chip mid">已清除本机 Key</span>';
+      localStorage.removeItem('dycs_llm_api');
+      localStorage.removeItem('dycs_backend_url');
+      localStorage.removeItem('extract_api');
+      localStorage.removeItem('dycs_api_key');
+      if ($('rwLlmApi')) $('rwLlmApi').value = defaultChatApi();
+      if ($('rwLlmApiKey')) $('rwLlmApiKey').value = '';
+      LLM_CHAT_API = defaultChatApi();
+      $('rwLlmStatus').innerHTML = '<span class="chip mid">已清除本机后端配置</span>';
       refreshUsageLine();
-      showToast('已从本机清除 API Key');
+      showToast('已清除本机后端配置');
     });
+
+    /* 旧版本可能留下客户端 LLM Key，升级时主动清除，避免继续暴露。 */
+    localStorage.removeItem('dycs_rw_llm');
+    localStorage.removeItem('dycs_plan_llm');
 
     $('rwRun').addEventListener('click', run);
     $('rwDemo').addEventListener('click', function () {
@@ -4201,17 +4330,14 @@ if (typeof window.showToast !== 'function') {
  * 功能：上传图片（抖音来客后台截图 / 经营日报）+ 文档（CSV/TXT/Excel 导出）
  *       → 自动分析 → 生成结构化「未来运营计划」（含投流预算分配）
  * 架构：
- *   1) LLM 视觉分析（OpenAI 兼容 API，可配置 Key）—— 优先
- *   2) 规则引擎降级（无 Key 时基于内置数据 + 用户参数自动生成）—— 保底
+ *   1) 统一后端 LLM 视觉分析（NVIDIA Key 仅存服务端）—— 优先
+ *   2) 规则引擎降级（后端不可用时基于内置数据 + 用户参数自动生成）—— 保底
  * 隔离性：本模块自包含 IIFE，仅操作 #planGen 容器，不影响其他板块。
  */
 (function () {
   'use strict';
 
   /* ---------------- 常量 ---------------- */
-  var STORE_KEY = 'dycs_plan_llm';
-  var DEFAULT_API = 'https://api.deepseek.com/v1/chat/completions';
-
   var STAGES = [
     { key: 's1', name: '第一阶段 · 冷启动蓄水', days: '第 1-14 天', tag: '测款蓄水' },
     { key: 's2', name: '第二阶段 · 放量起量', days: '第 15-45 天', tag: '放量爬坡' },
@@ -4232,13 +4358,6 @@ if (typeof window.showToast !== 'function') {
     var t = document.getElementById('toast');
     if (t) { t.textContent = msg; t.className = 'toast show'; clearTimeout(t._tm); t._tm = setTimeout(function () { t.className = 'toast'; }, 2600); }
     else { alert(msg); }
-  }
-
-  function loadLLM() {
-    try {
-      var cfg = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
-      return { key: cfg.key || '', base: cfg.base || DEFAULT_API, model: cfg.model || 'deepseek-chat' };
-    } catch (e) { return { key: '', base: DEFAULT_API, model: 'deepseek-chat' }; }
   }
 
   /* ---------------- 降级规则引擎（无 Key 保底） ---------------- */
@@ -4313,18 +4432,27 @@ if (typeof window.showToast !== 'function') {
     };
   }
 
-  /* ---------------- LLM 视觉分析（优先） ---------------- */
-  function callVision(payload, cb) {
-    var cfg = loadLLM();
-    if (!cfg.key) { cb({ needKey: true }, null); return; }  // needKey 走错误通道
-    if (typeof fetch !== 'function') { cb({ needKey: true }, null); return; } // 无 fetch 环境降级
+  /* ---------------- LLM 视觉分析（仅后端代理） ---------------- */
+  function visionApi() {
+    /* 离线单文件版（file://）不回退到本机服务：服务端已拒绝 Origin: null。 */
+    return (window.DYCSCloud && DYCSCloud.endpoint)
+      ? DYCSCloud.endpoint('/api/llm/vision')
+      : '/api/llm/vision';
+  }
 
+  function backendHeaders() {
+    if (window.DYCSCloud && DYCSCloud.headers) return DYCSCloud.headers();
+    var headers = { 'Content-Type': 'application/json' };
+    var key = localStorage.getItem('dycs_api_key');
+    if (key) headers['X-API-Key'] = key;
+    return headers;
+  }
+
+  function callVision(payload, cb) {
     /* 防滥用：用量限流（超限立即停止） */
     var lim = DSGuard.check('plan');
     if (!lim.ok) { cb({ limit: lim }, null); return; }
     DSGuard.consume('plan');
-
-    var model = cfg.model || 'deepseek-chat';
 
     var sys = '你是资深本地生活运营总监（抖音来客/美业SPA方向）。用户上传经营数据图片或文档，请分析并输出 JSON（不要 markdown 代码块），结构严格如下：'
       + '{"overview":{"title","goal","cycle","basis"},"stages":[{"name","days","tag","actions":[3-4条],"kpi"}x3],'
@@ -4344,25 +4472,36 @@ if (typeof window.showToast !== 'function') {
       msgs.push({ role: 'user', content: '请基于以下经营参数生成未来运营计划：月预算 ' + payload.budget + ' 元，目标月GMV ' + payload.targetGmv + ' 元，门店数 ' + payload.stores + '，品类：足浴SPA。' });
     }
 
-    try {
-      fetch(cfg.base, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
-        body: JSON.stringify({ model: model, messages: msgs, temperature: 0.4, max_tokens: 3000 })
-      }).then(function (r) { return r.json(); }).then(function (d) {
-        if (d && d.error) {
-          cb({ err: DSGuard.llmErrorMsg({ status: d.error.code ? 400 : 500, data: d }) }, null);
-          return;
-        }
-        var txt = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+    callVisionViaBackend(msgs, cb);
+  }
+
+  function callVisionViaBackend(msgs, cb) {
+    fetch(visionApi(), {
+      method: 'POST',
+      headers: backendHeaders(),
+      body: JSON.stringify({ messages: msgs })
+    }).then(function (r) {
+      /* 后端不可用时不再直连第三方，确保 LLM Key 永不进入浏览器 */
+      if (r.status === 404 || r.status === 405 || r.status === 503) { cb({ err: '后端 LLM 服务不可用' }, null); return; }
+      if (r.status === 401) { cb({ err: '后端鉴权失败（401）：请检查服务端 API_KEYS 与本页「后端访问密钥」' }, null); return; }
+      if (r.status === 429) { cb({ err: '后端限流（429）：使用过于频繁，请稍后再试' }, null); return; }
+      return r.json().then(function (d) {
+        if (!d || !d.ok) { cb({ err: (d && d.error) || '后端调用失败' }, null); return; }
+        var txt = d.content;
         if (!txt) { cb({ err: '模型未返回内容' }, null); return; }
         txt = txt.replace(/^```(json)?/m, '').replace(/```$/m, '').trim();
-        var j = JSON.parse(txt);
-        cb(null, j);
-      }).catch(function (e) {
-        cb({ err: e.message }, null);
+        try { cb(null, JSON.parse(txt)); }
+        catch (e) { cb({ err: '返回解析失败：' + e.message }, null); }
       });
-    } catch (e) { cb({ err: e.message }, null); }
+    }).catch(function (e) { cb({ err: '后端连接失败：' + (e && e.message ? e.message : e) }, null); });
+  }
+
+  function savePlanHistory(plan, params) {
+    if (!window.DYCSCloud || !plan) return;
+    DYCSCloud.save('plan', '运营计划 · ' + (plan.overview && plan.overview.title || '90天计划'), {
+      params: params,
+      plan: plan
+    }).catch(function () { /* 云端不可用不影响当前结果 */ });
   }
 
   /* ---------------- 渲染：上传区 ---------------- */
@@ -4370,7 +4509,6 @@ if (typeof window.showToast !== 'function') {
     var el = document.getElementById('planGen');
     if (!el) return;
 
-    var cfg = loadLLM();
     var html = '';
     html += '<div style="margin:20px 0 6px;padding-top:18px;border-top:1px solid var(--border)">';
     html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">';
@@ -4378,7 +4516,7 @@ if (typeof window.showToast !== 'function') {
     html += '<span style="font-size:14px;font-weight:700;color:var(--text)">运营计划生成器</span>';
     html += '<span style="font-size:10px;color:var(--text-3);border:1px solid var(--border);border-radius:4px;padding:1px 6px">上传数据 → 自动生成未来 90 天计划（含投流预算）</span>';
     html += '</div>';
-    html += '<div style="font-size:11.5px;color:var(--text-3);margin-bottom:12px">支持上传：后台截图（PNG/JPG）、经营文档（CSV/TXT/Excel 导出）。有 Key 走视觉 AI 分析，无 Key 自动用内置数据 + 参数生成。</div>';
+    html += '<div style="font-size:11.5px;color:var(--text-3);margin-bottom:12px">支持上传：后台截图（PNG/JPG）、经营文档（CSV/TXT/Excel 导出）。后端可用时走视觉 AI 分析，否则自动用内置数据 + 参数生成。</div>';
 
     // 上传区
     html += '<div id="planDrop" style="border:1.5px dashed var(--border);border-radius:10px;padding:22px 16px;text-align:center;cursor:pointer;background:var(--bg);transition:border-color .2s">';
@@ -4394,19 +4532,12 @@ if (typeof window.showToast !== 'function') {
     html += '<div><label style="font-size:11px;color:var(--text-3)">门店数</label><input id="planStores" type="number" value="5" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:#fff;font-size:12.5px;margin-top:3px"></div>';
     html += '</div>';
 
-    // LLM 配置（折叠）
-    html += '<details style="margin-bottom:12px">';
-    html += '<summary style="font-size:11.5px;color:var(--text-3);cursor:pointer">⚙️ LLM 视觉分析配置（可选，填了更精准；不填自动用内置数据）</summary>';
-    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:10px">';
-    html += '<div><label style="font-size:11px;color:var(--text-3)">API Key</label><input id="planKey" type="password" value="' + esc(cfg.key) + '" placeholder="sk-..." style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px;margin-top:3px"></div>';
-    html += '<div><label style="font-size:11px;color:var(--text-3)">API Base</label><input id="planBase" type="text" value="' + esc(cfg.base) + '" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px;margin-top:3px"></div>';
-    html += '<div><label style="font-size:11px;color:var(--text-3)">模型</label><input id="planModel" type="text" value="' + esc(cfg.model) + '" placeholder="deepseek-chat" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:12px;margin-top:3px"></div>';
-    html += '</div>';
+    // LLM 统一由后端托管，密钥不在前端展示或保存
+    html += '<div style="margin:10px 0 12px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);font-size:11px;color:var(--text-3)">LLM 视觉分析由统一后端调用 NVIDIA 模型。后端地址与访问密钥请在「文案改写 → 后端配置」中设置；未连接时自动使用内置规则计划。</div>';
     if (window.DSGuard) {
       var pu = DSGuard.usage('plan');
-      html += '<div style="font-size:10.5px;color:var(--text-3);margin-top:6px">本机用量保护：今日 ' + pu.dayUsed + '/' + pu.dayMax + ' 次 · 本小时 ' + pu.hourUsed + '/' + pu.hourMax + ' 次（超限自动停止）</div>';
+      html += '<div style="font-size:10.5px;color:var(--text-3);margin:6px 0 12px">本机展示用量：今日 ' + pu.dayUsed + '/' + pu.dayMax + ' 次 · 本小时 ' + pu.hourUsed + '/' + pu.hourMax + ' 次；服务端仍会强制限流</div>';
     }
-    html += '</details>';
 
     html += '<button id="planRun" style="width:100%;padding:11px;border:0;border-radius:9px;background:var(--pri);color:#fff;font-size:13.5px;font-weight:600;cursor:pointer">开始生成运营计划</button>';
     html += '<div style="font-size:11px;color:var(--text-3);margin-top:8px" id="planStatus"></div>';
@@ -4465,13 +4596,6 @@ if (typeof window.showToast !== 'function') {
     var gmv = document.getElementById('planGmv').value;
     var stores = document.getElementById('planStores').value;
 
-    // 保存 LLM 配置
-    var cfg = loadLLM();
-    var k = document.getElementById('planKey').value.trim();
-    var b = document.getElementById('planBase').value.trim();
-    var m = document.getElementById('planModel').value.trim();
-    if (k) { localStorage.setItem(STORE_KEY, JSON.stringify({ key: k, base: b || DEFAULT_API, model: m || 'deepseek-chat' })); cfg = { key: k, base: b || DEFAULT_API, model: m || 'deepseek-chat' }; }
-
     if (!budget || !gmv || !stores) { toast('请填写预算 / GMV / 门店数'); return; }
     var params = { budget: budget, targetGmv: gmv, stores: stores };
 
@@ -4488,13 +4612,14 @@ if (typeof window.showToast !== 'function') {
         return;
       }
       if (err && err.needKey) {
-        status.textContent = '未配置 API Key，已用内置数据 + 您的参数生成（如需 AI 精准识图，请填 Key）';
+        status.textContent = '后端模型服务未配置，已用内置数据 + 您的参数生成';
         plan = buildPlanFromParams(params);
       } else if (err) {
         status.textContent = 'AI 调用失败（' + (err.err || '未知') + '），已降级为规则引擎生成';
         plan = buildPlanFromParams(params);
       }
       renderResult(plan);
+      savePlanHistory(plan, params);
       status.textContent = plan.overview && plan.overview.title ? '✅ 计划已生成' : '✅ 已生成';
     });
   }

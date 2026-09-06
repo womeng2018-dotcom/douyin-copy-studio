@@ -32,27 +32,45 @@
     document.body.removeChild(ta);
   }
 
-  /* ---------- LLM 设置 ---------- */
-  var LLM_KEY = 'dycs_rw_llm';
-  var PRESETS = {
-    sensenova: { base: 'https://token.sensenova.cn/v1', model: 'deepseek-v4-flash', free: true },
-    deepseek: { base: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
-    openai: { base: 'https://api.openai.com/v1', model: 'gpt-4o-mini' }
-  };
-  function loadLLM() {
-    try { return JSON.parse(localStorage.getItem(LLM_KEY) || '{}'); } catch (e) { return {}; }
+  /* ---------- 后端代理设置 ---------- */
+  function backendRootFrom(value) {
+    var v = String(value || '').trim().replace(/\/+$/, '');
+    if (!v) return '';
+    return v.replace(/\/api\/llm\/(?:chat|vision)$/i, '').replace(/\/(?:api\/)?extract$/i, '');
   }
-  function saveLLM(cfg) { localStorage.setItem(LLM_KEY, JSON.stringify(cfg)); }
+
+  function normalizeChatApi(value) {
+    var v = String(value || '').trim().replace(/\/+$/, '');
+    if (!v) return '';
+    if (!/\/api\/llm\/chat$/i.test(v)) v += '/api/llm/chat';
+    return v;
+  }
+
+  function isOfflineSingleFile() {
+    return location.protocol === 'file:';
+  }
+
+  function defaultChatApi() {
+    var saved = localStorage.getItem('dycs_llm_api');
+    if (saved) return normalizeChatApi(saved);
+    if (window.DYCSCloud && DYCSCloud.root && DYCSCloud.root()) return DYCSCloud.root() + '/api/llm/chat';
+    /* 离线单文件版（file://）不再自动访问本机后端：
+       服务端已拒绝 Origin: null，自动调用只会产生必然失败的请求。
+       需要完整能力请运行 start-local.sh 并访问 http://127.0.0.1:8765。 */
+    return '/api/llm/chat';
+  }
 
   function fillLLMSettings() {
-    var cfg = loadLLM();
-    var prov = $('rwLlmProvider');
-    if (cfg.provider) prov.value = cfg.provider;
-    $('rwLlmKey').value = cfg.key || '';
-    if (cfg.base) $('rwLlmBase').value = cfg.base;
-    if (cfg.model) $('rwLlmModel').value = cfg.model;
-    if (cfg.key) $('rwLlmStatus').innerHTML = '<span class="chip ok">已配置</span>';
-    else $('rwLlmStatus').innerHTML = '<span class="chip mid">未填 Key（可免费获取商汤/智谱 Key）</span>';
+    if ($('rwLlmApi')) $('rwLlmApi').value = localStorage.getItem('dycs_llm_api') || defaultChatApi();
+    if ($('rwLlmApiKey')) $('rwLlmApiKey').value = localStorage.getItem('dycs_api_key') || '';
+    var configured = !!(localStorage.getItem('dycs_llm_api') || (location.protocol === 'http:' && (location.hostname === '127.0.0.1' || location.hostname === 'localhost')));
+    if (isOfflineSingleFile() && !localStorage.getItem('dycs_llm_api')) {
+      $('rwLlmStatus').innerHTML = '<span class="chip mid">离线单文件版未连接后端</span>';
+    } else {
+      $('rwLlmStatus').innerHTML = configured
+        ? '<span class="chip ok">后端代理可配置</span>'
+        : '<span class="chip mid">请配置后端地址</span>';
+    }
     refreshUsageLine();
   }
 
@@ -61,14 +79,7 @@
     if (!el) return;
     if (!window.DSGuard) { el.textContent = ''; return; }
     var u = DSGuard.usage('rewrite');
-    el.textContent = '本机用量保护：今日 ' + u.dayUsed + '/' + u.dayMax + ' 次 · 本小时 ' + u.hourUsed + '/' + u.hourMax + ' 次（超限自动停止）';
-  }
-  function onProviderChange() {
-    var p = $('rwLlmProvider').value;
-    if (PRESETS[p]) {
-      $('rwLlmBase').value = PRESETS[p].base;
-      $('rwLlmModel').value = PRESETS[p].model;
-    }
+    el.textContent = '本机展示用量：今日 ' + u.dayUsed + '/' + u.dayMax + ' 次 · 本小时 ' + u.hourUsed + '/' + u.hourMax + ' 次；服务端仍会强制限流';
   }
 
   /* ---------- 232 文案公式库 ---------- */
@@ -341,45 +352,52 @@
     return { system: system, user: user };
   }
 
-  /* ---------- LLM 流式调用（体验对齐 DeepSeek：边生成边渲染） ---------- */
-  /* onDelta(delta, full)：每收到一段新内容回调；onDone(err, full)：完成回调（err 为对象时可能含 needKey / aborted） */
+  /* ---------- LLM 流式调用（仅后端代理） ---------- */
+  /* onDelta(delta, full)：每收到一段新内容回调；onDone(err, full)：完成回调 */
+
+  /* 后端代理地址：localStorage 可覆盖；默认同源 /api/llm/chat。
+     离线单文件版（file://）不回退到本机服务——服务端已拒绝 Origin: null，
+     回退只会产生必然失败的请求。 */
+  var LLM_CHAT_API = (function () {
+    var saved = localStorage.getItem('dycs_llm_api');
+    if (saved) return saved;
+    return '/api/llm/chat';
+  })();
+
   function streamLLM(system, user, onDelta, onDone) {
-    var cfg = loadLLM();
-    if (!cfg.key) { onDone({ needKey: true }, null); return null; }
     DSGuard.consume('rewrite');
-    var url = (cfg.base || '').replace(/\/+$/, '') + '/chat/completions';
+    return streamLLMViaBackend(system, user, onDelta, onDone);
+  }
+
+  function streamLLMViaBackend(system, user, onDelta, onDone) {
     var controller = new AbortController();
     var full = '';
     var finished = false;
+    function finish(err, text) { if (finished) return; finished = true; onDone(err, text); }
 
-    function finish(err, text) {
-      if (finished) return;
-      finished = true;
-      onDone(err, text);
-    }
-
-    fetch(url, {
+    fetch(defaultChatApi(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
-      body: JSON.stringify({
-        model: cfg.model || 'deepseek-chat',
-        messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-        temperature: 0.6,
-        top_p: 0.9,
-        max_tokens: 2048,
-        stream: true
-      }),
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': localStorage.getItem('dycs_api_key') || ''
+      },
+      body: JSON.stringify({ system: system, user: user, stream: true, temperature: 0.6, max_tokens: 2048 }),
       signal: controller.signal
     }).then(function (resp) {
+      /* 后端不可用时不再直连第三方，确保 LLM Key 永不进入浏览器 */
+      if (resp.status === 404 || resp.status === 405 || resp.status === 503) {
+        finish({ needKey: true, backend: true }, full); return;
+      }
+      if (resp.status === 401) { finish('后端鉴权失败（401）：请检查服务端 API_KEYS 与本页「后端访问密钥」是否一致', full); return; }
+      if (resp.status === 429) { finish('后端限流（429）：使用过于频繁，请稍后再试', full); return; }
       if (resp.status !== 200) {
-        return resp.json().then(function (d) { finish(DSGuard.llmErrorMsg({ status: resp.status, data: d }), full); })
-          .catch(function () { finish(DSGuard.llmErrorMsg({ status: resp.status, data: {} }), full); });
+        return resp.json().then(function (d) { finish((d && d.error) || ('HTTP ' + resp.status), full); })
+          .catch(function () { finish('后端返回 HTTP ' + resp.status, full); });
       }
       /* 非流式降级（少数代理不支持 SSE） */
       if (!resp.body || !resp.body.getReader) {
         return resp.json().then(function (d) {
-          var out = d && d.choices && d.choices[0] && d.choices[0].message ? d.choices[0].message.content : null;
-          finish(null, out);
+          finish(null, d && d.content ? d.content : null);
         }).catch(function (e) { finish('返回解析失败：' + (e && e.message ? e.message : e), full); });
       }
       var reader = resp.body.getReader();
@@ -398,23 +416,29 @@
             if (data === '[DONE]') { finish(null, full); return; }
             var j;
             try { j = JSON.parse(data); } catch (e) { continue; }
+            if (j.error) {
+              finish((j.error && j.error.message) || '上游模型调用失败', full);
+              try { reader.cancel(); } catch (cancelErr) {}
+              return;
+            }
             var d = j.choices && j.choices[0] && j.choices[0].delta;
             if (d && d.content) { full += d.content; onDelta(d.content, full); }
           }
           return pump();
         }).catch(function (err) {
           if (err && err.name === 'AbortError') { finish({ aborted: true }, full); return; }
-          finish('网络/流式错误：' + (err && err.message ? err.message : err), full);
+          finish('流式错误：' + (err && err.message ? err.message : err), full);
         });
       }
       return pump();
     }).catch(function (err) {
       if (err && err.name === 'AbortError') { finish({ aborted: true }, full); return; }
-      finish('网络/跨域错误：' + (err && err.message ? err.message : err) + '\n（可复制提示词到 AI 工具使用）', full);
+      finish({ needKey: true, backend: true, network: true }, full);
     });
 
     return controller;
   }
+
 
   /* ---------- 状态 ---------- */
   var currentMode = 'humanizer';
@@ -581,6 +605,15 @@
     $('rwCopyPromptBtn').disabled = true;
   }
 
+  function saveRewriteHistory(original, rewritten) {
+    if (!window.DYCSCloud || !rewritten) return;
+    DYCSCloud.save('rewrite', '文案改写 · ' + currentMode, {
+      mode: currentMode,
+      original: original,
+      rewritten: rewritten
+    }).catch(function () { /* 云端不可用不影响当前结果 */ });
+  }
+
   function runLLMMode(text) {
     var ctx = {
       aud: $('rwCtxAud') ? $('rwCtxAud').value.trim() : '',
@@ -623,7 +656,10 @@
       refreshUsageLine();
       if (err && typeof err === 'object' && err.needKey) {
         var kc = metaChips.concat([{ t: '未配置 LLM', cls: 'mid' }]);
-        var kn = '未检测到 LLM API Key。<b>' + modeLabel + '</b> 需要大模型生成改写结果。已为你生成完整提示词，复制后粘贴到任意 AI 工具即可获得改写。'
+        var kn = err.backend
+          ? '后端 LLM 服务当前不可用。<b>' + modeLabel + '</b> 需要后端配置的模型生成改写结果，请检查后端地址和服务状态。'
+          : '后端未配置模型服务。<b>' + modeLabel + '</b> 需要后端模型生成改写结果。'
+          + '已为你生成完整提示词，复制后可在其他 AI 工具中使用。'
           + (chain ? '<br>串联模式需先完成主改写，暂未执行。' : '');
         renderPromptOnly(prompt.system + '\n\n------\n\n' + prompt.user, kc, kn);
         return;
@@ -653,8 +689,10 @@
         var h = humanize(primaryOut, 'mid');
         var chainNote = '已串联 <b>Humanizer-zh</b> 人味化，去除 ' + h.count + ' 处 AI 腔表达。';
         renderLLMResult(text, h.cleaned, metaChips.concat([{ t: '串联 Humanizer', cls: 'ok' }]), chainNote);
+        saveRewriteHistory(text, h.cleaned);
       } else {
         renderLLMResult(text, primaryOut, metaChips, '');
+        saveRewriteHistory(text, primaryOut);
       }
     });
   }
@@ -697,26 +735,43 @@
       b.classList.add('on');
     });
 
-    $('rwLlmProvider').addEventListener('change', onProviderChange);
     $('rwLlmSave').addEventListener('click', function () {
-      var cfg = {
-        provider: $('rwLlmProvider').value,
-        key: $('rwLlmKey').value.trim(),
-        base: $('rwLlmBase').value.trim(),
-        model: $('rwLlmModel').value.trim()
-      };
-      saveLLM(cfg);
-      $('rwLlmStatus').innerHTML = cfg.key ? '<span class="chip ok">已保存</span>' : '<span class="chip mid">已保存（未填 Key）</span>';
-      showToast('LLM 设置已保存');
+      var api = $('rwLlmApi') ? normalizeChatApi($('rwLlmApi').value) : '';
+      var apiKey = $('rwLlmApiKey') ? $('rwLlmApiKey').value.trim() : '';
+      if (api) {
+        var root = backendRootFrom(api);
+        localStorage.setItem('dycs_llm_api', api);
+        localStorage.setItem('dycs_backend_url', root);
+        localStorage.setItem('extract_api', root + '/api/extract');
+        LLM_CHAT_API = api;
+        if (typeof window.EXTRACT_API !== 'undefined') window.EXTRACT_API = root + '/api/extract';
+      } else {
+        localStorage.removeItem('dycs_llm_api');
+        localStorage.removeItem('dycs_backend_url');
+        LLM_CHAT_API = defaultChatApi();
+      }
+      if (apiKey) localStorage.setItem('dycs_api_key', apiKey);
+      else localStorage.removeItem('dycs_api_key');
+      $('rwLlmStatus').innerHTML = api ? '<span class="chip ok">后端配置已保存</span>' : '<span class="chip mid">未配置后端地址</span>';
+      showToast('后端配置已保存');
     });
     var clearBtn = $('rwLlmClear');
     if (clearBtn) clearBtn.addEventListener('click', function () {
-      saveLLM({ provider: 'sensenova', key: '', base: '', model: '' });
-      $('rwLlmKey').value = '';
-      $('rwLlmStatus').innerHTML = '<span class="chip mid">已清除本机 Key</span>';
+      localStorage.removeItem('dycs_llm_api');
+      localStorage.removeItem('dycs_backend_url');
+      localStorage.removeItem('extract_api');
+      localStorage.removeItem('dycs_api_key');
+      if ($('rwLlmApi')) $('rwLlmApi').value = defaultChatApi();
+      if ($('rwLlmApiKey')) $('rwLlmApiKey').value = '';
+      LLM_CHAT_API = defaultChatApi();
+      $('rwLlmStatus').innerHTML = '<span class="chip mid">已清除本机后端配置</span>';
       refreshUsageLine();
-      showToast('已从本机清除 API Key');
+      showToast('已清除本机后端配置');
     });
+
+    /* 旧版本可能留下客户端 LLM Key，升级时主动清除，避免继续暴露。 */
+    localStorage.removeItem('dycs_rw_llm');
+    localStorage.removeItem('dycs_plan_llm');
 
     $('rwRun').addEventListener('click', run);
     $('rwDemo').addEventListener('click', function () {

@@ -1,8 +1,24 @@
+# Secrets（最高优先级：真实 LLM Key 存放处，绝不允许入库）
+.env
+*.env
+.env.*
+server/.env
+!.env.example
+
+# 运行时数据（历史记录 / SQLite / 上传缓存，含用户数据）
+server/.data/
+.data/
+*.db
+*.sqlite
+*.sqlite3
+
 # Python
 __pycache__/
 *.pyc
 *.pyo
 .cache/
+.venv/
+.pytest_cache/
 
 # Node
 node_modules/

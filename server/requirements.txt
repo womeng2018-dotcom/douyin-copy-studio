@@ -1,3 +1,11 @@
+# ===== Web 运行时（统一后端 server/app.py 必需）=====
+# 注意：原 requirements.txt 只声明了 ML / 视频栈，未声明 fastapi / uvicorn / httpx，
+# 导致"按此文件安装依赖"的镜像无法启动 app.py（ImportError）。此处补齐。
+fastapi>=0.110
+uvicorn[standard]>=0.27
+httpx>=0.27
+
+# ===== 视频提取栈（server/video-extract.py，由 app.py 经 importlib 动态加载）=====
 yt-dlp>=2025.0
 faster-whisper>=1.1.0
 onnxruntime>=1.18.0
@@ -5,3 +13,10 @@ openai-whisper>=20231117
 ctranslate2>=4.5.0
 torch>=2.1.0
 openai>=1.0.0
+
+# ===== 可选：分布式限流（仅当设置 RATE_LIMIT_URL 时启用）=====
+# 多 worker / 多 host 部署需要集中配额时安装：
+#   pip install 'redis>=5.0'
+# 设置环境变量 RATE_LIMIT_URL=redis://...:6379/0 即可启用；
+# 未设置或 redis 模块缺失时自动回退内存后端，启动仅打 WARNING，不影响功能。
+# 不放入默认依赖：单进程开发模式不需要 redis 服务。

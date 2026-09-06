@@ -1,5 +1,29 @@
+# 注意：server/Dockerfile 的构建上下文是「仓库根目录」，
+# 实际生效的是仓库根的 .dockerignore。本文件仅在
+# `docker build server/`（不被支持，静态资源会缺失）时生效，
+# 保留并加固仅为防御误用。
+
+# ---------- 密钥 ----------
+.env
+*.env
+.env.*
+!.env.example
+
+# ---------- 运行时数据 ----------
+.data/
+*.db
+*.sqlite
+*.sqlite3
+
+# ---------- 缓存 ----------
 __pycache__/
 .cache/
 *.pyc
 *.pyo
-*.env
+
+# ---------- 其它 ----------
+.git/
+tests/
+node_modules/
+.venv/
+.pytest_cache/

@@ -1,14 +1,38 @@
 # Render.com 部署配置
 # https://render.com → 创建服务 → 选择 Docker
+#
+# 构建上下文 = 仓库根（rootDir: .），因此 Dockerfile 内 COPY 需带 server/ 前缀。
+#
+# 重要：容器必须监听 0.0.0.0，否则 Render 的健康检查连不上。
+# 而 HOST=0.0.0.0 属于非回环，启动守卫（fail closed）会强制要求配置访问密钥，
+# 因此 TENANT_KEYS / API_KEYS 为必填，缺失时进程以 exit 2 拒绝启动。
 
 services:
   - type: web
-    name: video-extract
+    name: copy-studio
     env: docker
     dockerfilePath: ./server/Dockerfile
     rootDir: .
+    healthCheckPath: /api/health
     envVars:
       - key: PORT
         value: 8765
+      - key: HOST
+        value: 0.0.0.0
       - key: PYTHONUNBUFFERED
         value: "1"
+      # 鉴权：非回环监听必须配置，否则 fail closed 拒绝启动
+      - key: REQUIRE_AUTH
+        value: "true"
+      - key: TENANT_KEYS
+        sync: false # 在 Render 面板填写，格式 default:<强随机串>
+      # LLM（NVIDIA 上游密钥，仅服务端使用）
+      - key: LLM_API_KEY
+        sync: false # 在 Render 面板填写
+      - key: LLM_API_BASE
+        value: https://integrate.api.nvidia.com/v1
+      - key: LLM_MODEL
+        value: deepseek-v4-flash
+      # 数据落盘到持久化磁盘（需在 Render 面板挂载到 /app/server/.data）
+      - key: DATA_DIR
+        value: /app/server/.data
