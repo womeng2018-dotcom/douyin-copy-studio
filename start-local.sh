@@ -2,7 +2,7 @@
 # ============================================================
 # Copy Studio 本地一键启动
 # 单端口同源模式：http://127.0.0.1:8765
-#   页面（index.html/css/js）与提取 API 均由 video-extract.py 托管
+#   页面、LLM 代理、历史记录与提取 API 均由统一后端 app.py 托管
 #   解决 GitHub Pages(HTTPS) 无法访问本地 HTTP 服务的浏览器拦截问题
 # ============================================================
 set -e
@@ -18,21 +18,32 @@ if [ -f scripts/git-safe.sh ]; then
 fi
 
 PY=""
-for c in python3 python; do
-  if command -v "$c" >/dev/null 2>&1; then PY="$c"; break; fi
+for candidate in ".venv/bin/python" "../.venv/bin/python"; do
+  if [ -x "$candidate" ]; then PY="$candidate"; break; fi
 done
+if [ -z "$PY" ] && command -v python3 >/dev/null 2>&1; then
+  PY="python3"
+fi
 if [ -z "$PY" ]; then
-  echo "❌ 未找到 python3/python，请先安装 Python 3.9+"
+  echo "❌ 未找到可用的 Python 3"
   exit 1
 fi
 
-echo "🔄 检查依赖（openai / yt-dlp / funasr 等，缺失时自动安装）..."
-"$PY" -c "import openai" 2>/dev/null || "$PY" -m pip install -q openai
-"$PY" -c "import yt_dlp" 2>/dev/null || "$PY" -m pip install -q yt-dlp
+if ! "$PY" -c "import fastapi, uvicorn, httpx" 2>/dev/null; then
+  echo "❌ 当前 Python 缺少运行依赖。请先按 server/README.md 完成首次安装。"
+  echo "   检测到的 Python: $PY"
+  exit 1
+fi
 
-PORT="${PORT:-8765}"
+export HOST="127.0.0.1"
+export PORT="${PORT:-8765}"
+export REQUIRE_AUTH="false"
+export CORS_ALLOW_NULL="false"
+export ALLOW_REMOTE_URL="false"
 echo "🚀 启动 Copy Studio 本地服务: http://127.0.0.1:${PORT}"
-echo "   （页面与提取 API 同源，LLM 纠偏走商汤免费 Key）"
+if [ -z "${LLM_API_KEY:-}" ]; then
+  echo "   AI 在线生成未配置；离线文案、合规检查和本地功能仍可使用"
+fi
 echo "   Ctrl+C 停止"
 
 # 延迟打开浏览器（等服务起来）
@@ -40,4 +51,4 @@ echo "   Ctrl+C 停止"
   if command -v open >/dev/null 2>&1; then open "http://127.0.0.1:${PORT}"; fi
 ) &
 
-exec "$PY" server/video-extract.py --serve --port "$PORT"
+exec "$PY" server/app.py

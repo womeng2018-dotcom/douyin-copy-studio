@@ -146,7 +146,7 @@ bash start-local.sh
 # 浏览器打开 http://127.0.0.1:8765
 ```
 
-首次启动会创建项目独立的 `.venv` 并安装依赖。NVIDIA LLM Key 只放在已被 Git 忽略的 `server/.env` 中；具体配置与接口见 [`server/README.md`](server/README.md)。
+首次安装需按 [`server/README.md`](server/README.md) 创建虚拟环境并安装依赖；启动脚本不会自动升级依赖。未配置在线模型密钥时，离线文案、合规检查等本地功能仍可使用。
 
 运行引擎自测（校验生成质量与合规扫描）：
 
