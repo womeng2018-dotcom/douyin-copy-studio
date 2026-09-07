@@ -1,0 +1,63 @@
+{
+  "schema_version": 2,
+  "packet_id": "local-use-preflight-2026-09-07",
+  "artifacts": {
+    "packet": {
+      "path": "docs/bridge/local-use-packet-status.md",
+      "sha256": "4a4a4034c0f9b2304abfac101f9517e55cc5162bbf6b7fc5ba970a9fc0d93f1e",
+      "approximate_tokens": 60
+    },
+    "result": {
+      "path": "docs/bridge/local-use-result-status.md",
+      "sha256": "b60eb64d5d9867141425ee1ef0099ec10ae5c417d79f3004112017e6d22c2bd8"
+    },
+    "browser_evidence": {
+      "path": "docs/bridge/local-use-browser-evidence.md",
+      "sha256": "e478d2402dd81b71ca3bc2230fe7653a131ccd5a641730c2407e26da47d22424"
+    }
+  },
+  "codex_model": {
+    "requested": "current Codex model",
+    "observed": "GPT-5",
+    "status": "verified",
+    "evidence": "Current Codex runtime model supplied by the host."
+  },
+  "chatgpt_model": {
+    "requested": "a deep reasoning ChatGPT model",
+    "observed": "ChatGPT - suitable for daily tasks",
+    "status": "unverified",
+    "evidence": "Visible in-app model selector offered only the daily model and an upgrade control.",
+    "preflight_visible": true,
+    "postflight_visible": false
+  },
+  "privacy_review": {
+    "scope_minimized": true,
+    "credentials_scan_passed": true,
+    "semantic_privacy_reviewed": true,
+    "raw_diff_excluded": true,
+    "unrelated_files_excluded": true
+  },
+  "browser_transport": "failed",
+  "packet_validation": "not_run",
+  "result_validation": "not_run",
+  "pair_validation": "not_run",
+  "local_revalidation": "passed",
+  "adoption": {
+    "status": "not_run",
+    "accepted": [],
+    "rejected": [],
+    "deferred": [
+      "ChatGPT proposal unavailable because preflight model verification failed."
+    ],
+    "local_evidence": [
+      "Full pytest suite passed.",
+      "Node engine and stress suite passed 792/792.",
+      "Live localhost HTTP and restart persistence checks passed."
+    ]
+  },
+  "local_changes": {
+    "status": "applied",
+    "reason": "Local launcher now starts the hardened unified backend on loopback and disables remote URL extraction by default."
+  },
+  "tests": "passed"
+}
