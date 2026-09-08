@@ -215,3 +215,115 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8765/secret/path      
 - 公网交付必须从外部验证 HTTPS、页面加载、鉴权及真实 API；仅服务器 localhost 冒烟不能证明公网可用。
 - docker compose down 只是停止本次服务，不等于恢复旧部署。首次部署失败可 down（禁止 -v）；升级须先保留旧镜像/配置及一致性数据备份，按可恢复计划回到旧版本。未识别既有服务前不得覆盖或停止它。
 - 外部 SOP 文件是辅助参考，缺失时以本档的明确步骤和用户授权为限；不能按其未提供内容推断新权限。
+
+---
+
+## 11. 本机交付（2026-09-08，WorkBuddy 执行；Codex 负责规划与独立复核）
+
+### 11.1 当前采用方案
+
+**本机一键启动闭环，暂不做服务器部署。** 未迁移为其它技术栈，仍是 HTML/CSS/JS + FastAPI。
+
+```
+双击 start.command → start-local.sh → server/app.py（统一后端，单端口 http://127.0.0.1:8765）
+```
+
+启动约束（已核实并保持）：`HOST=127.0.0.1`、`REQUIRE_AUTH=false`、`CORS_ALLOW_NULL=false`、
+`ALLOW_REMOTE_URL=false`；启动脚本只检测依赖、缺失即提示退出，**不自动安装/升级依赖**。
+`git_safe_check` 为既有 P3.10 交付，仅清理 0 字节且 mtime>5min 的 stale lock，本次未改动其行为。
+
+### 11.2 本次提交（4 个，均在 `main`，**未 push**）
+
+| 提交 | 内容 |
+|---|---|
+| `6c64d13` | `.env` 加载：明确优先级 + 冲突告警 + 权限收紧 600 + LLM 凭证组来源核验；新增 10 个离线契约测试 |
+| `f9e0fd1` | 未配置密钥时明确提示「在线 AI 未配置」（后端 `E_LLM_NOT_CONFIGURED` + 前端区分文案并保留输入）；重建 standalone |
+| `6ed2ac6` | `start-local.sh` 依据 `server/.env` 准确显示在线 AI 配置状态（纯解析读取，不执行文件内容） |
+| `f6d62c6` | 模板中未经确认的退款承诺 / 门店事实加「待确认」标记（10 处，不改文案）；重建 standalone |
+
+基线 HEAD `3f6e063`；当前 HEAD `f6d62c6`；working tree clean。
+
+### 11.3 配置方法（商汤 SenseNova）
+
+```bash
+cd /Users/wangkaer/WorkBuddy/2026-09-05-14-24-01/dcs-repo
+cp server/.env.example server/.env
+chmod 600 server/.env
+# 用本地编辑器填写（不要把 Key 发到聊天）：
+#   LLM_API_KEY=sk-你的商汤密钥      ← 或 SENSENOVA_API_KEY
+#   LLM_API_BASE  默认 https://token.sensenova.cn/v1（代码默认值，可省略）
+#   LLM_MODEL     默认 deepseek-v4-flash；高频场景可改 sensenova-6.8-flash-lite
+```
+
+**配置加载语义（已明确，不静默）**：
+- 默认**环境变量优先**，`server/.env` 不覆盖已有环境变量。保留此语义是必要的：`tests/conftest.py`
+  靠它确保「测试绝不读取真实 .env」，若反转优先级，配好 Key 后跑 pytest 会让测试打到真实上游并产生费用。
+- 需要 `.env` 优先时，启动时设 `COPY_STUDIO_DOTENV_OVERRIDE=1`。
+- 同名不同值一律记录**键名**（绝不记录值）并在启动日志醒目提示，附修正方式。
+- 密钥、Base、Model 作为**一组**核验；来源混杂时告警，防止把凭证发错服务。
+- `.env` 权限自动收紧为 600；启动日志不打印密钥、认证头或带密钥的异常。
+
+**实测生效证据**：占位 `.env` 下启动日志为
+`LLM: https://token.sensenova.cn/v1 / sensenova-6.8-flash-lite (已配置 Key)`；
+占位文件已删除，`git status` 无任何 `.env` 踪迹。
+
+### 11.4 商汤接口（来源：platform.sensenova.cn 官方文档，2026-09-08 检索）
+
+| 项 | 官方值 |
+|---|---|
+| Base URL | `https://token.sensenova.cn/v1`（OpenAI 兼容） |
+| 认证 | `Authorization: Bearer $SENSENOVA_API_KEY`，Key 以 `sk-` 开头 |
+| 文本对话模型 | `deepseek-v4-flash`（默认名，平台提供）、`sensenova-6.8-flash-lite`、`glm-5.2`、`kimi-k3`、`deepseek-v4-pro` |
+| 非对话模型 | `sensenova-u1-fast` / `sensenova-u1.5-lite` 为图像生成专用（`/v1/images/generations`），**不可作对话模型** |
+| 必填参数 | `model`、`messages`；`stream` 默认 false |
+
+**费用：未能确认。** 官方 Token Plan 页同时存在「公测期完全免费开放、付费档位即将上线」与
+「2026-08-28 启用新的积分规则（通用积分）」两种表述，当前是否产生费用无法从文档确证。
+**因此真实调用前已停止，等待用户授权**（见 §11.7）。
+
+### 11.5 已验证证据
+
+| 项 | 结果 |
+|---|---|
+| `start.command` 双击链路 | ✅ 实际启动后端并自动打开页面（浏览器加载全部前端资源） |
+| 健康与页面 | ✅ `/api/health` 200、`/` 200、`/standalone.html` 200 |
+| 泄漏回归 | ✅ `/server/.env`、`/.env`、`/.git/config`、`/server/app.py`、`/app.py`、`/scripts/git-safe.sh` 全部 **404**；非"任意路径 404"替代 |
+| 未配置提示（接口） | ✅ `POST /api/llm/chat` → 503 + `error_code=E_LLM_NOT_CONFIGURED` |
+| 未配置提示（浏览器） | ✅ 页面显示「在线 AI 未配置…你输入的原文已保留」；输入 34 字符前后一致；控制台仅预期 503 |
+| 离线功能 | ✅ `Humanizer-zh` 为纯本地规则引擎，无 Key 也能改写出结果 |
+| SQLite 历史（后端） | ✅ 写入唯一标记记录 → **杀进程重启** → 同一 `id`/`title`/`payload` 找回；随后**只删该条**，未清空历史 |
+| 浏览器历史（前端） | ✅ 生成后 localStorage `dycs_history` 2 条；**刷新页面**后条数与首条 brand/cat/time 完全一致 |
+| 后端测试 | ✅ pytest **241 passed**（231 基线 + 10 新增离线契约测试） |
+| 前端测试 | ✅ stress-test **792/792**、test-engine 通过 |
+| standalone 一致性 | ✅ 两次源文件改动后均重建，`build-single.js --check` 通过（240.6 KB → 241.3 KB） |
+
+**历史存储是两套，不可混称**：浏览器历史 = localStorage `dycs_history`（仅记录「文案生成」tab，
+上限 20 条，随浏览器配置文件走）；SQLite 历史 = 后端 `/api/history`（服务端持久化）。
+**前端页面历史 tab 不调用 `/api/history`**，两者尚未打通。
+
+### 11.6 内容可用性缺陷（已记录，未擅自改文案）
+
+`js/data-category.js` 的模板会直接输出**未经确认的退款承诺与门店事实**，而 `js/data-compliance.js`
+已把「随时退/过期退」列为 P2 承诺类并提示"须与后台套餐规则及门店实际一致"——即生成端与校验端口径不一致。
+
+涉及：`团购未核销随时退`、`未核销随时退`、`团购随时退`、`做完不满意可以调`、
+`连锁门店、平台担保，跑不了`、`{storeCount}家连锁同一套服务标准` 等共 **10 处**。
+
+处理：已在源码对应行加 `// 待确认：…` 标记（**不改动文案本身**，避免擅自变更业务内容）。
+是否改为生成结果上的可见提示、或调整为可配置开关，属产品决策，交由 Codex/用户裁定。
+合规扫描通过**不等于**事实已核验或保证平台过审。
+
+### 11.7 剩余事项与停止点
+
+1. **真实商汤生成/改写未完成**——缺两样：用户填写的商汤 Key；费用授权（§11.4 费用无法确认）。
+   二者到齐后仅做**最小真实调用**：一条普通中文文案，验证响应正文非空、模型可用、错误提示准确；
+   超时不自动重试，且不把 HTTP 200 或模拟测试当成真实生成成功。
+2. **页面内真实改写未验证**——目前页面级验证只到「未配置降级」路径，真实改写需 Key 后补做。
+3. **两套历史未打通**（§11.5），是否统一属产品决策。
+4. **NVIDIA 旧 Key 撤销状态：未确认。** 换用商汤**不消除**旧 Key 的历史风险；
+   需账户本人在 NVIDIA 控制台自行登录确认与撤销。未识别到具体旧 Key 前，不得批量撤销其它密钥。
+
+### 11.8 用户如何启动
+
+双击仓库根目录 `start.command`（或终端 `bash start-local.sh`），浏览器会自动打开
+`http://127.0.0.1:8765`；`Ctrl+C` 停止。未配置 Key 时在线改写不可用，其余功能正常。
