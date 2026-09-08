@@ -41,8 +41,34 @@ export REQUIRE_AUTH="false"
 export CORS_ALLOW_NULL="false"
 export ALLOW_REMOTE_URL="false"
 echo "🚀 启动 Copy Studio 本地服务: http://127.0.0.1:${PORT}"
-if [ -z "${LLM_API_KEY:-}" ]; then
-  echo "   AI 在线生成未配置；离线文案、合规检查和本地功能仍可使用"
+# 在线 AI 是否已配置：环境变量优先，其次 server/.env。
+# .env 由 app.py 在 Python 层解析加载，shell 看不到，故此处纯文本读取判断
+# （用 Python 解析，绝不 source/eval 执行文件内容；只判断有无值，不输出值）。
+_ai_configured=""
+if [ -n "${LLM_API_KEY:-}" ] || [ -n "${SENSENOVA_API_KEY:-}" ]; then
+  _ai_configured="yes"
+else
+  # 只判断「有没有值」，不输出值；Python 解析而非 source/eval 执行文件内容
+  _env_has_key=$("$PY" -c 'from pathlib import Path
+p = Path("server/.env")
+if not p.exists():
+    raise SystemExit(0)
+for line in p.read_text(encoding="utf-8").splitlines():
+    s = line.strip()
+    if s.startswith("#") or "=" not in s:
+        continue
+    k, _, v = s.partition("=")
+    if k.strip() in ("LLM_API_KEY", "SENSENOVA_API_KEY"):
+        if v.strip():
+            print("yes")
+        break
+' 2>/dev/null || true)
+  [ "$_env_has_key" = "yes" ] && _ai_configured="yes"
+fi
+if [ -n "$_ai_configured" ]; then
+  echo "   在线 AI：已配置（模型与上游地址取自 server/.env 或环境变量）"
+else
+  echo "   在线 AI 未配置；离线文案、合规检查和本地功能仍可使用"
 fi
 echo "   Ctrl+C 停止"
 
