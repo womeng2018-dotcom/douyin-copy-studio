@@ -573,6 +573,41 @@ _PROVIDER_LABELS = {
     "unknown": "未知厂商",
 }
 
+# 推理模型专属保护：sensenova-* 等深度推理模型在 max_tokens 预算不足时，
+# 会把全部 token 烧在内部 reasoning 上，content 字段被截断到空。
+# 这不是超时，也不是上游故障，是模型行为；因此 200+空内容 区别于 5xx/超时
+# （后者不重试，避免把坏上游打爆），前者可安全重试（生成是幂等的）。
+E_UPSTREAM_EMPTY = "E_UPSTREAM_EMPTY"
+UPSTREAM_EMPTY_MESSAGE = (
+    "上游模型返回为空（已重试 {retries} 次仍无内容），"
+    "可能是该推理模型偶发把预算全部用于内部思考，请稍后重试或考虑切换为非推理模型"
+)
+LLM_EMPTY_RETRIES = 2  # 总尝试次数 = 1 + LLM_EMPTY_RETRIES = 3
+SENSENOVA_REASONING_MAX_TOKENS_FLOOR = 4096
+
+
+def _effective_max_tokens(requested: int) -> int:
+    """客户端 max_tokens 的最终取值。
+
+    通用规则：clamp 到 [1, 4096]。
+    商汤 sensenova-* 是推理模型，预算不足时 reasoning 会把 content 完全截断。
+    实测 max_tokens=2048 时 content 100% 为空；只有 4096 才有合理命中率。
+    为保证业务生成可拿到成品，强制 sensenova-* 走 4096 预算。
+    """
+    clamped = min(max(int(requested), 1), 4096)
+    if LLM_MODEL.startswith("sensenova-") and clamped < SENSENOVA_REASONING_MAX_TOKENS_FLOOR:
+        return SENSENOVA_REASONING_MAX_TOKENS_FLOOR
+    return clamped
+
+
+def _log_empty_content_attempt(attempt: int) -> None:
+    """记录「200 但 content 为空」事件，便于排查推理模型命中率。"""
+    print(
+        f"[copy-studio] upstream returned 200 with empty content "
+        f"(attempt {attempt + 1}/{LLM_EMPTY_RETRIES + 1}, model={LLM_MODEL})",
+        flush=True,
+    )
+
 
 def _host_resolves_to_public_ip(host: str, port: int) -> bool:
     """解析并断言该主机所有地址都是公网地址。"""
@@ -787,7 +822,7 @@ def _build_chat_payload(body: dict) -> dict:
         "messages": messages,
         "temperature": min(max(float(body.get("temperature", 0.6)), 0), 1.5),
         "top_p": min(max(float(body.get("top_p", 0.9)), 0), 1),
-        "max_tokens": min(max(int(body.get("max_tokens", 2048)), 1), 4096),
+        "max_tokens": _effective_max_tokens(int(body.get("max_tokens", 2048))),
         "stream": bool(body.get("stream", True)),
     }
     # Nemotron 默认可能把推理过程写进 content；业务生成关闭 thinking，直接返回成品。
@@ -832,44 +867,127 @@ async def llm_chat(request: Request):
     try:
         if payload["stream"]:
             async def _stream():
+                # 推理模型偶发把全部预算用在 reasoning，content 被截断到空。
+                # 对「流结束但全程未出现 content delta」做有界重试（区别于「超时不重试」：
+                # 后者避免把坏上游打爆；前者是模型行为偶发，生成幂等可重试）。
+                # 按尝试整体缓冲：只有出现 content 的那次字节会透传给客户端，并剥掉
+                # 其尾随的 data:[DONE] 事件，再由本函数统一追加一次 [DONE]，
+                # 防止客户端 pump 在空尝试的 [DONE] 上提前 finish 而错过重试内容。
+                saw_content = False
+                successful_chunks = None
                 try:
-                    async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=10.0)) as client:
-                        async with client.stream("POST", upstream, json=payload, headers=headers) as r:
-                            if r.status_code != 200:
-                                raw = (await r.aread()).decode("utf-8", "replace")
-                                _log_upstream_error(r.status_code, raw)
-                                # 不回传上游原始正文，避免泄露上游实现细节
-                                yield f"data: {json.dumps({'error': {'message': UPSTREAM_ERROR_MESSAGE, 'code': UPSTREAM_ERROR_CODE, 'status': r.status_code}}, ensure_ascii=False)}\n\n"
-                                yield "data: [DONE]\n\n"
-                                return
-                            async for chunk in r.aiter_bytes():
-                                yield chunk
+                    for attempt in range(LLM_EMPTY_RETRIES + 1):
+                        if saw_content:
+                            break
+                        chunks = []
+                        line_buf = b""
+                        try:
+                            async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=10.0)) as client:
+                                async with client.stream("POST", upstream, json=payload, headers=headers) as r:
+                                    if r.status_code != 200:
+                                        raw = (await r.aread()).decode("utf-8", "replace")
+                                        _log_upstream_error(r.status_code, raw)
+                                        yield f"data: {json.dumps({'error': {'message': UPSTREAM_ERROR_MESSAGE, 'code': UPSTREAM_ERROR_CODE, 'status': r.status_code}}, ensure_ascii=False)}\n\n"
+                                        yield "data: [DONE]\n\n"
+                                        return
+                                    async for chunk in r.aiter_bytes():
+                                        chunks.append(chunk)
+                                        line_buf += chunk
+                                        # 解析完整 SSE 事件，检测是否出现 content delta
+                                        while b"\n\n" in line_buf:
+                                            event, line_buf = line_buf.split(b"\n\n", 1)
+                                            for ln in event.split(b"\n"):
+                                                if not ln.startswith(b"data:"):
+                                                    continue
+                                                data = ln[5:].strip()
+                                                if data == b"[DONE]":
+                                                    continue
+                                                try:
+                                                    obj = json.loads(data)
+                                                except Exception:
+                                                    continue
+                                                delta = ((obj.get("choices") or [{}])[0]).get("delta") or {}
+                                                if delta.get("content"):
+                                                    saw_content = True
+                        except httpx.HTTPError as e:
+                            # 传输错误不重试（与「超时不重试」一致）
+                            _log_upstream_error("stream", e)
+                            yield f"data: {json.dumps({'error': {'message': UPSTREAM_ERROR_MESSAGE, 'code': UPSTREAM_ERROR_CODE}}, ensure_ascii=False)}\n\n"
+                            yield "data: [DONE]\n\n"
+                            return
+                        if saw_content:
+                            successful_chunks = chunks
+                            break
+                        _log_empty_content_attempt(attempt)
+
+                    if successful_chunks is not None:
+                        blob = b"".join(successful_chunks)
+                        # 剥掉上游尾随的 data:[DONE]，由本函数统一收尾
+                        done_marker = b"data: [DONE]\n\n"
+                        if blob.endswith(done_marker):
+                            blob = blob[: -len(done_marker)]
+                        if blob:
+                            yield blob
+                    else:
+                        # 重试耗尽仍空：明确发 E_UPSTREAM_EMPTY
+                        yield f"data: {json.dumps({'error': {'message': UPSTREAM_EMPTY_MESSAGE.format(retries=LLM_EMPTY_RETRIES), 'code': E_UPSTREAM_EMPTY}}, ensure_ascii=False)}\n\n"
+                    yield "data: [DONE]\n\n"
                 except httpx.HTTPError as e:
-                    _log_upstream_error("stream", e)
+                    # 兜底：正常路径上的传输错误已在内层 try 处理并 return；
+                    # 此处仅捕获最终 yield 链上的极端 I/O 异常。
+                    _log_upstream_error("stream-fallback", e)
                     yield f"data: {json.dumps({'error': {'message': UPSTREAM_ERROR_MESSAGE, 'code': UPSTREAM_ERROR_CODE}}, ensure_ascii=False)}\n\n"
                     yield "data: [DONE]\n\n"
             return StreamingResponse(_stream(), media_type="text/event-stream")
 
         async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=10.0)) as client:
-            r = await client.post(upstream, json=payload, headers=headers)
-            if r.status_code != 200:
-                _log_upstream_error(r.status_code, r.text)
-                return JSONResponse(
-                    {
-                        "ok": False,
-                        "error": UPSTREAM_ERROR_MESSAGE,
-                        "error_code": UPSTREAM_ERROR_CODE,
-                        "status": r.status_code,
-                    },
-                    status_code=502,
+            content = None
+            for attempt in range(LLM_EMPTY_RETRIES + 1):
+                r = await client.post(upstream, json=payload, headers=headers)
+                if r.status_code != 200:
+                    # 非 200：上游真故障，不重试（避免把坏上游打爆，与「超时不重试」一致）
+                    _log_upstream_error(r.status_code, r.text)
+                    return JSONResponse(
+                        {
+                            "ok": False,
+                            "error": UPSTREAM_ERROR_MESSAGE,
+                            "error_code": UPSTREAM_ERROR_CODE,
+                            "status": r.status_code,
+                        },
+                        status_code=502,
+                    )
+                try:
+                    data = r.json()
+                except ValueError:
+                    # 200 但非 JSON：上游协议错误，按上游故障处理
+                    _log_upstream_error(200, "non-json response body")
+                    return JSONResponse(
+                        {
+                            "ok": False,
+                            "error": UPSTREAM_ERROR_MESSAGE,
+                            "error_code": UPSTREAM_ERROR_CODE,
+                            "status": 200,
+                        },
+                        status_code=502,
+                    )
+                content = (
+                    (data.get("choices") or [{}])[0]
+                    .get("message", {})
+                    .get("content")
                 )
-            data = r.json()
-            content = (
-                (data.get("choices") or [{}])[0]
-                .get("message", {})
-                .get("content")
+                if content:
+                    return JSONResponse({"ok": True, "content": content})
+                # 200 + 空内容：推理模型偶发把预算全部用于思考
+                _log_empty_content_attempt(attempt)
+            # 重试耗尽仍为空：明确告诉前端「真实失败」，而非伪 ok:true
+            return JSONResponse(
+                {
+                    "ok": False,
+                    "error": UPSTREAM_EMPTY_MESSAGE.format(retries=LLM_EMPTY_RETRIES),
+                    "error_code": E_UPSTREAM_EMPTY,
+                },
+                status_code=502,
             )
-            return JSONResponse({"ok": True, "content": content})
     except httpx.HTTPError as e:
         _log_upstream_error("chat", e)
         return JSONResponse(

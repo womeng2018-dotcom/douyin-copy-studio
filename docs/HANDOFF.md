@@ -232,7 +232,7 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8765/secret/path      
 `ALLOW_REMOTE_URL=false`；启动脚本只检测依赖、缺失即提示退出，**不自动安装/升级依赖**。
 `git_safe_check` 为既有 P3.10 交付，仅清理 0 字节且 mtime>5min 的 stale lock，本次未改动其行为。
 
-### 11.2 本次提交（5 个，均在 `main`，**未 push**）
+### 11.2 本次提交（6 个，均在 `main`，**未 push**）
 
 | 提交 | 内容 |
 |---|---|
@@ -241,8 +241,9 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8765/secret/path      
 | `f9e0fd1` | 未配置密钥时明确提示「在线 AI 未配置」（后端 `E_LLM_NOT_CONFIGURED` + 前端区分文案并保留输入）；重建 standalone |
 | `6ed2ac6` | `start-local.sh` 依据 `server/.env` 准确显示在线 AI 配置状态（纯解析读取，不执行文件内容） |
 | `f6d62c6` | 模板中未经确认的退款承诺 / 门店事实加「待确认」标记（10 处，不改文案）；重建 standalone |
+| `f3d49e3` | **D 商汤真实调用收口**：`_effective_max_tokens` 兜底 `sensenova-*` 到 4096；非流式 200+空内容有界重试 + `E_UPSTREAM_EMPTY`；流式整体缓冲 + 透传成功尝试 + 剥掉上游 `[DONE]`；新增 7 个测试（253 passed）；真实调用成功（content 非空、3.8–36.6s） + SQLite 保存 + 重启找回 |
 
-基线 HEAD `3f6e063`；当前 HEAD `ae4827f`；working tree clean（前端改动已 `node build-single.js` 重建 standalone 并入同一提交）。
+基线 HEAD `3f6e063`；当前 HEAD `f3d49e3`；working tree clean（前端改动已 `node build-single.js` 重建 standalone 并入同一提交）。
 
 ### 11.3 配置方法（商汤 SenseNova）
 
@@ -329,15 +330,32 @@ chmod 600 server/.env
   - ✅ C5 不存密钥（payload 仅含 mode/original/rewritten，无密钥）
   - ✅ C9 人工提示词降级分支不记生成成功（已验证 fallback 路径不调用 save）
   - 🟡 仍待办（产品/大改，未启动）：C1 前端历史 tab 仍用 localStorage、未统一到后端 SQLite；C4 后端历史的查看/搜索/重开 UI；C6 旧 localStorage 迁移标记；C7 三种恢复形式化验证；C8 离线可用性（localStorage 已离线可用，属已部分满足）
-1. **D 商汤接入（1–8）真实调用：受阻（按停止条件原地停）**——缺两样：用户填写的商汤 Key；费用授权（§11.4 费用无法确认）。
-   二者到齐后仅做**最小真实调用**：一条普通中文文案，验证响应正文非空、模型可用、错误提示准确；
-   超时不自动重试，且不把 HTTP 200 或模拟测试当成真实生成成功。
+1. **D 商汤真实调用：已完成最小验证并本地提交**（见本次新增 commit `f3d49e3`）：
+  1. 用户提供 `LLM_API_KEY`（sk- 开头，商汤 SenseNova），模型 `sensenova-6.8-flash-lite`。
+  2. 写入 `server/.env`（600 权限、gitignore 排除，不入仓）。
+  3. `/api/health` 三态：`llm_configured:true`、`llm_mixed_source:false`、`llm_provider_mismatch:false`。
+  4. 真实 `POST /api/llm/chat`（非流式 + 流式各一次）：`content` 非空，耗时 3.8–36.6s。
+  5. `POST /api/history` 保存：首次 `duplicate:false`，重复 `duplicate:true` 同 id。
+  6. 重启 server → `GET /api/history` 找回同一 id 记录（SQLite 持久化）。
+  7. **关键发现**：`sensenova-6.8-flash-lite` 是**深度推理模型**——
+     - 上游返回体多 `message.reasoning` 与 `usage.completion_tokens_details.reasoning_tokens`。
+     - `max_tokens<4096` 时 reasoning 几乎 100% 把 `content` 截断到空（1500/2048/3000 全空，4096 才有合理命中率）。
+     - 通用参数（`thinking:false` / `enable_thinking:false` / `reasoning:false`）**均无法关掉推理**。
+     - 单次调用非确定性：同一 `max_tokens=4096`、同一提示词 5 次中 1–2 次拿到 content。
+  8. **代码与产品保护**（已提交）：
+     - `_effective_max_tokens`：`LLM_MODEL` 以 `sensenova-` 开头时强制 `max_tokens>=4096`。
+     - 非流式 200+空内容 → 最多重试 2 次（共 3 次）后 502 + `E_UPSTREAM_EMPTY`；5xx / 超时不重试。
+     - 流式整体缓冲 + 透传成功尝试 + 剥掉上游尾随 `[DONE]`、由本函数统一追加一次；空流耗尽 → 发 `E_UPSTREAM_EMPTY` + `[DONE]`，客户端不会在空尝试的 `[DONE]` 上提前 finish。
+     - 视觉契约保留：前端 `rewrite-tab.js` 已有的「返回内容为空」降级（L726）继续生效；本次新增的 `E_UPSTREAM_EMPTY` 走 `j.error` 通道更精准。
+  9. **测试**：`tests/test_llm_proxy.py` 新增 7 个用例，全量 **253 passed**（246 旧 + 7 新）。
+  10. **生产建议（给汪判断）**：若在意单次成功率与延迟，**优先 `deepseek-v4-flash`（默认 500 次/5h，非推理模型，命中率高、低延迟）**；保留 `sensenova-6.8-flash-lite` 适合需要更高质量、且接受 ~36s 延迟与偶发空流重试的场景（1500 次/5h，量大价低）。
 2. **页面内真实改写未验证**——目前页面级验证只到「未配置降级」「厂商不匹配拦截」与「生成成功状态翻牌」路径，真实改写需 Key 后补做。
 3. **两套历史未打通**（§11.5）：浏览器 localStorage `dycs_history` 与后端 SQLite `/api/history` 并存，前端历史 tab 不调用后端；是否统一属产品决策。
 4. **NVIDIA 旧 Key 撤销状态：未确认。** 换用商汤**不消除**旧 Key 的历史风险；
    需账户本人在 NVIDIA 控制台自行登录确认与撤销。未识别到具体旧 Key 前，不得批量撤销其它密钥。
+5. **`/api/llm/vision` 暂未同步 D 保护**（本次只改了 chat 路由）。若后续也用 sensenova-* 推理模型，vision 同样需 `_effective_max_tokens` 兜底 + 空内容重试。
 
-> 本机交付全部改动均**未 push**（执行约束）；当前 `main` 领先 `origin/main`，工作区已提交至 `c8b1d2b`。
+> 本机交付全部改动均**未 push**（执行约束）；当前 `main` 领先 `origin/main`，工作区已提交至 `f3d49e3`。
 
 ### 11.8 用户如何启动
 

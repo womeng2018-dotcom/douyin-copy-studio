@@ -394,3 +394,164 @@ def test_rate_limit_is_per_tenant(app_factory, monkeypatch):
                               headers={"X-API-Key": "key-b"}).status_code
 
     assert (first, second_a, first_b) == (200, 429, 200)
+
+
+# ------------------------------------------------------------------
+# sensenova 推理模型 max_tokens 兜底
+# 实测 sensenova-* 在 max_tokens<4096 时 reasoning 会把 content 完全截断到空，
+# 因此服务端必须把客户端请求的 max_tokens 强制抬到 4096，否则业务永远拿不到成品。
+# ------------------------------------------------------------------
+def test_sensenova_bumps_max_tokens_to_4096(app_factory, monkeypatch):
+    module = app_factory({"LLM_MODEL": "sensenova-test"})
+    captured = {}
+
+    async def handler(request):
+        captured["payload"] = json.loads(request.content)
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+
+    monkeypatch.setattr(module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(module.app, client=LOOPBACK) as client:
+        response = client.post("/api/llm/chat", json={
+            "user": "hi", "stream": False, "max_tokens": 2048,
+        })
+
+    assert response.status_code == 200
+    assert captured["payload"]["max_tokens"] == 4096
+
+
+def test_non_sensenova_keeps_client_max_tokens(app_module, monkeypatch):
+    """非 sensenova 模型：客户端 max_tokens 在 [1, 4096] 内应原样透传。"""
+    captured = {}
+
+    async def handler(request):
+        captured["payload"] = json.loads(request.content)
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+
+    monkeypatch.setattr(app_module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(app_module.app, client=LOOPBACK) as client:
+        # app_module 默认 model="test-model"，不以 sensenova- 开头
+        client.post("/api/llm/chat", json={"user": "hi", "stream": False, "max_tokens": 1000})
+
+    assert captured["payload"]["max_tokens"] == 1000
+
+
+# ------------------------------------------------------------------
+# 200 + 空内容：推理模型偶发把预算全用在 reasoning
+# 与「超时不重试 / 5xx 不重试」区别对待 —— 这是模型行为偶发，生成幂等可重试。
+# ------------------------------------------------------------------
+def test_non_stream_empty_content_retries_then_succeeds(app_module, monkeypatch):
+    """前两次 200 + 空内容，第三次有内容 → 整体 200 + content。"""
+    call_count = {"n": 0}
+    bodies = [
+        {"choices": [{"message": {"content": ""}}]},
+        {"choices": [{"message": {"content": None}}]},
+        {"choices": [{"message": {"content": "重试后才拿到内容"}}]},
+    ]
+
+    async def handler(request):
+        i = call_count["n"]
+        call_count["n"] += 1
+        return httpx.Response(200, json=bodies[i])
+
+    monkeypatch.setattr(app_module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(app_module.app, client=LOOPBACK) as client:
+        response = client.post("/api/llm/chat", json={"user": "hi", "stream": False})
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "content": "重试后才拿到内容"}
+    # 1 + LLM_EMPTY_RETRIES 次重试
+    assert call_count["n"] == app_module.LLM_EMPTY_RETRIES + 1
+
+
+def test_non_stream_empty_content_exhausted_returns_E_UPSTREAM_EMPTY(app_module, monkeypatch):
+    """连续 LLM_EMPTY_RETRIES+1 次 200+空内容 → 502 E_UPSTREAM_EMPTY。"""
+    call_count = {"n": 0}
+
+    async def handler(request):
+        call_count["n"] += 1
+        return httpx.Response(200, json={"choices": [{"message": {"content": ""}}]})
+
+    monkeypatch.setattr(app_module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(app_module.app, client=LOOPBACK) as client:
+        response = client.post("/api/llm/chat", json={"user": "hi", "stream": False})
+
+    assert response.status_code == 502
+    body = response.json()
+    assert body["error_code"] == "E_UPSTREAM_EMPTY"
+    assert "重试" in body["error"]
+    assert call_count["n"] == app_module.LLM_EMPTY_RETRIES + 1
+
+
+def test_non_stream_non_200_does_not_retry(app_module, monkeypatch):
+    """非 200（上游真故障）不重试，避免把坏上游打爆。"""
+    call_count = {"n": 0}
+
+    async def handler(request):
+        call_count["n"] += 1
+        return httpx.Response(500, text="upstream boom")
+
+    monkeypatch.setattr(app_module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(app_module.app, client=LOOPBACK) as client:
+        response = client.post("/api/llm/chat", json={"user": "hi", "stream": False})
+
+    assert response.status_code == 502
+    assert response.json()["error_code"] == app_module.UPSTREAM_ERROR_CODE
+    assert call_count["n"] == 1
+
+
+# ------------------------------------------------------------------
+# 流式：整体缓冲 + 透传成功尝试 + E_UPSTREAM_EMPTY 事件
+# ------------------------------------------------------------------
+def test_stream_empty_content_retries_then_succeeds(app_module, monkeypatch):
+    """前两次流只吐 reasoning（无 content），第三次吐 content → 客户端拿到 content。"""
+    call_count = {"n": 0}
+
+    async def empty_body():
+        yield b'data: {"choices":[{"delta":{"reasoning":"thinking..."}}]}\n\n'
+        yield b'data: [DONE]\n\n'
+
+    async def content_body():
+        yield b'data: {"choices":[{"delta":{"content":"\xe4\xbd\xa0\xe5\xa5\xbd"}}]}\n\n'
+        yield b'data: [DONE]\n\n'
+
+    async def handler(request):
+        i = call_count["n"]
+        call_count["n"] += 1
+        body = empty_body() if i < 2 else content_body()
+        return httpx.Response(200, content=body, headers={"content-type": "text/event-stream"})
+
+    monkeypatch.setattr(app_module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(app_module.app, client=LOOPBACK) as client:
+        response = client.post("/api/llm/chat", json={"user": "hi", "stream": True})
+
+    assert response.status_code == 200
+    assert '"content":"你好"' in response.text
+    # 上游两次空尝试的 [DONE] 没被转发（successful_chunks=None），
+    # 第三次 content 尝试的 [DONE] 被剥掉，由本函数统一追加一次。
+    assert response.text.count("data: [DONE]") == 1
+    assert response.text.rstrip().endswith("data: [DONE]")
+    assert call_count["n"] == 3
+
+
+def test_stream_empty_content_exhausted_emits_E_UPSTREAM_EMPTY(app_module, monkeypatch):
+    """连续 LLM_EMPTY_RETRIES+1 次空流 → 最终发 E_UPSTREAM_EMPTY + [DONE]。"""
+    call_count = {"n": 0}
+
+    async def empty_body():
+        yield b'data: {"choices":[{"delta":{"reasoning":"..."}}]}\n\n'
+        yield b'data: [DONE]\n\n'
+
+    async def handler(request):
+        call_count["n"] += 1
+        return httpx.Response(200, content=empty_body(), headers={"content-type": "text/event-stream"})
+
+    monkeypatch.setattr(app_module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(app_module.app, client=LOOPBACK) as client:
+        response = client.post("/api/llm/chat", json={"user": "hi", "stream": True})
+
+    assert response.status_code == 200
+    assert "E_UPSTREAM_EMPTY" in response.text
+    assert response.text.rstrip().endswith("data: [DONE]")
+    # 空尝试的 [DONE] 不被转发，只追加本函数那一次
+    assert response.text.count("data: [DONE]") == 1
+    assert call_count["n"] == app_module.LLM_EMPTY_RETRIES + 1
