@@ -756,8 +756,13 @@ async def llm_chat(request: Request):
     if not _authorized(request):
         return JSONResponse({"ok": False, "error": "未授权：缺少合法的 X-API-Key"}, status_code=401)
     if not LLM_API_KEY or not _safe_backend_url():
+        # 明确区分「未配置」与「上游故障」，前端据此显示「在线 AI 未配置」
         return JSONResponse(
-            {"ok": False, "error": "服务端 LLM 配置不可用"},
+            {
+                "ok": False,
+                "error": "在线 AI 未配置：服务端未设置 LLM_API_KEY / SENSENOVA_API_KEY",
+                "error_code": "E_LLM_NOT_CONFIGURED",
+            },
             status_code=503,
         )
 
@@ -833,8 +838,13 @@ async def llm_vision(request: Request):
     if not _authorized(request):
         return JSONResponse({"ok": False, "error": "未授权：缺少合法的 X-API-Key"}, status_code=401)
     if not LLM_API_KEY or not _safe_backend_url():
+        # 明确区分「未配置」与「上游故障」，前端据此显示「在线 AI 未配置」
         return JSONResponse(
-            {"ok": False, "error": "服务端 LLM 配置不可用"},
+            {
+                "ok": False,
+                "error": "在线 AI 未配置：服务端未设置 LLM_API_KEY / SENSENOVA_API_KEY",
+                "error_code": "E_LLM_NOT_CONFIGURED",
+            },
             status_code=503,
         )
 

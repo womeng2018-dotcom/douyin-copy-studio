@@ -386,7 +386,17 @@
     }).then(function (resp) {
       /* 后端不可用时不再直连第三方，确保 LLM Key 永不进入浏览器 */
       if (resp.status === 404 || resp.status === 405 || resp.status === 503) {
-        finish({ needKey: true, backend: true }, full); return;
+        /* 读取错误码以区分「在线 AI 未配置」与「后端/上游不可用」，给出准确提示 */
+        return resp.json().then(function (d) {
+          finish({
+            needKey: true,
+            backend: true,
+            notConfigured: (d && d.error_code === 'E_LLM_NOT_CONFIGURED'),
+            message: (d && d.error) || ''
+          }, full);
+        }).catch(function () {
+          finish({ needKey: true, backend: true }, full);
+        });
       }
       if (resp.status === 401) { finish('后端鉴权失败（401）：请检查服务端 API_KEYS 与本页「后端访问密钥」是否一致', full); return; }
       if (resp.status === 429) { finish('后端限流（429）：使用过于频繁，请稍后再试', full); return; }
@@ -655,11 +665,21 @@
       currentAbort = null;
       refreshUsageLine();
       if (err && typeof err === 'object' && err.needKey) {
-        var kc = metaChips.concat([{ t: '未配置 LLM', cls: 'mid' }]);
-        var kn = err.backend
-          ? '后端 LLM 服务当前不可用。<b>' + modeLabel + '</b> 需要后端配置的模型生成改写结果，请检查后端地址和服务状态。'
-          : '后端未配置模型服务。<b>' + modeLabel + '</b> 需要后端模型生成改写结果。'
-          + '已为你生成完整提示词，复制后可在其他 AI 工具中使用。'
+        var kn;
+        if (err.notConfigured) {
+          var kcNC = metaChips.concat([{ t: '在线 AI 未配置', cls: 'mid' }]);
+          kn = '在线 AI 未配置：服务端没有设置模型密钥（LLM_API_KEY / SENSENOVA_API_KEY）。'
+            + '<b>' + modeLabel + '</b> 的在线改写暂不可用；'
+            + '离线文案、合规检查与本地功能不受影响，<b>你输入的原文已保留</b>。'
+            + '下方已生成完整提示词，可复制到其他 AI 工具使用。'
+            + (chain ? '<br>串联模式需先完成主改写，暂未执行。' : '');
+          renderPromptOnly(prompt.system + '\n\n------\n\n' + prompt.user, kcNC, kn);
+          return;
+        }
+        var kc = metaChips.concat([{ t: '后端不可用', cls: 'mid' }]);
+        kn = '后端 LLM 服务当前不可用，请确认本机服务已启动（start.command）。'
+          + '<b>' + modeLabel + '</b> 需要后端配置的模型生成改写结果。'
+          + '下方已生成完整提示词，可复制到其他 AI 工具使用。'
           + (chain ? '<br>串联模式需先完成主改写，暂未执行。' : '');
         renderPromptOnly(prompt.system + '\n\n------\n\n' + prompt.user, kc, kn);
         return;
