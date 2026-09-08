@@ -52,22 +52,61 @@ SCRIPT_DIR = Path(__file__).parent
 WWW_ROOT = SCRIPT_DIR.parent
 
 
-def _load_dotenv(path):
-    """轻量 .env 加载（不引入 python-dotenv 依赖）；已存在的环境变量优先，不覆盖"""
-    if not path.exists():
-        return
+# 配置加载开关：默认「环境变量优先」，设 COPY_STUDIO_DOTENV_OVERRIDE=1 反转为「.env 优先」
+_DOTENV_OVERRIDE = os.environ.get("COPY_STUDIO_DOTENV_OVERRIDE", "").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+_DOTENV_KEYS = set()      # .env 中出现的键名（仅键名，绝不存值）
+_DOTENV_CONFLICTS = []    # 与环境变量同名但值不同的键名（仅键名）
+
+
+def _parse_dotenv(path):
+    """纯 Python 解析 .env。绝不使用 shell source/eval 执行文件内容。"""
+    values = {}
     try:
-        for line in path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
             k, _, v = line.partition("=")
             k = k.strip()
             v = v.strip().strip('"').strip("'")
-            if k and k not in os.environ:
-                os.environ[k] = v
+            if k:
+                values[k] = v
+    except OSError:
+        return {}
+    return values
+
+
+def _load_dotenv(path):
+    """加载 server/.env，必须在任何配置读取之前调用。
+
+    优先级（显式、可预期，不静默）：
+      - 默认「已存在的环境变量优先」——保证 CI/测试注入的值不会被本机 .env 覆盖，
+        否则配好 Key 后跑 pytest 会让测试打到真实上游并产生费用。
+      - 设 COPY_STUDIO_DOTENV_OVERRIDE=1 时反转为「.env 优先」。
+      - 两种模式下，同名不同值都记录到 _DOTENV_CONFLICTS（只记键名、不记值），
+        启动时醒目提示，避免旧值静默压过新配置。
+    权限：密钥文件收紧为仅当前用户可读写（600）。
+    """
+    if not path.exists():
+        return
+    try:
+        if path.stat().st_mode & 0o077:
+            path.chmod(0o600)
     except OSError:
         pass
+    for k, v in _parse_dotenv(path).items():
+        _DOTENV_KEYS.add(k)
+        if k in os.environ:
+            if os.environ[k] != v:
+                _DOTENV_CONFLICTS.append(k)
+            if not _DOTENV_OVERRIDE:
+                continue
+        os.environ[k] = v
 
 
 _load_dotenv(SCRIPT_DIR / ".env")
@@ -1185,6 +1224,35 @@ if __name__ == "__main__":
         raise SystemExit(2)
 
     print(f"[copy-studio] 统一后端启动: http://{host}:{port}", flush=True)
+
+    # 配置来源提示：只报键名与来源，绝不打印值
+    if _DOTENV_CONFLICTS:
+        mode = ".env 优先" if _DOTENV_OVERRIDE else "环境变量优先"
+        print(
+            "[copy-studio] ⚠️ 配置冲突（当前" + mode + "，以下键的 server/.env 值未生效）："
+            + ", ".join(sorted(set(_DOTENV_CONFLICTS))),
+            flush=True,
+        )
+        print(
+            "[copy-studio]    让 .env 生效的方式：unset 同名环境变量，或启动时设 COPY_STUDIO_DOTENV_OVERRIDE=1",
+            flush=True,
+        )
+    _llm_group = ("LLM_API_KEY", "LLM_API_BASE", "LLM_MODEL")
+    _from_file = [k for k in _llm_group if k in _DOTENV_KEYS]
+    if _from_file and len(_from_file) < len(_llm_group):
+        print(
+            "[copy-studio] ⚠️ LLM 凭证组来源混杂：" + ", ".join(_from_file) + " 来自 server/.env，"
+            + ", ".join(k for k in _llm_group if k not in _DOTENV_KEYS) + " 来自环境变量或默认值。"
+            + " 密钥、Base、模型必须作为一组配置，否则可能把凭证发错服务。",
+            flush=True,
+        )
+    if not LLM_API_KEY:
+        print(
+            "[copy-studio] 在线 AI 未配置：未设置 LLM_API_KEY/SENSENOVA_API_KEY，"
+            "在线生成与改写不可用；离线文案、合规检查与本地功能不受影响",
+            flush=True,
+        )
+
     print(f"[copy-studio] LLM: {LLM_API_BASE} / {LLM_MODEL} ({'已配置 Key' if LLM_API_KEY else '未配置 Key'})", flush=True)
     auth_state = "已启用租户鉴权" if API_KEYS else ("要求鉴权但未配置密钥" if REQUIRE_AUTH else "本机开放模式")
     print(f"[copy-studio] 鉴权: {auth_state}", flush=True)
