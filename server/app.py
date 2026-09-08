@@ -674,6 +674,23 @@ SSE_HEARTBEAT_FRAME = b": ping\n\n"
 _STREAM_EOF = object()
 
 
+def _apply_model_defaults(payload: dict) -> dict:
+    """按 LLM_MODEL 追加模型专属默认参数（chat / vision 共用，单一实现，勿复制第二份）。
+
+    - nvidia/nemotron：默认可能把推理过程写进 content，业务生成关闭 thinking；
+    - sensenova-*：推理模型，商汤 OpenAI 兼容网关的官方参数表接受 reasoning_effort
+      （2026-09-08 直连实测：sensenova-6.8-flash-lite 上 reasoning_effort=low/high
+      均 200 不拒收；而 thinking / enable_thinking / reasoning 一律被网关拒收）。
+      注入 "low" 从源头压低 reasoning 预算占用，让 content 更易在 max_tokens 内产出，
+      与「4096 兜底 + 空内容有界重试」构成源头 + 兜底的双层保护（前者更优，后者兜底）。
+    """
+    if LLM_MODEL.startswith("nvidia/nemotron"):
+        payload["chat_template_kwargs"] = {"thinking": False}
+    elif LLM_MODEL.startswith("sensenova-"):
+        payload["reasoning_effort"] = "low"
+    return payload
+
+
 def _host_resolves_to_public_ip(host: str, port: int) -> bool:
     """解析并断言该主机所有地址都是公网地址。"""
     try:
@@ -890,10 +907,9 @@ def _build_chat_payload(body: dict) -> dict:
         "max_tokens": _effective_max_tokens(int(body.get("max_tokens", 2048))),
         "stream": bool(body.get("stream", True)),
     }
-    # Nemotron 默认可能把推理过程写进 content；业务生成关闭 thinking，直接返回成品。
-    if LLM_MODEL.startswith("nvidia/nemotron"):
-        payload["chat_template_kwargs"] = {"thinking": False}
-    return payload
+    # Nemotron / sensenova 等模型专属默认参数：单一实现（_apply_model_defaults），
+    # chat 与 vision 共用，禁止两处复制粘贴。
+    return _apply_model_defaults(payload)
 
 
 @app.post("/api/llm/chat")
@@ -1110,8 +1126,9 @@ async def llm_vision(request: Request):
         }
     except (ValueError, TypeError) as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
-    if LLM_MODEL.startswith("nvidia/nemotron"):
-        payload["chat_template_kwargs"] = {"thinking": False}
+    # Nemotron / sensenova 等模型专属默认参数：单一实现（_apply_model_defaults），
+    # chat 与 vision 共用。
+    _apply_model_defaults(payload)
     upstream = LLM_API_BASE + "/chat/completions"
     headers = {"Authorization": "Bearer " + LLM_API_KEY, "Content-Type": "application/json"}
 

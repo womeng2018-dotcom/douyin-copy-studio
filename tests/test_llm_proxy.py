@@ -135,6 +135,63 @@ def test_non_nemotron_has_no_thinking_kwarg(app_module, monkeypatch):
 
 
 # ------------------------------------------------------------------
+# sensenova 路径注入 reasoning_effort="low"
+# 依据（2026-09-08 官方文档检索 + 直连实测，见 docs/HANDOFF §11.9）：
+#   商汤 OpenAI 兼容网关官方参数表接受 reasoning_effort，直连实测
+#   sensenova-6.8-flash-lite 上 reasoning_effort=low/high 均 200 不拒收；
+#   thinking / enable_thinking / reasoning 一律被网关拒收。
+# 注入 low 从源头压低 reasoning 预算占用（比重试更优），4096 兜底与
+# 空内容重试仍保留作兜底。
+# ------------------------------------------------------------------
+def test_sensenova_chat_gets_reasoning_effort_low(app_factory, monkeypatch):
+    module = app_factory({"LLM_MODEL": "sensenova-test"})
+    captured = {}
+
+    async def handler(request):
+        captured["payload"] = json.loads(request.content)
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+
+    monkeypatch.setattr(module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(module.app, client=LOOPBACK) as client:
+        client.post("/api/llm/chat", json={"user": "hi", "stream": False})
+
+    assert captured["payload"].get("reasoning_effort") == "low"
+
+
+def test_sensenova_vision_gets_reasoning_effort_low(app_factory, monkeypatch):
+    module = app_factory({"LLM_MODEL": "sensenova-test"})
+    captured = {}
+
+    async def handler(request):
+        captured["payload"] = json.loads(request.content)
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+
+    monkeypatch.setattr(module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(module.app, client=LOOPBACK) as client:
+        client.post("/api/llm/vision", json={"user": "看图"})
+
+    assert captured["payload"].get("reasoning_effort") == "low"
+
+
+def test_non_sensenova_has_no_reasoning_effort(app_module, monkeypatch):
+    """非 sensenova（默认 deepseek-v4-flash / test-model）不得注入 reasoning_effort：
+    该参数不在其官方参数表，硬发会被商汤网关拒收。"""
+    captured = []
+
+    async def handler(request):
+        captured.append(json.loads(request.content))
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+
+    monkeypatch.setattr(app_module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(app_module.app, client=LOOPBACK) as client:
+        client.post("/api/llm/chat", json={"user": "hi", "stream": False})
+        client.post("/api/llm/vision", json={"user": "看图"})
+
+    assert len(captured) == 2
+    assert all("reasoning_effort" not in p for p in captured)
+
+
+# ------------------------------------------------------------------
 # 错误脱敏：上游原始正文绝不回传浏览器
 # ------------------------------------------------------------------
 def test_upstream_error_body_is_not_returned(app_module, monkeypatch):
