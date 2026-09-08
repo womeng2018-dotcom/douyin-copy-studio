@@ -124,6 +124,11 @@ copy-studio/
 │   ├── video-extract.py    # 视频提取引擎（字幕提取 + FunASR/faster-whisper + 七层后处理）
 │   ├── Dockerfile          # 云端 Docker 镜像
 │   └── requirements.txt
+├── scripts/
+│   ├── git-safe.sh         # stale .git/index.lock 自动清理（本地启动用）
+│   └── deploy-server.sh    # 服务器部署脚本（CD 自动 / 手动通用）
+├── .github/
+│   └── workflows/          # ci.yml（CI）+ deploy.yml（CD：push main 即自动上线）
 ├── userscript/
 │   └── douyin-laike-collector.user.js  # 油猴脚本：抖音来客/本地推后台自动采集数据 → 注入数据分析页
 ├── docs/
@@ -164,6 +169,53 @@ node test-engine.js
 4. 保存后约 1 分钟生成站点地址
 
 后续修改推送到 `main` 会自动重新发布。
+
+---
+
+## 服务器部署与 CD 自动上线（GitHub Actions）
+
+push 到 `main` 且 CI（pytest + node）全绿后，GitHub Actions 自动 SSH 进服务器部署；**五项冒烟任一不过自动回滚、绝不上架带病版本**，之后每次 push 即自动上线，无需手工跑部署。
+
+部署链路：`push main → CI 绿 → .github/workflows/deploy.yml（workflow_run 触发）→ git archive 打包当前 commit → SSH 解包到服务器 /opt/copy-studio（保留已有 server/.env 与 Docker 数据卷）→ 执行 scripts/deploy-server.sh（构建 → .env → compose up → 五项冒烟）`。也支持手动触发：Actions 页 → **CD — Deploy to Server** → Run workflow。
+
+### 首次配置：你只需两步
+
+**第 1 步：生成部署专用 SSH 密钥对，公钥加进服务器 `authorized_keys`**
+
+```bash
+# 在本机生成（专用密钥对，别复用个人密钥）
+ssh-keygen -t ed25519 -f ~/.ssh/copy-studio-cd -N "" -C "github-actions-cd"
+
+# 公钥加到服务器（二选一）
+ssh-copy-id -i ~/.ssh/copy-studio-cd.pub <服务器用户>@<服务器地址>
+# 或手动：把 ~/.ssh/copy-studio-cd.pub 内容追加到服务器 ~/.ssh/authorized_keys，
+# 并确保 chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys
+
+# 私钥全文（~/.ssh/copy-studio-cd）随后填进 GitHub Secret SERVER_SSH_KEY；
+# 私钥不要发给任何人、不要放进任何仓库
+```
+
+**第 2 步：在 GitHub 仓库 `Settings → Secrets and variables → Actions → New repository secret` 添加 6 个 Secret**
+
+| Secret 名 | 值 |
+|---|---|
+| `SERVER_HOST` | 服务器 IP 或域名 |
+| `SERVER_PORT` | SSH 端口（默认 `22`） |
+| `SERVER_USER` | SSH 用户（须能写 `/opt/copy-studio`） |
+| `SERVER_SSH_KEY` | 第 1 步私钥的**完整全文**（含 `-----BEGIN ...` 与换行） |
+| `COPY_STUDIO_ACCESS_KEY` | 应用鉴权密钥（compose 必填，缺它 fail-closed；可用 `openssl rand -hex 32` 生成自选强随机串） |
+| `LLM_API_KEY` | 商汤 SenseNova 密钥（仅首次生成服务器 `server/.env` 时使用） |
+
+配置完成后，每次 push 到 `main`（且 CI 绿）即自动上线；也可在 Actions 页手动触发同一 workflow。
+
+### 部署约定与安全红线（已写死在 workflow / 脚本里）
+
+- 服务器代码目录固定 `/opt/copy-studio`；部署只动该目录，不碰系统其它位置。
+- `server/.env` 与 Docker 数据卷（`copy-studio-data`，SQLite 历史/采集）**跨部署保留**，解包绝不覆盖；首次无 `.env` 时用 Secret `LLM_API_KEY` 自动生成（`LLM_MODEL=deepseek-v4-flash`，`chmod 600`）。
+- 所有真实凭据只进 GitHub Secrets：workflow 文件、代码、commit、日志一律不含明文；Secret 由 GitHub 自动掩码，失败日志尾部再做 `sk-`/`nvapi-` 二次脱敏。
+- SSH 用**部署专用密钥对** + `StrictHostKeyChecking=accept-new`；不复用个人密钥。
+- 五项冒烟（health 200 / 错误密钥 401 / 敏感路径 404 / 目录穿越 404 / 数据卷可写）任一不过 → 自动 `docker compose down`（不带 `-v`，保留数据卷）回滚 → job 标红，只报现场。
+- 旧 NVIDIA Key 撤销是**独立人工动作**，与 CD 无关，别忘了在 NVIDIA 控制台处理。
 
 ---
 

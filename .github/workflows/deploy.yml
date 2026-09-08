@@ -1,0 +1,170 @@
+# =====================================================================
+# CD — Deploy to Server（GitHub Actions 自动上线）
+#
+# 触发：
+#   1. workflow_run：监听 CI 工作流（name: CI）在 main 分支上成功后才触发
+#      —— 部署以 CI（pytest 264 + node）全绿为前提；不改动 ci.yml。
+#   2. workflow_dispatch：手动触发入口（Actions → CD — Deploy to Server）。
+#
+# 链路（runner 上执行）：
+#   checkout 当前 commit → git archive 打包（不带 .git/.env）→ SSH 连通性探测
+#   → 解包到服务器 /opt/copy-studio（保留已有 server/.env 与 Docker 数据卷，
+#     绝不覆盖）→ 执行 scripts/deploy-server.sh（构建 → .env → compose up →
+#     五项冒烟 → 任一不过自动 docker compose down 回滚）。
+#
+# 安全红线（全部写死）：
+#   - 所有真实凭据只进 GitHub Secrets；本文件/代码/commit 不含任何明文。
+#     Secret 由 GitHub 自动掩码；失败日志尾部再做一次 sk-/nvapi- 二次脱敏。
+#   - SSH 使用部署专用密钥对（公钥只加进服务器 authorized_keys）；
+#     StrictHostKeyChecking=accept-new，不复用个人密钥。
+#   - 部署只动 /opt/copy-studio，不碰系统其它目录。
+#   - 冒烟任一不过 → 脚本内自动 compose down（不带 -v）→ job 标红，只报现场，绝不上架带病版本。
+#
+# 用户一次性配置（详见根 README「服务器部署与 CD 自动上线」）：
+#   SERVER_HOST / SERVER_PORT / SERVER_USER / SERVER_SSH_KEY /
+#   COPY_STUDIO_ACCESS_KEY / LLM_API_KEY
+# =====================================================================
+
+name: CD — Deploy to Server
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: cd-deploy-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: SSH 部署到服务器
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+
+    steps:
+      - name: Checkout（锁定 CI 验证过的那次 commit）
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: 前置校验：6 个 Secret 必须齐全（只报缺失的「名字」，绝不报值）
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_PORT: ${{ secrets.SERVER_PORT }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          COPY_STUDIO_ACCESS_KEY: ${{ secrets.COPY_STUDIO_ACCESS_KEY }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: |
+          missing=""
+          for pair in \
+            "SERVER_HOST:${SERVER_HOST}" \
+            "SERVER_PORT:${SERVER_PORT}" \
+            "SERVER_USER:${SERVER_USER}" \
+            "SERVER_SSH_KEY:${SERVER_SSH_KEY}" \
+            "COPY_STUDIO_ACCESS_KEY:${COPY_STUDIO_ACCESS_KEY}" \
+            "LLM_API_KEY:${LLM_API_KEY}" \
+          ; do
+            name="${pair%%:*}"; value="${pair#*:}"
+            [ -n "$value" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::以下 GitHub Secrets 未配置或为空：$missing"
+            echo "请在仓库 Settings → Secrets and variables → Actions → New repository secret 添加后重试（见根 README「服务器部署与 CD 自动上线」）。"
+            exit 1
+          fi
+
+      - name: 写入部署专用 SSH 私钥（0600，仅本 job 内使用）
+        env:
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        run: |
+          umask 077
+          printf '%s\n' "$SERVER_SSH_KEY" > /tmp/dcs-cd-key
+          chmod 600 /tmp/dcs-cd-key
+
+      - name: 打包当前 commit（git archive，不带 .git/.env）
+        run: |
+          REF="${{ github.event.workflow_run.head_sha || github.sha }}"
+          git archive --format=tar.gz -o /tmp/dcs-release.tar.gz "$REF"
+          ls -lh /tmp/dcs-release.tar.gz
+          tar -tzf /tmp/dcs-release.tar.gz | grep -q "scripts/deploy-server.sh" \
+            || { echo "::error::归档内缺少 scripts/deploy-server.sh"; exit 1; }
+
+      - name: SSH 连通性探测（连不上立即失败并给出明确原因）
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_PORT: ${{ secrets.SERVER_PORT }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -o pipefail
+          out=$(ssh -i /tmp/dcs-cd-key -p "$SERVER_PORT" \
+            -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new \
+            -o ConnectTimeout=20 -o BatchMode=yes \
+            "$SERVER_USER@$SERVER_HOST" \
+            'mkdir -p /opt/copy-studio && printf "SSH_OK %s\n" "$(hostname)"' 2>&1)
+          echo "$out" | sed 's/^/  /'
+          case "$out" in
+            *SSH_OK*) ;;
+            *)
+              echo "::error::SSH 连通性探测失败（$SERVER_USER@$SERVER_HOST:$SERVER_PORT）。请核对："
+              echo "  · SERVER_HOST / SERVER_PORT / SERVER_USER 是否正确"
+              echo "  · 公钥是否已加入服务器 ~/.ssh/authorized_keys（chmod 700 ~/.ssh；600 authorized_keys）"
+              echo "  · SERVER_SSH_KEY 是否为该密钥对的完整私钥（含 BEGIN/END 行与换行）"
+              exit 1
+              ;;
+          esac
+
+      - name: 解包代码到 /opt/copy-studio（保留 server/.env 与 Docker 数据卷）
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_PORT: ${{ secrets.SERVER_PORT }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          cat /tmp/dcs-release.tar.gz | ssh -i /tmp/dcs-cd-key -p "$SERVER_PORT" \
+            -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new \
+            -o ConnectTimeout=20 -o BatchMode=yes \
+            "$SERVER_USER@$SERVER_HOST" 'tar -xzf - -C /opt/copy-studio'
+          ssh -i /tmp/dcs-cd-key -p "$SERVER_PORT" \
+            -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new \
+            -o ConnectTimeout=20 -o BatchMode=yes \
+            "$SERVER_USER@$SERVER_HOST" \
+            'test -f /opt/copy-studio/scripts/deploy-server.sh && echo "✅ 解包完成：scripts/deploy-server.sh 已就位"'
+
+      - name: 执行 deploy-server.sh（构建 → .env → 启动 → 五项冒烟 → 失败自动回滚）
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_PORT: ${{ secrets.SERVER_PORT }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          COPY_STUDIO_ACCESS_KEY: ${{ secrets.COPY_STUDIO_ACCESS_KEY }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: |
+          set -o pipefail
+          # Secret 只经 stdin 以 key=value 行注入远端，不进 argv / 日志 / ps
+          {
+            printf 'COPY_STUDIO_ACCESS_KEY=%s\n' "$COPY_STUDIO_ACCESS_KEY"
+            printf 'LLM_API_KEY=%s\n' "$LLM_API_KEY"
+          } | ssh -i /tmp/dcs-cd-key -p "$SERVER_PORT" \
+            -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new \
+            -o ConnectTimeout=20 -o BatchMode=yes \
+            "$SERVER_USER@$SERVER_HOST" \
+            'cd /opt/copy-studio && bash scripts/deploy-server.sh' 2>&1 | tee /tmp/dcs-deploy.log
+          status=${PIPESTATUS[1]}
+          if [ "$status" -ne 0 ]; then
+            echo "::error::deploy-server.sh 退出码 $status —— 已按纪律自动 compose down 回滚，未上架带病版本。"
+            echo "以下为部署日志摘要（Secret 值已被 GitHub 掩码 + 本地二次脱敏）："
+            tail -n 60 /tmp/dcs-deploy.log \
+              | sed -E 's/(sk-[A-Za-z0-9_\-]{6,}|nvapi-[A-Za-z0-9_\-]{6,}|Bearer[[:space:]]+[A-Za-z0-9._\-]+)/[REDACTED]/g' \
+              | sed 's/^/  | /'
+            exit "$status"
+          fi
