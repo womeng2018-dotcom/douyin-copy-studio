@@ -232,16 +232,17 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8765/secret/path      
 `ALLOW_REMOTE_URL=false`；启动脚本只检测依赖、缺失即提示退出，**不自动安装/升级依赖**。
 `git_safe_check` 为既有 P3.10 交付，仅清理 0 字节且 mtime>5min 的 stale lock，本次未改动其行为。
 
-### 11.2 本次提交（4 个，均在 `main`，**未 push**）
+### 11.2 本次提交（5 个，均在 `main`，**未 push**）
 
 | 提交 | 内容 |
 |---|---|
+| `ae4827f` | **A4–A8 收口**：补齐 `/api/llm/chat` 厂商不匹配拦截（此前缺失，会拿 A 厂密钥真实打 B 厂端点致 CHAT_FAIL/401）；新增 `E_LLM_PROVIDER_MISMATCH` 与 `_llm_provider_mismatch_response`；`/api/health` 暴露 `llm_mixed_source`/`llm_provider_mismatch`；`start-local.sh` A4 健康探测补 `--noproxy`；前端 A8 状态分层（未配置/厂商不一致已拦截/来源混杂/已填写配置尚未实测/本次生成成功已实测连通，杜绝笼统「已连接」）；新增 3 个回归测试 |
 | `6c64d13` | `.env` 加载：明确优先级 + 冲突告警 + 权限收紧 600 + LLM 凭证组来源核验；新增 10 个离线契约测试 |
 | `f9e0fd1` | 未配置密钥时明确提示「在线 AI 未配置」（后端 `E_LLM_NOT_CONFIGURED` + 前端区分文案并保留输入）；重建 standalone |
 | `6ed2ac6` | `start-local.sh` 依据 `server/.env` 准确显示在线 AI 配置状态（纯解析读取，不执行文件内容） |
 | `f6d62c6` | 模板中未经确认的退款承诺 / 门店事实加「待确认」标记（10 处，不改文案）；重建 standalone |
 
-基线 HEAD `3f6e063`；当前 HEAD `f6d62c6`；working tree clean。
+基线 HEAD `3f6e063`；当前 HEAD `ae4827f`；working tree clean（前端改动已 `node build-single.js` 重建 standalone 并入同一提交）。
 
 ### 11.3 配置方法（商汤 SenseNova）
 
@@ -293,9 +294,14 @@ chmod 600 server/.env
 | 离线功能 | ✅ `Humanizer-zh` 为纯本地规则引擎，无 Key 也能改写出结果 |
 | SQLite 历史（后端） | ✅ 写入唯一标记记录 → **杀进程重启** → 同一 `id`/`title`/`payload` 找回；随后**只删该条**，未清空历史 |
 | 浏览器历史（前端） | ✅ 生成后 localStorage `dycs_history` 2 条；**刷新页面**后条数与首条 brand/cat/time 完全一致 |
-| 后端测试 | ✅ pytest **241 passed**（231 基线 + 10 新增离线契约测试） |
+| 后端测试 | ✅ pytest **244 passed**（231 基线 + 10 离线契约 + 3 厂商不匹配回归） |
 | 前端测试 | ✅ stress-test **792/792**、test-engine 通过 |
-| standalone 一致性 | ✅ 两次源文件改动后均重建，`build-single.js --check` 通过（240.6 KB → 241.3 KB） |
+| standalone 一致性 | ✅ `node build-single.js` 重建 `standalone.html`，内联 12 个脚本、零残留外链、`build-single.js --check` 通过 |
+| **A4 重复启动检测** | ✅ 真实起一个本项目实例占 8765 后，`bash start-local.sh` 命中「已在运行」分支、`exit 0`、**不启动第二个进程**、仅 `open` 页面；端口被未知进程占用时只提示绝不 `kill` |
+| **A5 统一配置解析** | ✅ `server/envconfig.py` 被 `app.py` 与 `start-local.sh` 共用；空值不注入 `os.environ`（修复 `int("")` 崩溃）；`resolve_llm_config` 返回 `key_provider`/`base_provider`/`provider_mismatch` |
+| **A6 来源混杂 + 厂商不匹配拦截** | ✅ 假 `nvapi-` 密钥 + 商汤 Base → `/api/llm/chat` 与 `/api/llm/vision` 均返回 **503 `E_LLM_PROVIDER_MISMATCH`**，且**实测未发起任何上游请求**（回归测试 `called["n"]==0` 断言）；`/api/health` 同步暴露 `llm_provider_mismatch:true` |
+| **A7 安全配置入口** | ✅ 缺失 `server/.env` 时生成 600 模板（不覆盖已有）；`conftest.py` 将真实 `.env` 临时 stash 再还原，测试绝不读取真实密钥；241→244 全绿 |
+| **A8 前端状态分层** | ✅ `rwLlmStatus` 不再笼统「已连接」：`/api/health` 驱动「未配置 / 凭证厂商不一致(已拦截) / 来源混杂 / 已填写配置(尚未实测)」；仅真实生成成功才翻为「本次在线生成成功（已实测连通）」；厂商不一致时回退提示词模式并保留用户输入 |
 
 **历史存储是两套，不可混称**：浏览器历史 = localStorage `dycs_history`（仅记录「文案生成」tab，
 上限 20 条，随浏览器配置文件走）；SQLite 历史 = 后端 `/api/history`（服务端持久化）。
@@ -315,12 +321,15 @@ chmod 600 server/.env
 
 ### 11.7 剩余事项与停止点
 
-1. **真实商汤生成/改写未完成**——缺两样：用户填写的商汤 Key；费用授权（§11.4 费用无法确认）。
+- **A 部分（A4 重复启动 / A5 统一配置 / A6 来源混杂+厂商不匹配拦截 / A7 安全配置入口 / A8 前端状态分层）已全部完成并本地提交（`ae4827f`），244 测试全绿。**
+1. **B 文案事实（1–8）**：`js/data-category.js` 中 `// 待确认` 注释尚未替换为实际修复（中性表述或显式【待确认：具体事项】），数字按原值、不擅自改文案、补回归测试——**未启动**。
+2. **C 保存闭环（1–9）**：SQLite 权威、保存成功/失败提示、防重复入库、历史查看/搜索/重开、不存密钥、旧 localStorage 标记、三种恢复验证、离线可用、人工提示词模式不记生成成功——**未启动**。
+3. **D 商汤接入（1–8）真实调用**：缺两样——用户填写的商汤 Key；费用授权（§11.4 费用无法确认）。
    二者到齐后仅做**最小真实调用**：一条普通中文文案，验证响应正文非空、模型可用、错误提示准确；
    超时不自动重试，且不把 HTTP 200 或模拟测试当成真实生成成功。
-2. **页面内真实改写未验证**——目前页面级验证只到「未配置降级」路径，真实改写需 Key 后补做。
-3. **两套历史未打通**（§11.5），是否统一属产品决策。
-4. **NVIDIA 旧 Key 撤销状态：未确认。** 换用商汤**不消除**旧 Key 的历史风险；
+4. **页面内真实改写未验证**——目前页面级验证只到「未配置降级」与「厂商不匹配拦截」路径，真实改写需 Key 后补做。
+5. **两套历史未打通**（§11.5），是否统一属产品决策。
+6. **NVIDIA 旧 Key 撤销状态：未确认。** 换用商汤**不消除**旧 Key 的历史风险；
    需账户本人在 NVIDIA 控制台自行登录确认与撤销。未识别到具体旧 Key 前，不得批量撤销其它密钥。
 
 ### 11.8 用户如何启动
