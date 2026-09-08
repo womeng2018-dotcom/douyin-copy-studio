@@ -418,3 +418,35 @@ sensenova 保留可选，权衡表在 server/README.md。
 
 **本轮不在范围（保持原状）**：服务器部署（等 3 项输入：SSH / 域名或仅内网 / 旧 NVIDIA Key 撤销确认）；
 C1/C4/C6/C7/C8 产品大改。NVIDIA 旧 Key 撤销仍待用户在控制台确认。
+
+### 11.10 CD 自动部署（2026-09-08 第三轮 —— push main + CI 绿 = 自动上线）
+
+部署方式从「等 3 项输入后手工跑」升级为 **GitHub Actions CD**：用户只填 GitHub Secrets，之后零手工。
+代码提交 `8a479d9`（CD）已 push；本文档（§11.10）所在提交紧随其后（`git log -1` 核对）。
+
+| 交付文件 | 作用 |
+|---|---|
+| `.github/workflows/deploy.yml` | CD workflow：`workflow_run` 监听 CI（name: CI）在 **main 成功**后才触发 + 保留 `workflow_dispatch` 手动入口；不改 ci.yml。链路：checkout 锁定 CI 验证过的 commit → `git archive` 打包（不带 `.git`/`.env`）→ SSH 连通性探测（连不上即红并输出排查原因）→ 解包 `/opt/copy-studio`（保留已有 `server/.env` 与 Docker 数据卷，绝不覆盖）→ Secret 经 **stdin** 注入执行部署脚本 → 脚本退出码即 job 成败 |
+| `scripts/deploy-server.sh` | 服务器部署脚本（CD 自动 / 手动通用，收进仓库）：构建 → 验证 `.env` 不进镜像 → 首次无 `server/.env` 时用 Secret `LLM_API_KEY` 生成（`LLM_MODEL=deepseek-v4-flash`，chmod 600；已有则跳过不覆盖）→ `compose up` → 就绪探测 → **五项冒烟**（health 200 / 错误密钥 401 / 敏感路径 404 / 目录穿越 404 / 数据卷可写）→ 任一不过自动 `docker compose down`（不带 `-v`）回滚 + 非 0 退出；`compose up` 之前的失败只报错、不触碰在跑服务 |
+| `README.md`（根） | 新增「服务器部署与 CD 自动上线」：Secrets 清单表 + 用户两步操作图文步骤 |
+
+**需要 6 个 GitHub Secrets**（用户填；完整清单与网页操作步骤见根 README）：
+`SERVER_HOST` / `SERVER_PORT` / `SERVER_USER` / `SERVER_SSH_KEY` / `COPY_STUDIO_ACCESS_KEY` / `LLM_API_KEY`。
+
+**校验与验收**：
+- `actionlint` 无法安装（本机 `github.com:443` 被防火墙阻，HANDOFF §6 已知）→ 用**等价校验**替代并全部通过：
+  YAML 双重解析（ruby psych + PyYAML）、7 个 step schema、6 个 Secret 全覆盖引用、workflow 无明文凭据值、
+  `bash -n scripts/deploy-server.sh`、stdin 注入与首次 `.env` 生成语义本地实测（envconfig 解析到 Secret 值生效）。
+- pytest **264 passed** 保持绿（本轮不改应用代码，只加 workflow + 脚本 + 文档）。
+- **提交即 push**（铁律延续）：`8a479d9` 与本文档提交即时推送；若遇 github.com 断连由重试循环补推。
+- 未在本机模拟部署（本机无 Docker，与 §6 记忆一致）。首次真实触发需用户完成两步后 push main：
+  1. 生成**部署专用** SSH ed25519 密钥对，公钥加进服务器 `~/.ssh/authorized_keys`（chmod 700/600）；
+  2. GitHub `Settings → Secrets and variables → Actions` 填 6 个 Secrets。
+  之后 CI 绿即自动上线；Actions 页「CD — Deploy to Server」可手动触发。
+
+**安全红线（已写死进 workflow / 脚本）**：
+- Secret 只进 GitHub Secrets：workflow 文件、代码、commit、日志无明文；GitHub 自动掩码 + 失败日志尾部 `sk-`/`nvapi-` 二次脱敏。
+- SSH 用专用密钥对 + `StrictHostKeyChecking=accept-new`，不复用个人密钥。
+- 部署只动 `/opt/copy-studio`，不碰系统其它目录；`.env` 与数据卷跨部署保留。
+- 冒烟任一不过 → 自动 down 回滚 → job 标红，只报现场，绝不上架带病版本。
+- 旧 NVIDIA Key 撤销仍是独立人工动作，与 CD 无关。
