@@ -241,9 +241,9 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8765/secret/path      
 | `f9e0fd1` | 未配置密钥时明确提示「在线 AI 未配置」（后端 `E_LLM_NOT_CONFIGURED` + 前端区分文案并保留输入）；重建 standalone |
 | `6ed2ac6` | `start-local.sh` 依据 `server/.env` 准确显示在线 AI 配置状态（纯解析读取，不执行文件内容） |
 | `f6d62c6` | 模板中未经确认的退款承诺 / 门店事实加「待确认」标记（10 处，不改文案）；重建 standalone |
-| `f3d49e3` | **D 商汤真实调用收口**：`_effective_max_tokens` 兜底 `sensenova-*` 到 4096；非流式 200+空内容有界重试 + `E_UPSTREAM_EMPTY`；流式整体缓冲 + 透传成功尝试 + 剥掉上游 `[DONE]`；新增 7 个测试（253 passed）；真实调用成功（content 非空、3.8–36.6s） + SQLite 保存 + 重启找回 |
+| `f43ee10` | **D 商汤真实调用收口**：`_effective_max_tokens` 兜底 `sensenova-*` 到 4096；非流式 200+空内容有界重试 + `E_UPSTREAM_EMPTY`；流式整体缓冲 + 透传成功尝试 + 剥掉上游 `[DONE]`；新增 7 个测试（253 passed）；真实调用成功（content 非空、3.8–36.6s） + SQLite 保存 + 重启找回 |
 
-基线 HEAD `3f6e063`；当前 HEAD `f3d49e3`；working tree clean（前端改动已 `node build-single.js` 重建 standalone 并入同一提交）。
+基线 HEAD `3f6e063`；当前 HEAD `f43ee10`；working tree clean（前端改动已 `node build-single.js` 重建 standalone 并入同一提交）。
 
 ### 11.3 配置方法（商汤 SenseNova）
 
@@ -330,7 +330,7 @@ chmod 600 server/.env
   - ✅ C5 不存密钥（payload 仅含 mode/original/rewritten，无密钥）
   - ✅ C9 人工提示词降级分支不记生成成功（已验证 fallback 路径不调用 save）
   - 🟡 仍待办（产品/大改，未启动）：C1 前端历史 tab 仍用 localStorage、未统一到后端 SQLite；C4 后端历史的查看/搜索/重开 UI；C6 旧 localStorage 迁移标记；C7 三种恢复形式化验证；C8 离线可用性（localStorage 已离线可用，属已部分满足）
-1. **D 商汤真实调用：已完成最小验证并本地提交**（见本次新增 commit `f3d49e3`）：
+1. **D 商汤真实调用：已完成最小验证并本地提交**（见本次新增 commit `f43ee10`）：
   1. 用户提供 `LLM_API_KEY`（sk- 开头，商汤 SenseNova），模型 `sensenova-6.8-flash-lite`。
   2. 写入 `server/.env`（600 权限、gitignore 排除，不入仓）。
   3. `/api/health` 三态：`llm_configured:true`、`llm_mixed_source:false`、`llm_provider_mismatch:false`。
@@ -355,7 +355,7 @@ chmod 600 server/.env
    需账户本人在 NVIDIA 控制台自行登录确认与撤销。未识别到具体旧 Key 前，不得批量撤销其它密钥。
 5. **`/api/llm/vision` 暂未同步 D 保护**（本次只改了 chat 路由）。若后续也用 sensenova-* 推理模型，vision 同样需 `_effective_max_tokens` 兜底 + 空内容重试。
 
-> 本机交付全部改动均**未 push**（执行约束）；当前 `main` 领先 `origin/main`，工作区已提交至 `f3d49e3`。
+> 本机交付全部改动均**未 push**（执行约束）；当前 `main` 领先 `origin/main`，工作区已提交至 `f43ee10`。
 
 ### 11.8 用户如何启动
 
