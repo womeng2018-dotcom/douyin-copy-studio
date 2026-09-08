@@ -243,7 +243,7 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8765/secret/path      
 | `f6d62c6` | 模板中未经确认的退款承诺 / 门店事实加「待确认」标记（10 处，不改文案）；重建 standalone |
 | `f43ee10` | **D 商汤真实调用收口**：`_effective_max_tokens` 兜底 `sensenova-*` 到 4096；非流式 200+空内容有界重试 + `E_UPSTREAM_EMPTY`；流式整体缓冲 + 透传成功尝试 + 剥掉上游 `[DONE]`；新增 7 个测试（253 passed）；真实调用成功（content 非空、3.8–36.6s） + SQLite 保存 + 重启找回 |
 
-基线 HEAD `3f6e063`；当前 HEAD `f43ee10`；working tree clean（前端改动已 `node build-single.js` 重建 standalone 并入同一提交）。
+基线 HEAD `3f6e063`；当时 HEAD `f43ee10`；working tree clean（前端改动已 `node build-single.js` 重建 standalone 并入同一提交）。此后 HEAD 推进见 §11.9。
 
 ### 11.3 配置方法（商汤 SenseNova）
 
@@ -353,11 +353,68 @@ chmod 600 server/.env
 3. **两套历史未打通**（§11.5）：浏览器 localStorage `dycs_history` 与后端 SQLite `/api/history` 并存，前端历史 tab 不调用后端；是否统一属产品决策。
 4. **NVIDIA 旧 Key 撤销状态：未确认。** 换用商汤**不消除**旧 Key 的历史风险；
    需账户本人在 NVIDIA 控制台自行登录确认与撤销。未识别到具体旧 Key 前，不得批量撤销其它密钥。
-5. **`/api/llm/vision` 暂未同步 D 保护**（本次只改了 chat 路由）。若后续也用 sensenova-* 推理模型，vision 同样需 `_effective_max_tokens` 兜底 + 空内容重试。
+5. ~~**`/api/llm/vision` 暂未同步 D 保护**~~（本次只改了 chat 路由）—— ✅ 已由 `dbb0554` 修复：`_effective_max_tokens` 兜底 + 共享非流式空内容有界重试 + 200+非 JSON 归一化 502（见 §11.9）。
 
-> 本机交付全部改动均**未 push**（执行约束）；当前 `main` 领先 `origin/main`，工作区已提交至 `f43ee10`。
+> 本机交付全部改动已由 2026-09-08 第二轮 push 至远端（`5bafa5e..a30d937` → `origin/main`，见 §11.9）；本轮新增提交同样即时 push，不留未推送提交。
 
 ### 11.8 用户如何启动
 
 双击仓库根目录 `start.command`（或终端 `bash start-local.sh`），浏览器会自动打开
 `http://127.0.0.1:8765`；`Ctrl+C` 停止。未配置 Key 时在线改写不可用，其余功能正常。
+
+### 11.9 遗留项修复（2026-09-08 第二轮 —— D 收口审核意见执行记录）
+
+审核方（Codex）对 D 收口（`f43ee10` + `a30d937`）的遗留项按 P0/P1/P2 执行完毕，全部已 push。
+
+**P0 远端备份（不再有本地孤立提交）**：本轮开头先把上一轮 19 个本地提交（`5bafa5e..a30d937`）push
+至 `origin/main`（`4607574..a30d937`）；此后铁律：每笔提交后立即 push。
+
+| 提交 | 内容 | 测试 |
+|---|---|---|
+| `dbb0554` | **vision 同步 D 保护 + 流式缓冲期心跳**：`_post_nonstream_with_empty_retry` 单一共享实现（chat 非流式 + vision 共用，禁止两份复制）；vision 改走 `_effective_max_tokens`（sensenova-* 兜底 4096，同源 bug）；vision 200+非 JSON 由 500 崩溃归一化为 502 `E_UPSTREAM`；流式缓冲期每 8 s 下推 `: ping` 心跳（content 出现后停发） | +8 |
+| `584f14e` | **reasoning_effort 注入**：`_apply_model_defaults` 共享单一实现（chat/vision 共用）；`sensenova-*` 注入 `reasoning_effort="low"`；非 sensenova 不注入 | +3 |
+| （docs） | 本档 §11.9 + server/README.md 权衡表/失败语义（本提交，`git log -1` 核对） | — |
+
+**reasoning_effort 实测结论（P1 顺带项 —— 支持，已注入）**：
+- 文档侧：商汤 OpenAI 兼容网关官方参数表含 `reasoning_effort`（community doc 转引 platform.sensenova.cn）；
+- 直连实测（模型 `sensenova-6.8-flash-lite`，2026-09-08）：`reasoning_effort=low` → **200**（3.1 s、content 101 字）；
+  `high` → **200**（2.9 s）；无参对照 → 200。`thinking` / `enable_thinking` / `reasoning` 均被网关拒收（不在参数表）。
+- 落地：`sensenova-*` 请求注入 `reasoning_effort="low"`，从源头压低 reasoning 预算占用（比重试更优）；
+  4096 兜底 + 空内容有界重试保留作兜底。详见 server/README.md「模型选择与 LLM 失败语义」。
+
+**生产默认模型切换（P1）**：`server/.env` 改 `LLM_MODEL=deepseek-v4-flash`（一行；`.env` 不入仓）。
+理由：sensenova 单次成功率仅 20–40%、延迟 ~36 s，重试兜底后残余失败率仍有两三成；deepseek 非推理、命中率高、低延迟。
+sensenova 保留可选，权衡表在 server/README.md。
+
+**真实调用验收**（`deepseek-v4-flash`，8791 端口真实起服务，2026-09-08）：
+
+| 调用 | 结果 | 耗时 |
+|---|---|---|
+| `POST /api/llm/chat` 非流式 | 200、`ok:true`、content 39 字（非空） | 2.48 s |
+| `POST /api/llm/chat` 流式 | 200、content 43 字、恰好 1×`data: [DONE]` 收尾 | 3.19 s |
+| `POST /api/llm/vision` | 200、`ok:true`、content 63 字（非空） | 2.55 s |
+
+`/api/health`：`llm_configured:true`、`llm_provider_mismatch:false`、启动日志 `LLM: https://token.sensenova.cn/v1 / deepseek-v4-flash`。
+
+**前端超时时长结论（P2，实测/代码核对）**：
+- 前端**不存在可调空闲超时阈值**：`js/rewrite-tab.js` `streamLLMViaBackend` 的 `AbortController`
+  只处理用户手动中止（无 idle/data 超时定时器）；`js/plan-generator.js` 的 fetch 同样无超时。
+  本地直连（`start-local.sh`）无网关 → 无超时风险。→ **结论：无需调大前端超时（没有该阈值可调）**。
+- 最坏路径 3 次尝试 × ~36 s ≈ **108 s** 的静默真正触发的是**公网网关**空闲超时
+  （Nginx `proxy_read_timeout` 默认 60 s；Render/Railway 常见 ≤60 s）与用户死屏观感
+  → 由 `dbb0554` 的 8 s SSE 心跳保活解决（8 s 远小于任何常见网关阈值）。若自建网关设了 <8 s 的空闲阈值
+  （现实中不会这么小），才需要调网关而非代码。
+- 心跳不破坏语义：SSE 注释行被前端 pump 自动跳过（`rewrite-tab.js` 只认 `data:` 行）；
+  测试断言心跳帧先于内容帧、`[DONE]` 仍恰好 1 次且位于末尾。
+
+**LLM_EMPTY_RETRIES / 配额 / 200+非 JSON 测试（P2）**：
+- server/README.md 已文档化：语义（仅「200 但 content 空」重试；非 200 / 超时 / 传输错误不重试）、
+  默认值 2、配额影响（**空尝试也消耗配额，最坏 ×3**）。
+- 「200+非 JSON → 502 `E_UPSTREAM`」归一化补了对应测试：chat 非流式 + vision 各 1 条
+  （上一轮只提了代码没提测试 —— 本轮补齐）。
+
+**测试总量**：`tests/test_llm_proxy.py` 本轮 +11（8 vision/心跳 + 3 reasoning_effort）；
+全量 pytest **264 passed**（253 基线 + 11），无回归。
+
+**本轮不在范围（保持原状）**：服务器部署（等 3 项输入：SSH / 域名或仅内网 / 旧 NVIDIA Key 撤销确认）；
+C1/C4/C6/C7/C8 产品大改。NVIDIA 旧 Key 撤销仍待用户在控制台确认。
