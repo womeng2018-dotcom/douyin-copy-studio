@@ -262,6 +262,68 @@ def test_llm_returns_503_when_upstream_not_configured(app_factory):
         assert client.post("/api/llm/vision", json={"user": "hi"}).status_code == 503
 
 
+# ------------------------------------------------------------------
+# 厂商不匹配拦截：密钥前缀暗示的厂商与上游 Base 主机暗示的厂商不一致时，
+# 必须 503 拦截，且绝不向任何上游发起请求（避免拿 A 厂密钥打 B 厂端点）。
+# ------------------------------------------------------------------
+def test_provider_mismatch_blocks_chat_without_upstream_call(app_factory, monkeypatch):
+    module = app_factory({
+        "LLM_API_KEY": "nvapi-FAKEtestonlyNOTreal",
+        "LLM_API_BASE": "https://token.sensenova.cn/v1",
+    })
+    called = {"n": 0}
+
+    async def handler(request):
+        called["n"] += 1
+        return httpx.Response(200, json={"choices": [{"message": {"content": "leak"}}]})
+
+    monkeypatch.setattr(module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(module.app, client=LOOPBACK) as client:
+        response = client.post("/api/llm/chat", json={"user": "hi", "stream": False})
+
+    assert response.status_code == 503
+    assert response.json()["error_code"] == "E_LLM_PROVIDER_MISMATCH"
+    assert response.json().get("key_provider") == "nvidia"
+    assert response.json().get("base_provider") == "sensenova"
+    assert called["n"] == 0  # 拦截在发起上游调用之前
+
+
+def test_provider_mismatch_blocks_vision_without_upstream_call(app_factory, monkeypatch):
+    module = app_factory({
+        "LLM_API_KEY": "nvapi-FAKEtestonlyNOTreal",
+        "LLM_API_BASE": "https://token.sensenova.cn/v1",
+    })
+    called = {"n": 0}
+
+    async def handler(request):
+        called["n"] += 1
+        return httpx.Response(200, json={"choices": [{"message": {"content": "leak"}}]})
+
+    monkeypatch.setattr(module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(module.app, client=LOOPBACK) as client:
+        response = client.post("/api/llm/vision", json={
+            "messages": [{"role": "user", "content": [
+                {"type": "image_url", "image_url": {"url": "https://cdn.example.com/a.png"}},
+            ]}],
+        })
+
+    assert response.status_code == 503
+    assert response.json()["error_code"] == "E_LLM_PROVIDER_MISMATCH"
+    assert called["n"] == 0
+
+
+def test_health_reports_provider_mismatch(app_factory):
+    module = app_factory({
+        "LLM_API_KEY": "nvapi-FAKEtestonlyNOTreal",
+        "LLM_API_BASE": "https://token.sensenova.cn/v1",
+    })
+    with TestClient(module.app, client=LOOPBACK) as client:
+        health = client.get("/api/health").json()
+    assert health["llm_configured"] is True
+    assert health["llm_provider_mismatch"] is True
+
+
+
 @pytest.mark.parametrize("bad", [
     {"messages": []},
     {"messages": [{"role": "hacker", "content": "x"}]},

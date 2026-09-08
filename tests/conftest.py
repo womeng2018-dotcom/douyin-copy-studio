@@ -7,6 +7,7 @@
   3. 所有上游 LLM / 视频下载都用 MockTransport，不发起真实网络请求。
 """
 
+import atexit
 import importlib
 import os
 import sys
@@ -19,6 +20,27 @@ import pytest
 SERVER_DIR = Path(__file__).resolve().parents[1] / "server"
 if str(SERVER_DIR) not in sys.path:
     sys.path.insert(0, str(SERVER_DIR))
+
+# 测试隔离：临时移走真实 server/.env，避免 app.py 在导入期加载它，
+# 破坏「测试绝不读取真实 server/.env」的契约；会话结束（atexit）还原。
+_REAL_ENV = SERVER_DIR / ".env"
+_STASH_ENV = SERVER_DIR / ".env.test-stash"
+if _REAL_ENV.exists() and not _STASH_ENV.exists():
+    try:
+        _REAL_ENV.rename(_STASH_ENV)
+    except OSError:
+        pass
+
+
+def _restore_real_env():
+    if _STASH_ENV.exists():
+        try:
+            _STASH_ENV.rename(_REAL_ENV)
+        except OSError:
+            pass
+
+
+atexit.register(_restore_real_env)
 
 # 占位值：真实密钥永不进入测试进程
 PLACEHOLDER_KEY = "test-key-not-real"

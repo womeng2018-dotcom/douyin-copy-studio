@@ -386,12 +386,15 @@
     }).then(function (resp) {
       /* 后端不可用时不再直连第三方，确保 LLM Key 永不进入浏览器 */
       if (resp.status === 404 || resp.status === 405 || resp.status === 503) {
-        /* 读取错误码以区分「在线 AI 未配置」与「后端/上游不可用」，给出准确提示 */
+        /* 读取错误码以区分「在线 AI 未配置 / 凭证厂商不一致 / 后端或上游不可用」，给出准确提示 */
         return resp.json().then(function (d) {
           finish({
             needKey: true,
             backend: true,
             notConfigured: (d && d.error_code === 'E_LLM_NOT_CONFIGURED'),
+            providerMismatch: (d && d.error_code === 'E_LLM_PROVIDER_MISMATCH'),
+            keyProvider: (d && d.key_provider) || '',
+            baseProvider: (d && d.base_provider) || '',
             message: (d && d.error) || ''
           }, full);
         }).catch(function () {
@@ -666,6 +669,22 @@
       refreshUsageLine();
       if (err && typeof err === 'object' && err.needKey) {
         var kn;
+        if (err.providerMismatch) {
+          /* A8：凭证厂商不一致——明确拦截，绝不「已连接」，绝不发往错误服务 */
+          var _pm = { nvidia: 'NVIDIA', sensenova: '商汤 SenseNova', unknown: '未知厂商' };
+          var kp = _pm[err.keyProvider] || '未知厂商';
+          var bp = _pm[err.baseProvider] || '未知厂商';
+          var kcPM = metaChips.concat([{ t: '凭证厂商不一致', cls: 'bad' }]);
+          kn = '在线 AI 凭证厂商不一致：密钥疑似 <b>' + kp + '</b>，但上游地址指向 <b>' + bp
+            + '</b>，混合调用会返回 401，<b>已被后端拦截（不会真正发往错误服务）</b>。'
+            + '请统一 LLM_API_KEY / SENSENOVA_API_KEY 与 LLM_API_BASE / LLM_MODEL 的厂商来源后重试；'
+            + '离线文案、合规检查与本地功能不受影响，<b>你输入的原文已保留</b>。'
+            + '下方已生成完整提示词，可复制到其他 AI 工具使用。'
+            + (chain ? '<br>串联模式需先完成主改写，暂未执行。' : '');
+          if ($('rwLlmStatus')) $('rwLlmStatus').innerHTML = '<span class="chip bad">在线 AI 凭证厂商不一致（已拦截）</span>';
+          renderPromptOnly(prompt.system + '\n\n------\n\n' + prompt.user, kcPM, kn);
+          return;
+        }
         if (err.notConfigured) {
           var kcNC = metaChips.concat([{ t: '在线 AI 未配置', cls: 'mid' }]);
           kn = '在线 AI 未配置：服务端没有设置模型密钥（LLM_API_KEY / SENSENOVA_API_KEY）。'
@@ -714,7 +733,32 @@
         renderLLMResult(text, primaryOut, metaChips, '');
         saveRewriteHistory(text, primaryOut);
       }
+      /* A8：只有真实生成成功才标记「已连通」；不臆测、不提前宣称已连接 */
+      if ($('rwLlmStatus')) $('rwLlmStatus').innerHTML = '<span class="chip ok">本次在线生成成功（已实测连通）</span>';
     });
+  }
+
+  /* A8：后端真实状态只来自 /api/health，绝不臆测「已连接」。
+     区分：未配置 / 凭证厂商不一致(已拦截) / 来源混杂 / 已填写配置(尚未实测) / 本次生成成功(由流式回调判定)。 */
+  function refreshBackendStatus() {
+    var el = $('rwLlmStatus');
+    if (!el) return;
+    fetch('/api/health', {
+      headers: { 'X-API-Key': localStorage.getItem('dycs_api_key') || '' }
+    }).then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d) { el.innerHTML = '<span class="chip mid">无法读取后端状态</span>'; return; }
+        if (d.llm_provider_mismatch) {
+          el.innerHTML = '<span class="chip bad">在线 AI 凭证厂商不一致（已拦截，不会发错服务）</span>';
+        } else if (d.llm_mixed_source) {
+          el.innerHTML = '<span class="chip mid">在线 AI 凭证来源混杂，有发错服务风险</span>';
+        } else if (d.llm_configured) {
+          el.innerHTML = '<span class="chip ok">在线 AI 已填写配置（尚未实测连通）</span>';
+        } else {
+          el.innerHTML = '<span class="chip mid">在线 AI 未配置（离线功能可用）</span>';
+        }
+      })
+      .catch(function () { el.innerHTML = '<span class="chip mid">无法读取后端状态</span>'; });
   }
 
   function stripCodeFence(s) {
@@ -741,6 +785,7 @@
   function init() {
     populateFormulas();
     fillLLMSettings();
+    refreshBackendStatus();
 
     $('rwMode').addEventListener('click', function (e) {
       var b = e.target.closest('button'); if (!b || !b.dataset.v) return;
@@ -773,6 +818,7 @@
       if (apiKey) localStorage.setItem('dycs_api_key', apiKey);
       else localStorage.removeItem('dycs_api_key');
       $('rwLlmStatus').innerHTML = api ? '<span class="chip ok">后端配置已保存</span>' : '<span class="chip mid">未配置后端地址</span>';
+      refreshBackendStatus();
       showToast('后端配置已保存');
     });
     var clearBtn = $('rwLlmClear');

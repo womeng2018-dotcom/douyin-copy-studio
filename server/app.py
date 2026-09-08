@@ -51,6 +51,9 @@ from fastapi.staticfiles import StaticFiles
 SCRIPT_DIR = Path(__file__).parent
 WWW_ROOT = SCRIPT_DIR.parent
 
+# 统一 .env 解析实现（与 start-local.sh 共用，避免重复实现导致状态不一致）
+import envconfig  # server/envconfig.py：同目录直 import（运行时为脚本目录，测试已注入 sys.path）
+
 
 # 配置加载开关：默认「环境变量优先」，设 COPY_STUDIO_DOTENV_OVERRIDE=1 反转为「.env 优先」
 _DOTENV_OVERRIDE = os.environ.get("COPY_STUDIO_DOTENV_OVERRIDE", "").lower() in {
@@ -64,49 +67,22 @@ _DOTENV_CONFLICTS = []    # 与环境变量同名但值不同的键名（仅键�
 
 
 def _parse_dotenv(path):
-    """纯 Python 解析 .env。绝不使用 shell source/eval 执行文件内容。"""
-    values = {}
-    try:
-        for raw in path.read_text(encoding="utf-8").splitlines():
-            line = raw.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            k, _, v = line.partition("=")
-            k = k.strip()
-            v = v.strip().strip('"').strip("'")
-            if k:
-                values[k] = v
-    except OSError:
-        return {}
-    return values
+    """兼容旧测试与内部调用：委托 envconfig.parse_env_file。"""
+    return envconfig.parse_env_file(Path(path))
 
 
-def _load_dotenv(path):
-    """加载 server/.env，必须在任何配置读取之前调用。
+def _load_dotenv(path, override=None):
+    """兼容旧测试与内部调用：委托 envconfig.load_env_file，并把结果写入模块级全局。
 
-    优先级（显式、可预期，不静默）：
-      - 默认「已存在的环境变量优先」——保证 CI/测试注入的值不会被本机 .env 覆盖，
-        否则配好 Key 后跑 pytest 会让测试打到真实上游并产生费用。
-      - 设 COPY_STUDIO_DOTENV_OVERRIDE=1 时反转为「.env 优先」。
-      - 两种模式下，同名不同值都记录到 _DOTENV_CONFLICTS（只记键名、不记值），
-        启动时醒目提示，避免旧值静默压过新配置。
-    权限：密钥文件收紧为仅当前用户可读写（600）。
+    默认沿用 _DOTENV_OVERRIDE；override=True 时反转为「.env 优先」。
+    真实解析逻辑已下沉到 server/envconfig.py（与 start-local.sh 共用）。
     """
-    if not path.exists():
-        return
-    try:
-        if path.stat().st_mode & 0o077:
-            path.chmod(0o600)
-    except OSError:
-        pass
-    for k, v in _parse_dotenv(path).items():
-        _DOTENV_KEYS.add(k)
-        if k in os.environ:
-            if os.environ[k] != v:
-                _DOTENV_CONFLICTS.append(k)
-            if not _DOTENV_OVERRIDE:
-                continue
-        os.environ[k] = v
+    if override is None:
+        override = _DOTENV_OVERRIDE
+    file_keys, conflicts = envconfig.load_env_file(Path(path), os.environ, override=override)
+    _DOTENV_KEYS.update(file_keys)
+    _DOTENV_CONFLICTS.extend(conflicts)
+    return file_keys, conflicts
 
 
 _load_dotenv(SCRIPT_DIR / ".env")
@@ -160,6 +136,37 @@ def _log_upstream_error(status, body):
     print(
         f"[copy-studio] upstream error status={status} detail={_redact(body)}",
         flush=True,
+    )
+
+
+def _llm_provider_mismatch_response():
+    """密钥前缀暗示的厂商与上游 Base 主机暗示的厂商不一致：混合厂商调用必 401。
+
+    明确拦截并返回 503，保留离线功能，绝不拿 A 厂密钥打 B 厂端点。
+    """
+    cfg = envconfig.resolve_llm_config(os.environ, _DOTENV_KEYS)
+    key_provider = cfg.get("key_provider", "unknown")
+    base_provider = cfg.get("base_provider", "unknown")
+    key_label = _PROVIDER_LABELS.get(key_provider, "未知厂商")
+    base_label = _PROVIDER_LABELS.get(base_provider, "未知厂商")
+    detail = (
+        f"在线 AI 凭证组厂商不一致：密钥疑似 {key_label}，但上游地址指向 {base_label}。"
+        "混合厂商调用会返回 401。请统一 LLM_API_KEY/SENSENOVA_API_KEY 与 "
+        "LLM_API_BASE/LLM_MODEL 的厂商来源后再发起请求。"
+    )
+    print(
+        f"[copy-studio] LLM provider mismatch: key={key_label} base={base_label}",
+        flush=True,
+    )
+    return JSONResponse(
+        {
+            "ok": False,
+            "error": detail,
+            "error_code": E_LLM_PROVIDER_MISMATCH,
+            "key_provider": key_provider,
+            "base_provider": base_provider,
+        },
+        status_code=503,
     )
 
 
@@ -528,6 +535,14 @@ def _safe_backend_url():
 UPSTREAM_ERROR_CODE = "E_UPSTREAM"
 UPSTREAM_ERROR_MESSAGE = "上游模型服务调用失败，请稍后重试"
 
+# 厂商不匹配：密钥前缀暗示的厂商与 Base 主机暗示的厂商不一致，必 401，明确拦截
+E_LLM_PROVIDER_MISMATCH = "E_LLM_PROVIDER_MISMATCH"
+_PROVIDER_LABELS = {
+    "nvidia": "NVIDIA",
+    "sensenova": "商汤 SenseNova",
+    "unknown": "未知厂商",
+}
+
 
 def _host_resolves_to_public_ip(host: str, port: int) -> bool:
     """解析并断言该主机所有地址都是公网地址。"""
@@ -765,6 +780,9 @@ async def llm_chat(request: Request):
             },
             status_code=503,
         )
+    # 密钥格式与上游厂商不一致：混合厂商调用必 401，明确拦截并保留离线功能
+    if envconfig.resolve_llm_config(os.environ, _DOTENV_KEYS)["provider_mismatch"]:
+        return _llm_provider_mismatch_response()
 
     ident = _client_ident(request)
     ok, detail = _check_rate(ident, "rewrite")
@@ -847,6 +865,9 @@ async def llm_vision(request: Request):
             },
             status_code=503,
         )
+    # 密钥格式与上游厂商不一致：混合厂商调用必 401，明确拦截并保留离线功能
+    if envconfig.resolve_llm_config(os.environ, _DOTENV_KEYS)["provider_mismatch"]:
+        return _llm_provider_mismatch_response()
 
     ident = _client_ident(request)
     ok, detail = _check_rate(ident, "plan")
@@ -1145,11 +1166,14 @@ async def extract_status(request: Request):
         ffmpeg_ok = bool(_load_extract_engine()._ffmpeg_available())
     except Exception:
         ffmpeg_ok = False
+    _llm_status = envconfig.resolve_llm_config(os.environ, _DOTENV_KEYS)
     return {
         "ok": True,
         "status": "running",
         "ffmpeg_ok": ffmpeg_ok,
         "llm_configured": bool(LLM_API_KEY and _safe_backend_url()),
+        "llm_mixed_source": _llm_status["mixed_source"],
+        "llm_provider_mismatch": _llm_status["provider_mismatch"],
         "auth_enabled": bool(API_KEYS),
         "auth_required": REQUIRE_AUTH,
     }
@@ -1157,10 +1181,13 @@ async def extract_status(request: Request):
 
 @app.get("/api/health")
 async def health():
+    _llm_status = envconfig.resolve_llm_config(os.environ, _DOTENV_KEYS)
     return {
         "ok": True,
         "status": "running",
         "llm_configured": bool(LLM_API_KEY and _safe_backend_url()),
+        "llm_mixed_source": _llm_status["mixed_source"],
+        "llm_provider_mismatch": _llm_status["provider_mismatch"],
         "auth_enabled": bool(API_KEYS),
         "auth_required": REQUIRE_AUTH,
         "storage": "sqlite",
@@ -1247,13 +1274,11 @@ if __name__ == "__main__":
             "[copy-studio]    让 .env 生效的方式：unset 同名环境变量，或启动时设 COPY_STUDIO_DOTENV_OVERRIDE=1",
             flush=True,
         )
-    _llm_group = ("LLM_API_KEY", "LLM_API_BASE", "LLM_MODEL")
-    _from_file = [k for k in _llm_group if k in _DOTENV_KEYS]
-    if _from_file and len(_from_file) < len(_llm_group):
+    _llm = envconfig.resolve_llm_config(os.environ, _DOTENV_KEYS)
+    if _llm["mixed_source"]:
         print(
-            "[copy-studio] ⚠️ LLM 凭证组来源混杂：" + ", ".join(_from_file) + " 来自 server/.env，"
-            + ", ".join(k for k in _llm_group if k not in _DOTENV_KEYS) + " 来自环境变量或默认值。"
-            + " 密钥、Base、模型必须作为一组配置，否则可能把凭证发错服务。",
+            "[copy-studio] ⚠️ LLM 凭证组来源混杂（" + ", ".join(_llm["sources"]) + "）："
+            "密钥、Base、模型必须作为一组配置，否则可能把凭证发错服务。",
             flush=True,
         )
     if not LLM_API_KEY:
