@@ -108,3 +108,20 @@ def test_collector_rejects_empty(app_factory):
     module = app_factory()
     with TestClient(module.app, client=LOOPBACK) as client:
         assert client.post("/api/collector", json={"nothing": True}).status_code == 400
+
+
+def test_duplicate_save_is_idempotent(client):
+    """C3 防重复入库：相同租户/类型/内容再次保存应命中已有记录，库内仍只有一条。"""
+    body = {"kind": "rewrite", "title": "dup", "payload": {"text": "same"}}
+    first = client.post("/api/history", json=body)
+    second = client.post("/api/history", json=body)
+    assert first.json()["record"]["duplicate"] is False
+    assert second.json()["record"]["duplicate"] is True
+    assert second.json()["record"]["id"] == first.json()["record"]["id"]
+    assert len(client.get("/api/history").json()["records"]) == 1
+
+
+def test_different_payload_not_deduped(client):
+    client.post("/api/history", json={"kind": "rewrite", "title": "a", "payload": {"x": 1}})
+    client.post("/api/history", json={"kind": "rewrite", "title": "a", "payload": {"x": 2}})
+    assert len(client.get("/api/history").json()["records"]) == 2

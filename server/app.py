@@ -279,10 +279,19 @@ def _init_db():
                 kind TEXT NOT NULL,
                 title TEXT NOT NULL DEFAULT '',
                 payload TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                content_hash TEXT NOT NULL DEFAULT ''
             )"""
         )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_records_tenant_kind_time ON records(tenant_id, kind, created_at DESC)")
+        # 防重复入库：同租户 + 同类型 + 同内容（哈希）唯一；旧行 hash 为空不参与约束
+        cols = [r["name"] for r in conn.execute("PRAGMA table_info(records)").fetchall()]
+        if "content_hash" not in cols:
+            conn.execute("ALTER TABLE records ADD COLUMN content_hash TEXT NOT NULL DEFAULT ''")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_records_dedup "
+            "ON records(tenant_id, kind, content_hash) WHERE content_hash <> ''"
+        )
         conn.commit()
 
 
@@ -463,15 +472,36 @@ def _record_history(tenant_id: str, kind: str, title: str, payload):
     encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     if len(encoded.encode("utf-8")) > DB_MAX_PAYLOAD_BYTES:
         raise ValueError(f"历史数据过大（上限 {DB_MAX_PAYLOAD_BYTES} 字节）")
+    # 内容哈希：用于幂等保存（防重复入库），不含任何密钥。
+    # 幂等键 = 租户 + 类型 + 标题 + 内容；同标题同内容重复保存视为重复。
+    _title = str(title or "")[:200]
+    content_hash = hashlib.sha256(
+        (tenant_id + "|" + kind + "|" + _title + "|" + encoded).encode("utf-8")
+    ).hexdigest()
     record_id = uuid.uuid4().hex
     created_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     with closing(_db_connect()) as conn:
+        # 防重复入库：同租户同类型同内容已存在则直接返回已有记录（幂等）
+        existing = conn.execute(
+            "SELECT id, title, created_at FROM records WHERE tenant_id = ? AND kind = ? AND content_hash = ?",
+            (tenant_id, kind, content_hash),
+        ).fetchone()
+        if existing:
+            return {
+                "id": existing["id"], "kind": kind,
+                "title": existing["title"], "created_at": existing["created_at"],
+                "duplicate": True,
+            }
         conn.execute(
-            "INSERT INTO records(id, tenant_id, kind, title, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (record_id, tenant_id, kind, str(title or "")[:200], encoded, created_at),
+            "INSERT INTO records(id, tenant_id, kind, title, payload, created_at, content_hash) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (record_id, tenant_id, kind, str(title or "")[:200], encoded, created_at, content_hash),
         )
         conn.commit()
-    return {"id": record_id, "kind": kind, "title": str(title or "")[:200], "created_at": created_at}
+    return {
+        "id": record_id, "kind": kind, "title": str(title or "")[:200],
+        "created_at": created_at, "duplicate": False,
+    }
 
 
 def _list_history(tenant_id: str, kind, limit: int):

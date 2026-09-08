@@ -624,7 +624,12 @@
       mode: currentMode,
       original: original,
       rewritten: rewritten
-    }).catch(function () { /* 云端不可用不影响当前结果 */ });
+    }).then(function () {
+      showToast('已保存到历史');
+    }).catch(function () {
+      /* 云端不可用不影响当前结果，但明确告知保存失败 */
+      showToast('历史保存失败（云端不可用，本次结果未入库）');
+    });
   }
 
   function runLLMMode(text) {
