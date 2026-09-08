@@ -25,6 +25,7 @@ Copy Studio 统一后端服务
   python app.py
 """
 
+import asyncio
 import hashlib
 import importlib.util
 import ipaddress
@@ -609,6 +610,70 @@ def _log_empty_content_attempt(attempt: int) -> None:
     )
 
 
+# =====================================================================
+# chat / vision 共享的 D 保护实现（单一实现，禁止再复制第二份）
+# =====================================================================
+# 非流式 POST /chat/completions 的「200 + 空内容」有界重试是两条 LLM 路由
+# （/api/llm/chat 非流式、/api/llm/vision）共用的同一段逻辑，抽成单一函数。
+# 语义与「超时不重试 / 5xx 不重试」严格区分（见 E_UPSTREAM_EMPTY 注释）：
+#   - 非 200：上游真故障，不重试（避免把坏上游打爆），归一化为 502 E_UPSTREAM；
+#   - 200 + 非 JSON：上游协议错误，同样 502 E_UPSTREAM（不重试、不进空重试池）；
+#   - 200 + 空内容：推理模型偶发，生成幂等 → 最多重试 LLM_EMPTY_RETRIES 次；
+#   - 重试耗尽仍空：502 + E_UPSTREAM_EMPTY，绝不回「伪 ok:true」。
+async def _post_nonstream_with_empty_retry(client, upstream: str, payload: dict, headers: dict) -> dict:
+    """非流式 /chat/completions 单次完整交互（含空内容有界重试）。
+
+    Returns:
+        {"ok": True, "content": str}                    —— 拿到非空成品；
+        {"ok": False, "error", "error_code", ...}        —— 统一 502 语义，
+            调用方原样包 JSONResponse(..., status_code=502) 回给客户端即可。
+    """
+    for attempt in range(LLM_EMPTY_RETRIES + 1):
+        r = await client.post(upstream, json=payload, headers=headers)
+        if r.status_code != 200:
+            # 非 200：上游真故障，不重试
+            _log_upstream_error(r.status_code, r.text)
+            return {
+                "ok": False,
+                "error": UPSTREAM_ERROR_MESSAGE,
+                "error_code": UPSTREAM_ERROR_CODE,
+                "status": r.status_code,
+            }
+        try:
+            data = r.json()
+        except ValueError:
+            # 200 但非 JSON：上游协议错误，按上游故障处理
+            _log_upstream_error(200, "non-json response body")
+            return {
+                "ok": False,
+                "error": UPSTREAM_ERROR_MESSAGE,
+                "error_code": UPSTREAM_ERROR_CODE,
+                "status": 200,
+            }
+        message = (data.get("choices") or [{}])[0].get("message", {}) or {}
+        content = message.get("content")
+        if content:
+            return {"ok": True, "content": content}
+        # 200 + 空内容：推理模型偶发把预算全部用于思考
+        _log_empty_content_attempt(attempt)
+    # 重试耗尽仍为空：明确告诉前端「真实失败」，而非伪 ok:true
+    return {
+        "ok": False,
+        "error": UPSTREAM_EMPTY_MESSAGE.format(retries=LLM_EMPTY_RETRIES),
+        "error_code": E_UPSTREAM_EMPTY,
+    }
+
+
+# 流式整体缓冲期间（推理模型先把预算烧在 reasoning 上、content 迟迟不出现，
+# 或空尝试被整体丢弃时），客户端长时间收不到任何字节 → 浏览器/网关空闲超时 + 死屏。
+# 缓冲等待期间周期下推 SSE 注释心跳保活；前端 SSE pump 只认 data: 行，自动跳过注释。
+SSE_HEARTBEAT_INTERVAL_SECONDS = 8.0  # 每 5–10s 一次
+SSE_HEARTBEAT_FRAME = b": ping\n\n"
+
+# 流式内部 EOF 哨兵（上游真实字节永远是 bytes，不会与哨兵混淆）
+_STREAM_EOF = object()
+
+
 def _host_resolves_to_public_ip(host: str, port: int) -> bool:
     """解析并断言该主机所有地址都是公网地址。"""
     try:
@@ -890,25 +955,63 @@ async def llm_chat(request: Request):
                                         yield f"data: {json.dumps({'error': {'message': UPSTREAM_ERROR_MESSAGE, 'code': UPSTREAM_ERROR_CODE, 'status': r.status_code}}, ensure_ascii=False)}\n\n"
                                         yield "data: [DONE]\n\n"
                                         return
-                                    async for chunk in r.aiter_bytes():
-                                        chunks.append(chunk)
-                                        line_buf += chunk
-                                        # 解析完整 SSE 事件，检测是否出现 content delta
-                                        while b"\n\n" in line_buf:
-                                            event, line_buf = line_buf.split(b"\n\n", 1)
-                                            for ln in event.split(b"\n"):
-                                                if not ln.startswith(b"data:"):
-                                                    continue
-                                                data = ln[5:].strip()
-                                                if data == b"[DONE]":
-                                                    continue
-                                                try:
-                                                    obj = json.loads(data)
-                                                except Exception:
-                                                    continue
-                                                delta = ((obj.get("choices") or [{}])[0]).get("delta") or {}
-                                                if delta.get("content"):
-                                                    saw_content = True
+                                    # 每次尝试整体缓冲（推理模型偶发把预算烧在 reasoning 上时，
+                                    # content 可能迟到数十秒）：缓冲期客户端零字节会触发
+                                    # 网关/浏览器空闲超时 → 由 pump 任务独占读上游，主协程
+                                    # 只在「尚未出现 content 的缓冲期」按周期补发 SSE 注释心跳，
+                                    # 出现 content 后停发（心跳帧必须在内容帧之前）。
+                                    queue: "asyncio.Queue" = asyncio.Queue()
+
+                                    async def _pump():
+                                        try:
+                                            async for chunk in r.aiter_bytes():
+                                                await queue.put(chunk)
+                                            await queue.put(_STREAM_EOF)
+                                        except BaseException as exc:
+                                            # 传输中断（含读超时）经队列上抛，由主协程统一处理
+                                            await queue.put(exc)
+
+                                    pump = asyncio.create_task(_pump())
+                                    try:
+                                        last_ping = time.monotonic()
+                                        while True:
+                                            if (
+                                                not saw_content
+                                                and time.monotonic() - last_ping >= SSE_HEARTBEAT_INTERVAL_SECONDS
+                                            ):
+                                                yield SSE_HEARTBEAT_FRAME
+                                                last_ping = time.monotonic()
+                                            try:
+                                                item = await asyncio.wait_for(
+                                                    queue.get(), timeout=SSE_HEARTBEAT_INTERVAL_SECONDS
+                                                )
+                                            except asyncio.TimeoutError:
+                                                # 上游长时间无字节：心跳已按周期补发，继续等待
+                                                continue
+                                            if item is _STREAM_EOF:
+                                                break
+                                            if isinstance(item, BaseException):
+                                                raise item
+                                            chunks.append(item)
+                                            line_buf += item
+                                            # 解析完整 SSE 事件，检测是否出现 content delta
+                                            while b"\n\n" in line_buf:
+                                                event, line_buf = line_buf.split(b"\n\n", 1)
+                                                for ln in event.split(b"\n"):
+                                                    if not ln.startswith(b"data:"):
+                                                        continue
+                                                    data = ln[5:].strip()
+                                                    if data == b"[DONE]":
+                                                        continue
+                                                    try:
+                                                        obj = json.loads(data)
+                                                    except Exception:
+                                                        continue
+                                                    delta = ((obj.get("choices") or [{}])[0]).get("delta") or {}
+                                                    if delta.get("content"):
+                                                        saw_content = True
+                                    finally:
+                                        pump.cancel()
                         except httpx.HTTPError as e:
                             # 传输错误不重试（与「超时不重试」一致）
                             _log_upstream_error("stream", e)
@@ -941,53 +1044,12 @@ async def llm_chat(request: Request):
             return StreamingResponse(_stream(), media_type="text/event-stream")
 
         async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=10.0)) as client:
-            content = None
-            for attempt in range(LLM_EMPTY_RETRIES + 1):
-                r = await client.post(upstream, json=payload, headers=headers)
-                if r.status_code != 200:
-                    # 非 200：上游真故障，不重试（避免把坏上游打爆，与「超时不重试」一致）
-                    _log_upstream_error(r.status_code, r.text)
-                    return JSONResponse(
-                        {
-                            "ok": False,
-                            "error": UPSTREAM_ERROR_MESSAGE,
-                            "error_code": UPSTREAM_ERROR_CODE,
-                            "status": r.status_code,
-                        },
-                        status_code=502,
-                    )
-                try:
-                    data = r.json()
-                except ValueError:
-                    # 200 但非 JSON：上游协议错误，按上游故障处理
-                    _log_upstream_error(200, "non-json response body")
-                    return JSONResponse(
-                        {
-                            "ok": False,
-                            "error": UPSTREAM_ERROR_MESSAGE,
-                            "error_code": UPSTREAM_ERROR_CODE,
-                            "status": 200,
-                        },
-                        status_code=502,
-                    )
-                content = (
-                    (data.get("choices") or [{}])[0]
-                    .get("message", {})
-                    .get("content")
-                )
-                if content:
-                    return JSONResponse({"ok": True, "content": content})
-                # 200 + 空内容：推理模型偶发把预算全部用于思考
-                _log_empty_content_attempt(attempt)
-            # 重试耗尽仍为空：明确告诉前端「真实失败」，而非伪 ok:true
-            return JSONResponse(
-                {
-                    "ok": False,
-                    "error": UPSTREAM_EMPTY_MESSAGE.format(retries=LLM_EMPTY_RETRIES),
-                    "error_code": E_UPSTREAM_EMPTY,
-                },
-                status_code=502,
-            )
+            # 200+空内容有界重试 / 非 200 不重试 / 200+非 JSON→502 / 耗尽 E_UPSTREAM_EMPTY
+            # 由 chat、vision 共享的单一实现处理（见 _post_nonstream_with_empty_retry）
+            result = await _post_nonstream_with_empty_retry(client, upstream, payload, headers)
+            if result["ok"]:
+                return JSONResponse({"ok": True, "content": result["content"]})
+            return JSONResponse(result, status_code=502)
     except httpx.HTTPError as e:
         _log_upstream_error("chat", e)
         return JSONResponse(
@@ -1042,7 +1104,9 @@ async def llm_vision(request: Request):
             "model": LLM_MODEL,
             "messages": messages,
             "temperature": min(max(float(body.get("temperature", 0.4)), 0), 1.5),
-            "max_tokens": min(max(int(body.get("max_tokens", 3000)), 1), 4096),
+            # 与 chat 同一套 max_tokens 规则：sensenova-* 推理模型强制 >=4096，
+            # 否则 reasoning 会把 content 截断到空（vision 同源 bug，D 收口补上）。
+            "max_tokens": _effective_max_tokens(int(body.get("max_tokens", 3000))),
         }
     except (ValueError, TypeError) as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
@@ -1053,25 +1117,12 @@ async def llm_vision(request: Request):
 
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(180.0, connect=10.0)) as client:
-            r = await client.post(upstream, json=payload, headers=headers)
-            if r.status_code != 200:
-                _log_upstream_error(r.status_code, r.text)
-                return JSONResponse(
-                    {
-                        "ok": False,
-                        "error": UPSTREAM_ERROR_MESSAGE,
-                        "error_code": UPSTREAM_ERROR_CODE,
-                        "status": r.status_code,
-                    },
-                    status_code=502,
-                )
-            data = r.json()
-            content = (
-                (data.get("choices") or [{}])[0]
-                .get("message", {})
-                .get("content")
-            )
-            return JSONResponse({"ok": True, "content": content})
+            # 与 chat 共享同一保护实现：200+空内容有界重试、非 200 不重试、
+            # 200+非 JSON→502 E_UPSTREAM、耗尽 → 502 E_UPSTREAM_EMPTY
+            result = await _post_nonstream_with_empty_retry(client, upstream, payload, headers)
+            if result["ok"]:
+                return JSONResponse({"ok": True, "content": result["content"]})
+            return JSONResponse(result, status_code=502)
     except httpx.HTTPError as e:
         _log_upstream_error("vision", e)
         return JSONResponse(

@@ -3,6 +3,7 @@
 所有上游请求都被 MockTransport 拦截，绝不调用真实大模型。
 """
 
+import asyncio
 import json
 
 import httpx
@@ -555,3 +556,170 @@ def test_stream_empty_content_exhausted_emits_E_UPSTREAM_EMPTY(app_module, monke
     # 空尝试的 [DONE] 不被转发，只追加本函数那一次
     assert response.text.count("data: [DONE]") == 1
     assert call_count["n"] == app_module.LLM_EMPTY_RETRIES + 1
+
+
+# ------------------------------------------------------------------
+# vision 同步 D 保护（chat 修了、vision 未修的等价断言）
+# 实现为 chat / vision 共享的单一非流式有界重试路径，禁止两份复制粘贴实现。
+# ------------------------------------------------------------------
+def test_vision_sensenova_bumps_max_tokens_to_4096(app_factory, monkeypatch):
+    """vision 走 sensenova-* 推理模型时同样强制 max_tokens>=4096（同源 bug 修复）。"""
+    module = app_factory({"LLM_MODEL": "sensenova-test"})
+    captured = {}
+
+    async def handler(request):
+        captured["payload"] = json.loads(request.content)
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+
+    monkeypatch.setattr(module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(module.app, client=LOOPBACK) as client:
+        response = client.post("/api/llm/vision", json={"user": "看图", "max_tokens": 2048})
+
+    assert response.status_code == 200
+    assert captured["payload"]["max_tokens"] == 4096
+
+
+def test_vision_non_sensenova_keeps_client_max_tokens(app_module, monkeypatch):
+    """vision 非 sensenova 模型：客户端 max_tokens 在 [1, 4096] 内应原样透传。"""
+    captured = {}
+
+    async def handler(request):
+        captured["payload"] = json.loads(request.content)
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+
+    monkeypatch.setattr(app_module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(app_module.app, client=LOOPBACK) as client:
+        # app_module 默认 model="test-model"，不以 sensenova- 开头
+        client.post("/api/llm/vision", json={"user": "看图", "max_tokens": 1000})
+
+    assert captured["payload"]["max_tokens"] == 1000
+
+
+def test_vision_empty_content_retries_then_succeeds(app_module, monkeypatch):
+    """vision：前两次 200 + 空内容，第三次有内容 → 整体 200 + content（非流式等价于空流重试成功）。"""
+    call_count = {"n": 0}
+    bodies = [
+        {"choices": [{"message": {"content": ""}}]},
+        {"choices": [{"message": {"content": None}}]},
+        {"choices": [{"message": {"content": "重试后才拿到内容"}}]},
+    ]
+
+    async def handler(request):
+        i = call_count["n"]
+        call_count["n"] += 1
+        return httpx.Response(200, json=bodies[i])
+
+    monkeypatch.setattr(app_module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(app_module.app, client=LOOPBACK) as client:
+        response = client.post("/api/llm/vision", json={"user": "看图"})
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "content": "重试后才拿到内容"}
+    assert call_count["n"] == app_module.LLM_EMPTY_RETRIES + 1
+
+
+def test_vision_empty_content_exhausted_returns_E_UPSTREAM_EMPTY(app_module, monkeypatch):
+    """vision：连续 LLM_EMPTY_RETRIES+1 次 200+空内容 → 502 E_UPSTREAM_EMPTY（不伪 ok）。"""
+    call_count = {"n": 0}
+
+    async def handler(request):
+        call_count["n"] += 1
+        return httpx.Response(200, json={"choices": [{"message": {"content": ""}}]})
+
+    monkeypatch.setattr(app_module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(app_module.app, client=LOOPBACK) as client:
+        response = client.post("/api/llm/vision", json={"user": "看图"})
+
+    assert response.status_code == 502
+    body = response.json()
+    assert body["error_code"] == "E_UPSTREAM_EMPTY"
+    assert "重试" in body["error"]
+    assert call_count["n"] == app_module.LLM_EMPTY_RETRIES + 1
+
+
+def test_vision_non_200_does_not_retry(app_module, monkeypatch):
+    """vision：非 200（上游真故障）不重试，避免把坏上游打爆。"""
+    call_count = {"n": 0}
+
+    async def handler(request):
+        call_count["n"] += 1
+        return httpx.Response(500, text="upstream boom")
+
+    monkeypatch.setattr(app_module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(app_module.app, client=LOOPBACK) as client:
+        response = client.post("/api/llm/vision", json={"user": "看图"})
+
+    assert response.status_code == 502
+    assert response.json()["error_code"] == app_module.UPSTREAM_ERROR_CODE
+    assert call_count["n"] == 1
+
+
+# ------------------------------------------------------------------
+# 200 + 非 JSON → 502 E_UPSTREAM 归一化（chat 非流式 + vision 两条路由都要有测试）
+# ------------------------------------------------------------------
+def test_non_stream_200_non_json_returns_E_UPSTREAM(app_module, monkeypatch):
+    async def handler(request):
+        return httpx.Response(200, text="<html>not-json at all</html>")
+
+    monkeypatch.setattr(app_module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(app_module.app, client=LOOPBACK) as client:
+        response = client.post("/api/llm/chat", json={"user": "hi", "stream": False})
+
+    assert response.status_code == 502
+    body = response.json()
+    assert body["error_code"] == "E_UPSTREAM"
+    assert body["ok"] is False
+    assert body["status"] == 200
+
+
+def test_vision_200_non_json_returns_E_UPSTREAM(app_module, monkeypatch):
+    """vision 此前 200+非 JSON 会直接 500 崩；现与 chat 一致归一化为 502 E_UPSTREAM。"""
+    async def handler(request):
+        return httpx.Response(200, text="<html>not-json at all</html>")
+
+    monkeypatch.setattr(app_module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(app_module.app, client=LOOPBACK) as client:
+        response = client.post("/api/llm/vision", json={"user": "看图"})
+
+    assert response.status_code == 502
+    body = response.json()
+    assert body["error_code"] == "E_UPSTREAM"
+    assert body["ok"] is False
+    assert body["status"] == 200
+
+
+# ------------------------------------------------------------------
+# 流式缓冲期 SSE 心跳（P2）：缓冲期周期下推注释心跳，防止网关/浏览器空闲超时
+# 断言：心跳帧全部出现在内容帧之前、不影响 done/[DONE] 语义。
+# ------------------------------------------------------------------
+def test_stream_emits_heartbeat_before_content(app_module, monkeypatch):
+    """content 迟到（先吐 reasoning）时按周期补发 : ping 心跳，且心跳先于内容。"""
+    app_module.SSE_HEARTBEAT_INTERVAL_SECONDS = 0.05  # 测试期压缩心跳周期，避免真等 8s
+
+    async def slow_body():
+        # 前段只吐 reasoning（无 content），间隔大于心跳周期 → 必然触发心跳
+        for _ in range(3):
+            yield b'data: {"choices":[{"delta":{"reasoning":"thinking..."}}]}\n\n'
+            await asyncio.sleep(0.1)
+        yield b'data: {"choices":[{"delta":{"content":"\xe4\xbd\xa0\xe5\xa5\xbd"}}]}\n\n'
+        yield b"data: [DONE]\n\n"
+
+    async def handler(request):
+        return httpx.Response(200, content=slow_body(), headers={"content-type": "text/event-stream"})
+
+    monkeypatch.setattr(app_module.httpx, "AsyncClient", mock_upstream(handler))
+    with TestClient(app_module.app, client=LOOPBACK) as client:
+        response = client.post("/api/llm/chat", json={"user": "hi", "stream": True})
+
+    text = response.text
+    assert response.status_code == 200
+    assert text.count(": ping") >= 2  # 0.3s reasoning 期、0.05s 周期 → 至少 2 次心跳
+    first_content = text.find('"content":"你好"')
+    assert first_content != -1
+    # 心跳帧必须先于内容帧
+    assert text.rfind(": ping") < first_content
+    # 心跳不改变 [DONE] 语义：只追加一次、且位于末尾
+    assert text.count("data: [DONE]") == 1
+    assert text.rstrip().endswith("data: [DONE]")
+    # 内容仍被完整透传
+    assert '"content":"你好"' in text
